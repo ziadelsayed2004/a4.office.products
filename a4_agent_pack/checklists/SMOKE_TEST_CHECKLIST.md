@@ -1,0 +1,25 @@
+# Smoke Test Checklist — A4
+
+- Login admin.
+- Create cashier.
+- Login cashier.
+- Open shift.
+- Create category.
+- Create price tier.
+- Create product without image.
+- Generate product token/label data.
+- Add stock.
+- Scan/search product.
+- Checkout normal sale.
+- Verify stock decrement.
+- Print/reprint receipt and verify AuditLog.
+- Create preorder with name and phone.
+- Verify deposit payment.
+- Verify openPreorderQuantity increment.
+- Scan preorder token.
+- Complete pickup and remaining payment.
+- Verify stock decrement and openPreorderQuantity decrement.
+- Close shift request as cashier.
+- Approve shift as admin.
+- View KPIs and reports as admin.
+- Confirm cashier cannot access global reports.

@@ -1,0 +1,511 @@
+{
+  "project": "A4 Office Products POS Platform Agent Pack",
+  "created_at": "2026-07-09T19:42:33+03:00",
+  "mode": "unified_pack_no_versions",
+  "branch_count": 1,
+  "stack": [
+    "React",
+    "Vite",
+    "Node.js",
+    "Express",
+    "SQLite"
+  ],
+  "total_steps": 61,
+  "current_step": "061",
+  "pack_state": "completed",
+  "steps": [
+    {
+      "id": "001",
+      "slug": "repo_reality_audit",
+      "title": "Repo Reality Audit",
+      "status": "completed",
+      "step_file": "agent_pack/steps/001_repo_reality_audit.md",
+      "report": "agent_pack/reports/001_repo_reality_audit_REPORT.md"
+    },
+    {
+      "id": "002",
+      "slug": "target_architecture_and_scope_lock",
+      "title": "Target Architecture And Scope Lock",
+      "status": "completed",
+      "step_file": "agent_pack/steps/002_target_architecture_and_scope_lock.md",
+      "report": "agent_pack/reports/002_target_architecture_and_scope_lock_REPORT.md"
+    },
+    {
+      "id": "003",
+      "slug": "monorepo_structure_bootstrap",
+      "title": "Monorepo Structure Bootstrap",
+      "status": "completed",
+      "step_file": "agent_pack/steps/003_monorepo_structure_bootstrap.md",
+      "report": "agent_pack/reports/003_monorepo_structure_bootstrap_REPORT.md"
+    },
+    {
+      "id": "004",
+      "slug": "env_config_security_bootstrap",
+      "title": "Env Config Security Bootstrap",
+      "status": "completed",
+      "step_file": "agent_pack/steps/004_env_config_security_bootstrap.md",
+      "report": "agent_pack/reports/004_env_config_security_bootstrap_REPORT.md"
+    },
+    {
+      "id": "005",
+      "slug": "database_connection_and_base_models",
+      "title": "Database Connection And Base Models",
+      "status": "completed",
+      "step_file": "agent_pack/steps/005_database_connection_and_base_models.md",
+      "report": "agent_pack/reports/005_database_connection_and_base_models_REPORT.md"
+    },
+    {
+      "id": "006",
+      "slug": "auth_user_sessions",
+      "title": "Auth User Sessions",
+      "status": "completed",
+      "step_file": "agent_pack/steps/006_auth_user_sessions.md",
+      "report": "agent_pack/reports/006_auth_user_sessions_REPORT.md"
+    },
+    {
+      "id": "007",
+      "slug": "rbac_permissions_matrix",
+      "title": "RBAC Permissions Matrix",
+      "status": "open",
+      "step_file": "agent_pack/steps/007_rbac_permissions_matrix.md",
+      "report": "agent_pack/reports/007_rbac_permissions_matrix_REPORT.md"
+    },
+    {
+      "id": "008",
+      "slug": "audit_log_engine",
+      "title": "Audit Log Engine",
+      "status": "completed",
+      "step_file": "agent_pack/steps/008_audit_log_engine.md",
+      "report": "agent_pack/reports/008_audit_log_engine_REPORT.md"
+    },
+    {
+      "id": "009",
+      "slug": "admin_user_management",
+      "title": "Admin User Management",
+      "status": "completed",
+      "step_file": "agent_pack/steps/009_admin_user_management.md",
+      "report": "agent_pack/reports/009_admin_user_management_REPORT.md"
+    },
+    {
+      "id": "010",
+      "slug": "categories_module",
+      "title": "Categories Module",
+      "status": "completed",
+      "step_file": "agent_pack/steps/010_categories_module.md",
+      "report": "agent_pack/reports/010_categories_module_REPORT.md"
+    },
+    {
+      "id": "011",
+      "slug": "price_tiers_module",
+      "title": "Price Tiers Module",
+      "status": "completed",
+      "step_file": "agent_pack/steps/011_price_tiers_module.md",
+      "report": "agent_pack/reports/011_price_tiers_module_REPORT.md"
+    },
+    {
+      "id": "012",
+      "slug": "product_schema_generic_no_images",
+      "title": "Product Schema Generic No Images",
+      "status": "completed",
+      "step_file": "agent_pack/steps/012_product_schema_generic_no_images.md",
+      "report": "agent_pack/reports/012_product_schema_generic_no_images_REPORT.md"
+    },
+    {
+      "id": "013",
+      "slug": "product_admin_crud",
+      "title": "Product Admin CRUD",
+      "status": "completed",
+      "step_file": "agent_pack/steps/013_product_admin_crud.md",
+      "report": "agent_pack/reports/013_product_admin_crud_REPORT.md"
+    },
+    {
+      "id": "014",
+      "slug": "product_qr_generation_labels",
+      "title": "Product QR Generation Labels",
+      "status": "completed",
+      "step_file": "agent_pack/steps/014_product_qr_generation_labels.md",
+      "report": "agent_pack/reports/014_product_qr_generation_labels_REPORT.md"
+    },
+    {
+      "id": "015",
+      "slug": "inventory_ledger_core",
+      "title": "Inventory Ledger Core",
+      "status": "completed",
+      "step_file": "agent_pack/steps/015_inventory_ledger_core.md",
+      "report": "agent_pack/reports/015_inventory_ledger_core_REPORT.md"
+    },
+    {
+      "id": "016",
+      "slug": "stock_and_preorder_counters",
+      "title": "Stock And Preorder Counters",
+      "status": "completed",
+      "step_file": "agent_pack/steps/016_stock_and_preorder_counters.md",
+      "report": "agent_pack/reports/016_stock_and_preorder_counters_REPORT.md"
+    },
+    {
+      "id": "017",
+      "slug": "payment_methods_module",
+      "title": "Payment Methods Module",
+      "status": "open",
+      "step_file": "agent_pack/steps/017_payment_methods_module.md",
+      "report": "agent_pack/reports/017_payment_methods_module_REPORT.md"
+    },
+    {
+      "id": "018",
+      "slug": "customers_minimal_module",
+      "title": "Customers Minimal Module",
+      "status": "completed",
+      "step_file": "agent_pack/steps/018_customers_minimal_module.md",
+      "report": "agent_pack/reports/018_customers_minimal_module_REPORT.md"
+    },
+    {
+      "id": "019",
+      "slug": "pos_cart_scan_search",
+      "title": "POS Cart Scan Search",
+      "status": "completed",
+      "step_file": "agent_pack/steps/019_pos_cart_scan_search.md",
+      "report": "agent_pack/reports/019_pos_cart_scan_search_REPORT.md"
+    },
+    {
+      "id": "020",
+      "slug": "normal_sale_checkout",
+      "title": "Normal Sale Checkout",
+      "status": "completed",
+      "step_file": "agent_pack/steps/020_normal_sale_checkout.md",
+      "report": "agent_pack/reports/020_normal_sale_checkout_REPORT.md"
+    },
+    {
+      "id": "021",
+      "slug": "receipt_core_and_numbering",
+      "title": "Receipt Core And Numbering",
+      "status": "completed",
+      "step_file": "agent_pack/steps/021_receipt_core_and_numbering.md",
+      "report": "agent_pack/reports/021_receipt_core_and_numbering_REPORT.md"
+    },
+    {
+      "id": "022",
+      "slug": "thermal_receipt_templates",
+      "title": "Thermal Receipt Templates",
+      "status": "completed",
+      "step_file": "agent_pack/steps/022_thermal_receipt_templates.md",
+      "report": "agent_pack/reports/022_thermal_receipt_templates_REPORT.md"
+    },
+    {
+      "id": "023",
+      "slug": "preorder_create_deposit",
+      "title": "Preorder Create Deposit",
+      "status": "completed",
+      "step_file": "agent_pack/steps/023_preorder_create_deposit.md",
+      "report": "agent_pack/reports/023_preorder_create_deposit_REPORT.md"
+    },
+    {
+      "id": "024",
+      "slug": "preorder_receipt_qr",
+      "title": "Preorder Receipt QR",
+      "status": "completed",
+      "step_file": "agent_pack/steps/024_preorder_receipt_qr.md",
+      "report": "agent_pack/reports/024_preorder_receipt_qr_REPORT.md"
+    },
+    {
+      "id": "025",
+      "slug": "preorder_admin_tracking",
+      "title": "Preorder Admin Tracking",
+      "status": "completed",
+      "step_file": "agent_pack/steps/025_preorder_admin_tracking.md",
+      "report": "agent_pack/reports/025_preorder_admin_tracking_REPORT.md"
+    },
+    {
+      "id": "026",
+      "slug": "preorder_scan_pickup_dialog",
+      "title": "Preorder Scan Pickup Dialog",
+      "status": "completed",
+      "step_file": "agent_pack/steps/026_preorder_scan_pickup_dialog.md",
+      "report": "agent_pack/reports/026_preorder_scan_pickup_dialog_REPORT.md"
+    },
+    {
+      "id": "027",
+      "slug": "preorder_pickup_checkout",
+      "title": "Preorder Pickup Checkout",
+      "status": "completed",
+      "step_file": "agent_pack/steps/027_preorder_pickup_checkout.md",
+      "report": "agent_pack/reports/027_preorder_pickup_checkout_REPORT.md"
+    },
+    {
+      "id": "028",
+      "slug": "shift_open_resume_rules",
+      "title": "Shift Open Resume Rules",
+      "status": "completed",
+      "step_file": "agent_pack/steps/028_shift_open_resume_rules.md",
+      "report": "agent_pack/reports/028_shift_open_resume_rules_REPORT.md"
+    },
+    {
+      "id": "029",
+      "slug": "shift_transaction_binding",
+      "title": "Shift Transaction Binding",
+      "status": "completed",
+      "step_file": "agent_pack/steps/029_shift_transaction_binding.md",
+      "report": "agent_pack/reports/029_shift_transaction_binding_REPORT.md"
+    },
+    {
+      "id": "030",
+      "slug": "cashier_shift_summary",
+      "title": "Cashier Shift Summary",
+      "status": "completed",
+      "step_file": "agent_pack/steps/030_cashier_shift_summary.md",
+      "report": "agent_pack/reports/030_cashier_shift_summary_REPORT.md"
+    },
+    {
+      "id": "031",
+      "slug": "shift_close_request",
+      "title": "Shift Close Request",
+      "status": "completed",
+      "step_file": "agent_pack/steps/031_shift_close_request.md",
+      "report": "agent_pack/reports/031_shift_close_request_REPORT.md"
+    },
+    {
+      "id": "032",
+      "slug": "admin_shift_review_approval",
+      "title": "Admin Shift Review Approval",
+      "status": "completed",
+      "step_file": "agent_pack/steps/032_admin_shift_review_approval.md",
+      "report": "agent_pack/reports/032_admin_shift_review_approval_REPORT.md"
+    },
+    {
+      "id": "033",
+      "slug": "cash_movements_and_drawer",
+      "title": "Cash Movements And Drawer",
+      "status": "completed",
+      "step_file": "agent_pack/steps/033_cash_movements_and_drawer.md",
+      "report": "agent_pack/reports/033_cash_movements_and_drawer_REPORT.md"
+    },
+    {
+      "id": "034",
+      "slug": "returns_refunds_core",
+      "title": "Returns Refunds Core",
+      "status": "completed",
+      "step_file": "agent_pack/steps/034_returns_refunds_core.md",
+      "report": "agent_pack/reports/034_returns_refunds_core_REPORT.md"
+    },
+    {
+      "id": "035",
+      "slug": "admin_dashboard_kpis",
+      "title": "Admin Dashboard KPIs",
+      "status": "completed",
+      "step_file": "agent_pack/steps/035_admin_dashboard_kpis.md",
+      "report": "agent_pack/reports/035_admin_dashboard_kpis_REPORT.md"
+    },
+    {
+      "id": "036",
+      "slug": "reports_filters_exports",
+      "title": "Reports Filters Exports",
+      "status": "completed",
+      "step_file": "agent_pack/steps/036_reports_filters_exports.md",
+      "report": "agent_pack/reports/036_reports_filters_exports_REPORT.md"
+    },
+    {
+      "id": "037",
+      "slug": "backend_api_postman_docs",
+      "title": "Backend API Postman Docs",
+      "status": "completed",
+      "step_file": "agent_pack/steps/037_backend_api_postman_docs.md",
+      "report": "agent_pack/reports/037_backend_api_postman_docs_REPORT.md"
+    },
+    {
+      "id": "038",
+      "slug": "frontend_bootstrap_vite",
+      "title": "Frontend Bootstrap Vite",
+      "status": "completed",
+      "step_file": "agent_pack/steps/038_frontend_bootstrap_vite.md",
+      "report": "agent_pack/reports/038_frontend_bootstrap_vite_REPORT.md"
+    },
+    {
+      "id": "039",
+      "slug": "frontend_design_system",
+      "title": "Frontend Design System",
+      "status": "completed",
+      "step_file": "agent_pack/steps/039_frontend_design_system.md",
+      "report": "agent_pack/reports/039_frontend_design_system_REPORT.md"
+    },
+    {
+      "id": "040",
+      "slug": "login_and_session_ui",
+      "title": "Login And Session UI",
+      "status": "completed",
+      "step_file": "agent_pack/steps/040_login_and_session_ui.md",
+      "report": "agent_pack/reports/040_login_and_session_ui_REPORT.md"
+    },
+    {
+      "id": "041",
+      "slug": "admin_layout_navigation",
+      "title": "Admin Layout Navigation",
+      "status": "completed",
+      "step_file": "agent_pack/steps/041_admin_layout_navigation.md",
+      "report": "agent_pack/reports/041_admin_layout_navigation_REPORT.md"
+    },
+    {
+      "id": "042",
+      "slug": "cashier_pos_layout",
+      "title": "Cashier POS Layout",
+      "status": "completed",
+      "step_file": "agent_pack/steps/042_cashier_pos_layout.md",
+      "report": "agent_pack/reports/042_cashier_pos_layout_REPORT.md"
+    },
+    {
+      "id": "043",
+      "slug": "categories_price_tiers_ui",
+      "title": "Categories Price Tiers UI",
+      "status": "completed",
+      "step_file": "agent_pack/steps/043_categories_price_tiers_ui.md",
+      "report": "agent_pack/reports/043_categories_price_tiers_ui_REPORT.md"
+    },
+    {
+      "id": "044",
+      "slug": "products_inventory_ui",
+      "title": "Products Inventory UI",
+      "status": "completed",
+      "step_file": "agent_pack/steps/044_products_inventory_ui.md",
+      "report": "agent_pack/reports/044_products_inventory_ui_REPORT.md"
+    },
+    {
+      "id": "045",
+      "slug": "product_qr_print_ui",
+      "title": "Product QR Print UI",
+      "status": "completed",
+      "step_file": "agent_pack/steps/045_product_qr_print_ui.md",
+      "report": "agent_pack/reports/045_product_qr_print_ui_REPORT.md"
+    },
+    {
+      "id": "046",
+      "slug": "normal_checkout_ui",
+      "title": "Normal Checkout UI",
+      "status": "completed",
+      "step_file": "agent_pack/steps/046_normal_checkout_ui.md",
+      "report": "agent_pack/reports/046_normal_checkout_ui_REPORT.md"
+    },
+    {
+      "id": "047",
+      "slug": "preorder_create_ui",
+      "title": "Preorder Create UI",
+      "status": "completed",
+      "step_file": "agent_pack/steps/047_preorder_create_ui.md",
+      "report": "agent_pack/reports/047_preorder_create_ui_REPORT.md"
+    },
+    {
+      "id": "048",
+      "slug": "preorder_scan_pickup_ui",
+      "title": "Preorder Scan Pickup UI",
+      "status": "completed",
+      "step_file": "agent_pack/steps/048_preorder_scan_pickup_ui.md",
+      "report": "agent_pack/reports/048_preorder_scan_pickup_ui_REPORT.md"
+    },
+    {
+      "id": "049",
+      "slug": "shift_close_cashier_ui",
+      "title": "Shift Close Cashier UI",
+      "status": "completed",
+      "step_file": "agent_pack/steps/049_shift_close_cashier_ui.md",
+      "report": "agent_pack/reports/049_shift_close_cashier_ui_REPORT.md"
+    },
+    {
+      "id": "050",
+      "slug": "admin_shifts_review_ui",
+      "title": "Admin Shifts Review UI",
+      "status": "completed",
+      "step_file": "agent_pack/steps/050_admin_shifts_review_ui.md",
+      "report": "agent_pack/reports/050_admin_shifts_review_ui_REPORT.md"
+    },
+    {
+      "id": "051",
+      "slug": "reports_kpis_ui",
+      "title": "Reports KPIs UI",
+      "status": "completed",
+      "step_file": "agent_pack/steps/051_reports_kpis_ui.md",
+      "report": "agent_pack/reports/051_reports_kpis_ui_REPORT.md"
+    },
+    {
+      "id": "052",
+      "slug": "audit_logs_ui",
+      "title": "Audit Logs UI",
+      "status": "completed",
+      "step_file": "agent_pack/steps/052_audit_logs_ui.md",
+      "report": "agent_pack/reports/052_audit_logs_ui_REPORT.md"
+    },
+    {
+      "id": "053",
+      "slug": "printer_settings_ui",
+      "title": "Printer Settings UI",
+      "status": "completed",
+      "step_file": "agent_pack/steps/053_printer_settings_ui.md",
+      "report": "agent_pack/reports/053_printer_settings_ui_REPORT.md"
+    },
+    {
+      "id": "054",
+      "slug": "seed_demo_data",
+      "title": "Seed Demo Data",
+      "status": "completed",
+      "step_file": "agent_pack/steps/054_seed_demo_data.md",
+      "report": "agent_pack/reports/054_seed_demo_data_REPORT.md"
+    },
+    {
+      "id": "055",
+      "slug": "integration_smoke_tests",
+      "title": "Integration Smoke Tests",
+      "status": "completed",
+      "step_file": "agent_pack/steps/055_integration_smoke_tests.md",
+      "report": "agent_pack/reports/055_integration_smoke_tests_REPORT.md"
+    },
+    {
+      "id": "056",
+      "slug": "security_rbac_final_audit",
+      "title": "Security RBAC Final Audit",
+      "status": "completed",
+      "step_file": "agent_pack/steps/056_security_rbac_final_audit.md",
+      "report": "agent_pack/reports/056_security_rbac_final_audit_REPORT.md"
+    },
+    {
+      "id": "057",
+      "slug": "printing_qr_final_qa",
+      "title": "Printing QR Final QA",
+      "status": "completed",
+      "step_file": "agent_pack/steps/057_printing_qr_final_qa.md",
+      "report": "agent_pack/reports/057_printing_qr_final_qa_REPORT.md"
+    },
+    {
+      "id": "058",
+      "slug": "performance_indexes_backup",
+      "title": "Performance Indexes Backup",
+      "status": "completed",
+      "step_file": "agent_pack/steps/058_performance_indexes_backup.md",
+      "report": "agent_pack/reports/058_performance_indexes_backup_REPORT.md"
+    },
+    {
+      "id": "059",
+      "slug": "deployment_docs",
+      "title": "Deployment Docs",
+      "status": "completed",
+      "step_file": "agent_pack/steps/059_deployment_docs.md",
+      "report": "agent_pack/reports/059_deployment_docs_REPORT.md"
+    },
+    {
+      "id": "060",
+      "slug": "final_acceptance_handoff",
+      "title": "Final Acceptance Handoff",
+      "status": "completed",
+      "step_file": "agent_pack/steps/060_final_acceptance_handoff.md",
+      "report": "agent_pack/reports/060_final_acceptance_handoff_REPORT.md"
+    },
+    {
+      "id": "061",
+      "slug": "react_components_css_refactoring",
+      "title": "React Components and CSS Refactoring",
+      "status": "completed",
+      "step_file": "agent_pack/steps/061_react_components_css_refactoring.md",
+      "report": "agent_pack/reports/061_react_components_css_refactoring_REPORT.md"
+    }
+  ],
+  "docs_version": "sqlite_arabic_ui_simplified_prd_2026_07_10",
+  "feature_matrix": "agent_pack/docs/FEATURE_MATRIX.md",
+  "rtl_compatibility_rule": "Application UI is Arabic RTL. Do not start Arabic headings or bullets with QR; write رمز QR or رمز المنتج.",
+  "ui_language_rule": "Arabic RTL only for all user-facing app screens, receipts, reports, and print templates.",
+  "database_rule": "SQLite only. Do not introduce SQLite or SQLite query layer."
+}

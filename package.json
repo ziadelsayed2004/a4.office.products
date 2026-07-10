@@ -1,0 +1,17 @@
+{
+  "name": "a4-office-products-pos",
+  "version": "1.0.0",
+  "description": "A4 Office Products POS Platform - Monorepo Root",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && npm install --prefix client && npm install --prefix server",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "dev": "npx --yes concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build:client": "npm run build --prefix client",
+    "build": "npm run build:client",
+    "test": "npm run test --prefix server",
+    "db:setup": "npm run db:setup --prefix server",
+    "db:backup": "npm run db:backup --prefix server"
+  }
+}

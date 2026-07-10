@@ -1,0 +1,39 @@
+/* Design System Variable Tokens — A4 POS Theme */
+
+:root {
+  --primary: #0f5fa6;
+  --primary-hover: #4287f5;
+  --bg-main: #f8f9fa;
+  --bg-card: #ffffff;
+  --text-dark: #111827;
+  --text-muted: #4b5563;
+  --border-color: #e5e7eb;
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+  --card-bg: var(--bg-card);
+  --primary-color: var(--primary);
+  --warning-color: var(--warning);
+  --text-color: var(--text-dark);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-main: #0f172a;
+    --bg-card: #1e293b;
+    --text-dark: #f9fafb;
+    --text-muted: #9ca3af;
+    --border-color: #334155;
+    --primary: #3b82f6;
+    --primary-hover: #60a5fa;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.2);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.3);
+    --card-bg: var(--bg-card);
+    --primary-color: var(--primary);
+    --warning-color: var(--warning);
+    --text-color: var(--text-dark);
+  }
+}

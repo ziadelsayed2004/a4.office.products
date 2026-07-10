@@ -1,0 +1,453 @@
+/* Modern premium design for A4 POS Platform Dashboard */
+
+@import "./styles/theme.css";
+
+/* Base resets & layouts */
+body {
+  background-color: var(--bg-main);
+  color: var(--text-dark);
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  direction: rtl;
+  text-align: right;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  width: 100vw !important;
+  max-width: 100% !important;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  border-inline: none !important;
+  direction: rtl;
+}
+
+/* Authentication Layout */
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-main);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
+.login-logo {
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--primary);
+  margin-bottom: 24px;
+}
+
+/* Dashboard Container */
+.dashboard-layout {
+  display: flex;
+  width: 100vw;
+  min-height: 100vh;
+}
+
+/* Sidebar styling */
+.sidebar {
+  width: 260px;
+  background-color: var(--bg-card);
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  box-sizing: border-box;
+}
+
+.sidebar-title {
+  font-size: 22px;
+  font-weight: bold;
+  color: var(--primary);
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.user-profile-info {
+  background: var(--bg-main);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.profile-name {
+  font-weight: bold;
+  font-size: 15px;
+  color: var(--text-dark);
+}
+
+.profile-role {
+  font-size: 13px;
+  color: var(--primary);
+  margin-top: 4px;
+}
+
+.sidebar-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex-grow: 1;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  color: var(--text-dark);
+}
+
+.menu-item:hover, .menu-item.active {
+  background-color: var(--primary);
+  color: #ffffff;
+}
+
+.logout-button {
+  background-color: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  text-align: center;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.logout-button:hover {
+  background-color: var(--danger);
+  color: white;
+}
+
+/* Main Content Area */
+.main-content {
+  flex-grow: 1;
+  padding: 32px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 16px;
+}
+
+.content-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.content-action-btn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.content-action-btn:hover {
+  background-color: var(--primary-hover);
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 18px;
+  text-align: right;
+}
+
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--text-dark);
+}
+
+.form-input, .form-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 15px;
+  background-color: var(--bg-card);
+  color: var(--text-dark);
+  box-sizing: border-box;
+}
+
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.form-btn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.2s;
+}
+
+.form-btn:hover {
+  background-color: var(--primary-hover);
+}
+
+.error-banner {
+  background-color: rgba(255, 90, 95, 0.1);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 18px;
+  font-size: 14px;
+  text-align: right;
+}
+
+/* Table styling */
+.table-container {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.custom-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: right;
+}
+
+.custom-table th, .custom-table td {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.custom-table th {
+  background-color: var(--bg-main);
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.custom-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-success {
+  background-color: rgba(46, 196, 182, 0.15);
+  color: var(--success);
+}
+
+.badge-danger {
+  background-color: rgba(255, 90, 95, 0.15);
+  color: var(--danger);
+}
+
+.badge-info {
+  background-color: rgba(0, 119, 182, 0.15);
+  color: var(--info);
+}
+
+.badge-primary {
+  background-color: rgba(137, 44, 220, 0.15);
+  color: var(--primary);
+}
+
+/* Actions buttons in tables */
+.action-btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-dark);
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background-color: var(--bg-main);
+}
+
+.action-btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.action-btn-danger:hover {
+  background-color: var(--danger);
+  color: white;
+}
+
+.action-btn-primary {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.action-btn-primary:hover {
+  background-color: var(--primary);
+  color: white;
+}
+
+/* Modal dialog container */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 480px;
+  background-color: var(--bg-card);
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: var(--shadow-md);
+}
+
+.modal-header {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.modal-cancel-btn {
+  background-color: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  flex: 1;
+  text-align: center;
+}
+
+.modal-cancel-btn:hover {
+  background-color: var(--bg-main);
+}
+
+.modal-submit-btn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  flex: 1;
+  text-align: center;
+}
+
+.modal-submit-btn:hover {
+  background-color: var(--primary-hover);
+}
+
+/* Filters for Logs */
+.filter-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.filter-group {
+  flex: 1 1 200px;
+  text-align: right;
+}
+
+/* Print Media Styles for QR Labels and Receipts */
+@media print {
+  /* Hide every part of the dashboard layout */
+  body * {
+    visibility: hidden;
+  }
+  /* Show print elements */
+  .print-section, .print-section *, .print-receipt-section, .print-receipt-section * {
+    visibility: visible;
+  }
+  .print-section, .print-receipt-section {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+    color: black !important;
+    display: block !important;
+    padding: 0;
+    margin: 0;
+  }
+  /* Remove page background colors/shadows on printers */
+  .qr-print-label, .print-receipt-section * {
+    box-shadow: none !important;
+    background: white !important;
+    color: black !important;
+    page-break-inside: avoid;
+  }
+}

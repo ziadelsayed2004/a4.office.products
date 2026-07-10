@@ -1,0 +1,1190 @@
+{
+  "info": {
+    "name": "A4 Office Products POS API Collection",
+    "description": "Postman Collection for A4 Office Products POS Platform. Built with authorization filters, catalog, inventory, shifts, returns, preorders, and admin reports.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Auth",
+      "description": "Authentication and user profile endpoints.",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Logs in the user (Admin or Cashier) and returns an access token."
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Renews the access token session."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Terminates the user session."
+          }
+        },
+        {
+          "name": "Get Current Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Retrieves the currently authenticated user profile and permissions."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Admin Users",
+      "description": "Admin endpoints to manage user accounts.",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users"]
+            },
+            "description": "Returns all registered users (Admin only)."
+          }
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"cashier3\",\n  \"password\": \"cashier123\",\n  \"role\": \"Cashier\",\n  \"name\": \"أحمد مصطفى\",\n  \"phone\": \"01234567890\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users"]
+            },
+            "description": "Creates a new user profile (Admin only)."
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"أحمد مصطفى المعدل\",\n  \"phone\": \"01099999999\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/users/2",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users", "2"]
+            },
+            "description": "Updates details of a specific user account."
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/users/2/password",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users", "2", "password"]
+            },
+            "description": "Changes the password of a user."
+          }
+        },
+        {
+          "name": "Disable User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/users/2/disable",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users", "2", "disable"]
+            },
+            "description": "Deactivates a user account to block access."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Catalog",
+      "description": "Category, price tier, and product catalog endpoints.",
+      "item": [
+        {
+          "name": "List Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/categories",
+              "host": ["{{base_url}}"],
+              "path": ["categories"]
+            },
+            "description": "Lists all catalog categories."
+          }
+        },
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"روايات عربية\",\n  \"is_active\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/categories",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "categories"]
+            },
+            "description": "Creates a new catalog category (Admin only)."
+          }
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"روايات عربية مترجمة\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/categories/1",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "categories", "1"]
+            },
+            "description": "Modifies category name."
+          }
+        },
+        {
+          "name": "List Price Tiers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/price-tiers",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "price-tiers"]
+            },
+            "description": "Lists price tiers details (Admin only)."
+          }
+        },
+        {
+          "name": "Create Price Tier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"سعر الجملة\",\n  \"description\": \"مخصص للمكتبات الشريكة\",\n  \"is_active\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/price-tiers",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "price-tiers"]
+            },
+            "description": "Creates a new tier category (Admin only)."
+          }
+        },
+        {
+          "name": "Update Price Tier",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"خصومات خاصة لشركاء التوزيع\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/price-tiers/1",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "price-tiers", "1"]
+            },
+            "description": "Modifies a pricing tier."
+          }
+        },
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/products?search=سلاح",
+              "host": ["{{base_url}}"],
+              "path": ["products"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "سلاح"
+                }
+              ]
+            },
+            "description": "Lists and filters active products."
+          }
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"رواية الفيل الأزرق\",\n  \"sku\": \"SKU-FIL-BLUE\",\n  \"barcode\": \"BAR-FIL-BLUE\",\n  \"category_id\": 1,\n  \"is_active\": 1,\n  \"can_be_sold\": 1,\n  \"can_be_preordered\": 1,\n  \"default_preorder_deposit_pct\": 40,\n  \"low_stock_threshold\": 5,\n  \"purchase_cost\": 8000,\n  \"prices\": {\n    \"1\": 12000,\n    \"2\": 10000\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/products",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "products"]
+            },
+            "description": "Creates a new product (no images) with purchase cost and prices (Admin only)."
+          }
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"low_stock_threshold\": 3,\n  \"prices\": {\n    \"1\": 13000\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/products/1",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "products", "1"]
+            },
+            "description": "Updates product prices or properties (Admin only)."
+          }
+        },
+        {
+          "name": "Generate QR Label",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products/1/qr-labels",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "products", "1", "qr-labels"]
+            },
+            "description": "Prepares and returns product QR token configuration (excluding price/stock)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Inventory",
+      "description": "Stock management endpoints (Admin only).",
+      "item": [
+        {
+          "name": "Get Inventory Counters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/inventory",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "inventory"]
+            },
+            "description": "Displays current active stock counters."
+          }
+        },
+        {
+          "name": "Add Initial Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": 1,\n  \"quantity\": 20,\n  \"notes\": \"شحنة كتب جديدة من المورد\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/inventory/stock-add",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "inventory", "stock-add"]
+            },
+            "description": "Adds items quantity into product physical stock."
+          }
+        },
+        {
+          "name": "Adjust Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": 1,\n  \"quantity\": -2,\n  \"notes\": \"تالف كتابين بالرف\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/inventory/adjustment",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "inventory", "adjustment"]
+            },
+            "description": "Performs manual stock updates (positive or negative) with audit logs."
+          }
+        },
+        {
+          "name": "List Inventory Ledger",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/inventory/ledger",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "inventory", "ledger"]
+            },
+            "description": "Lists comprehensive stock transaction journals."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. POS",
+      "description": "Point-of-Sale operation endpoints.",
+      "item": [
+        {
+          "name": "Scan Product Label",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"barcode\": \"BAR-FIL-BLUE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pos/scan-product",
+              "host": ["{{base_url}}"],
+              "path": ["pos", "scan-product"]
+            },
+            "description": "Decodes product token/label to load item."
+          }
+        },
+        {
+          "name": "POS Search Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pos/products/search?q=فيل",
+              "host": ["{{base_url}}"],
+              "path": ["pos", "products", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "فيل"
+                }
+              ]
+            },
+            "description": "Lists POS-sellable products."
+          }
+        },
+        {
+          "name": "Sale Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": null,\n  \"discount\": 1000,\n  \"items\": [\n    {\n      \"product_id\": 1,\n      \"quantity\": 2,\n      \"price_tier_id\": 1\n    }\n  ],\n  \"payments\": [\n    {\n      \"method\": \"Cash\",\n      \"amount\": 23000\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pos/orders/checkout",
+              "host": ["{{base_url}}"],
+              "path": ["pos", "orders", "checkout"]
+            },
+            "description": "Processes final order payments, records inventory sales, and constructs receipts."
+          }
+        },
+        {
+          "name": "Get Order",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pos/orders/1",
+              "host": ["{{base_url}}"],
+              "path": ["pos", "orders", "1"]
+            },
+            "description": "Fetches order invoice summary."
+          }
+        },
+        {
+          "name": "Get Receipt",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pos/receipts/REC-20260710-0001",
+              "host": ["{{base_url}}"],
+              "path": ["pos", "receipts", "REC-20260710-0001"]
+            },
+            "description": "Fetches printable thermal receipt."
+          }
+        },
+        {
+          "name": "Reprint Receipt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pos/receipts/REC-20260710-0001/reprint",
+              "host": ["{{base_url}}"],
+              "path": ["pos", "receipts", "REC-20260710-0001", "reprint"]
+            },
+            "description": "Increases receipt print count and logs REPRINT audit log."
+          }
+        },
+        {
+          "name": "Return Order Items",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"quantity\": 1\n    }\n  ],\n  \"notes\": \"إرجاع كتاب بسبب عيب طباعة\",\n  \"refundMethod\": \"Cash\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pos/orders/1/return",
+              "host": ["{{base_url}}"],
+              "path": ["pos", "orders", "1", "return"]
+            },
+            "description": "Registers returns, calculates proportional refunds, adds stock, and logs movements."
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Preorders",
+      "description": "Preorder deposit creation and pickup verification.",
+      "item": [
+        {
+          "name": "Create Preorder",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"خالد عادل\",\n  \"customerPhone\": \"01111222333\",\n  \"discount\": 0,\n  \"depositPaid\": 5000,\n  \"payments\": [\n    {\n      \"method\": \"Cash\",\n      \"amount\": 5000\n    }\n  ],\n  \"items\": [\n    {\n      \"product_id\": 1,\n      \"quantity\": 1,\n      \"price_tier_id\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pos/preorders",
+              "host": ["{{base_url}}"],
+              "path": ["pos", "preorders"]
+            },
+            "description": "Stores preorder request, registers deposit payment, and generates QR pickup token."
+          }
+        },
+        {
+          "name": "Scan Preorder Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"pre_abcdef123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pos/preorders/scan",
+              "host": ["{{base_url}}"],
+              "path": ["pos", "preorders", "scan"]
+            },
+            "description": "Decodes preorder token to check details."
+          }
+        },
+        {
+          "name": "Get Preorder Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pos/preorders/1",
+              "host": ["{{base_url}}"],
+              "path": ["pos", "preorders", "1"]
+            },
+            "description": "Retrieves specific preorder status."
+          }
+        },
+        {
+          "name": "Pickup Preorder Complete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payments\": [\n    {\n      \"method\": \"Cash\",\n      \"amount\": 7000\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pos/preorders/1/pickup",
+              "host": ["{{base_url}}"],
+              "path": ["pos", "preorders", "1", "pickup"]
+            },
+            "description": "Collects the remaining amount, changes state, decrements inventory stock, and logs pickup."
+          }
+        },
+        {
+          "name": "List Preorders (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/preorders",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "preorders"]
+            },
+            "description": "Displays all preorders tracking list (Admin only)."
+          }
+        },
+        {
+          "name": "Update Preorder Status (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"READY_FOR_PICKUP\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/preorders/1/status",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "preorders", "1", "status"]
+            },
+            "description": "Modifies preorder status (e.g. READY_FOR_PICKUP when stock arrives) (Admin only)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Shifts",
+      "description": "Cashier shift session logs.",
+      "item": [
+        {
+          "name": "Open Shift",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"openingCash\": 100000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/shifts/open",
+              "host": ["{{base_url}}"],
+              "path": ["shifts", "open"]
+            },
+            "description": "Opens a new cashier shift session with opening cash amount."
+          }
+        },
+        {
+          "name": "Get Current Shift",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/shifts/current",
+              "host": ["{{base_url}}"],
+              "path": ["shifts", "current"]
+            },
+            "description": "Gets current cashier active shift details."
+          }
+        },
+        {
+          "name": "Request Shift Close",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actualClosingCash\": 120000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/shifts/current/close-request",
+              "host": ["{{base_url}}"],
+              "path": ["shifts", "current", "close-request"]
+            },
+            "description": "Submits a cashier shift closing request, checking system counts vs actual declared cash."
+          }
+        },
+        {
+          "name": "List Shifts (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/shifts",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "shifts"]
+            },
+            "description": "Lists all shifts logs (Admin only)."
+          }
+        },
+        {
+          "name": "Get Shift Details (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/shifts/1",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "shifts", "1"]
+            },
+            "description": "Lists detailed shifts data and actions."
+          }
+        },
+        {
+          "name": "Approve Shift Close (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adminNotes\": \"العهدة مطابقة وجار الاعتماد\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/shifts/1/approve",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "shifts", "1", "approve"]
+            },
+            "description": "Approves shift close request, updating status to CLOSED."
+          }
+        },
+        {
+          "name": "Reject Shift Close (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adminNotes\": \"هناك عجز غير مبرر يرجى مراجعته\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/shifts/1/reject",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "shifts", "1", "reject"]
+            },
+            "description": "Rejects shift close, updating status to REJECTED."
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Reports",
+      "description": "Admin reports and KPIs.",
+      "item": [
+        {
+          "name": "Get KPIs Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/kpis",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "kpis"]
+            },
+            "description": "Calculates dashboard KPIs."
+          }
+        },
+        {
+          "name": "Get Sales Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/reports/sales?startDate=2026-07-01&endDate=2026-07-10",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "reports", "sales"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2026-07-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2026-07-10"
+                }
+              ]
+            },
+            "description": "Lists direct sales invoices report."
+          }
+        },
+        {
+          "name": "Get Preorders Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/reports/preorders?status=DEPOSIT_PAID_WAITING_STOCK",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "reports", "preorders"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "DEPOSIT_PAID_WAITING_STOCK"
+                }
+              ]
+            },
+            "description": "Lists preorders status report."
+          }
+        },
+        {
+          "name": "Get Inventory Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/reports/inventory?stockStatus=LOW_STOCK",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "reports", "inventory"],
+              "query": [
+                {
+                  "key": "stockStatus",
+                  "value": "LOW_STOCK"
+                }
+              ]
+            },
+            "description": "Lists product safety stock levels."
+          }
+        },
+        {
+          "name": "Get Shifts Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/reports/shifts?status=CLOSED",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "reports", "shifts"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "CLOSED"
+                }
+              ]
+            },
+            "description": "Lists closed and pending cashier shifts report."
+          }
+        },
+        {
+          "name": "Export Report (CSV)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/reports/export?type=sales",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "reports", "export"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "sales"
+                }
+              ]
+            },
+            "description": "Generates a download of CSV report data."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "paste_jwt_token_here",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "paste_refresh_token_here",
+      "type": "string"
+    }
+  ]
+}

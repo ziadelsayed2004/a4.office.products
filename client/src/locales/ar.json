@@ -1,0 +1,31 @@
+{
+  "posTitle": "منصة A4 لإدارة المبيعات ونقاط البيع",
+  "loginTitle": "تسجيل الدخول — منصة A4",
+  "usernamePlaceholder": "اسم المستخدم",
+  "passwordPlaceholder": "كلمة المرور",
+  "loginButton": "دخول",
+  "invalidCredentials": "اسم المستخدم أو كلمة المرور غير صحيحة.",
+  "serverError": "حدث خطأ بالاتصال مع الخادم.",
+  "save": "حفظ",
+  "cancel": "إلغاء",
+  "delete": "حذف",
+  "edit": "تعديل",
+  "loading": "جاري التحميل...",
+  "searchPlaceholder": "البحث بالاسم أو الباركود...",
+  "sidebar": {
+    "adminDashboard": "لوحة المدير العام",
+    "pos": "نقطة البيع (POS)",
+    "adminPreorders": "الحجوزات المعلقة",
+    "logs": "سجل العمليات",
+    "printerSettings": "إعدادات الطباعة",
+    "users": "إدارة الكاشير",
+    "categories": "التصنيفات",
+    "priceTiers": "فئات الأسعار",
+    "products": "المنتجات",
+    "inventory": "المخازن",
+    "payments": "طرق الدفع",
+    "customers": "العملاء",
+    "adminShifts": "مراجعة الورديات",
+    "adminReports": "التقارير والإحصائيات"
+  }
+}
