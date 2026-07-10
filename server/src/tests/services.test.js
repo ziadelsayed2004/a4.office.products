@@ -308,6 +308,14 @@ async function runServicesTests() {
     assert.ok(printQRData.data.token);
     console.log('✔ QR labels token generated.');
 
+    console.log('\n[PRODUCTS SERVICE] Testing print preview HTML rendering...');
+    const printJobRes = await fetch(`${BASE_URL}/api/admin/print-job/${printQRData.data.token}?qty=5&size=medium`);
+    assert.strictEqual(printJobRes.status, 200);
+    const printJobHtml = await printJobRes.text();
+    assert.ok(printJobHtml.includes('طباعة ملصقات الباركود'));
+    assert.ok(printJobHtml.includes('qrious'));
+    console.log('✔ Print preview HTML content verified.');
+
     // ------------------------------------------------------------------------
     // 5. INVENTORY SERVICE TESTS
     // ------------------------------------------------------------------------

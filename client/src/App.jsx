@@ -45,6 +45,29 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// Guard for admin-only pages
+const AdminRoute = ({ children }) => {
+  const { isAuthenticated, loading, user } = useAuth();
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user?.role !== 'Admin') {
+    return <Navigate to="/pos" replace />;
+  }
+
+  return children;
+};
+
 // Guard for guest-only pages
 const GuestRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -89,22 +112,22 @@ export function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Dashboard />} />
-              <Route path="users" element={<Users />} />
-              <Route path="categories" element={<Categories />} />
-              <Route path="price-tiers" element={<PriceTiers />} />
-              <Route path="products" element={<Products />} />
-              <Route path="inventory" element={<Inventory />} />
-              <Route path="payments" element={<Payments />} />
-              <Route path="customers" element={<Customers />} />
+              <Route index element={<AdminRoute><Dashboard /></AdminRoute>} />
+              <Route path="users" element={<AdminRoute><Users /></AdminRoute>} />
+              <Route path="categories" element={<AdminRoute><Categories /></AdminRoute>} />
+              <Route path="price-tiers" element={<AdminRoute><PriceTiers /></AdminRoute>} />
+              <Route path="products" element={<AdminRoute><Products /></AdminRoute>} />
+              <Route path="inventory" element={<AdminRoute><Inventory /></AdminRoute>} />
+              <Route path="payments" element={<AdminRoute><Payments /></AdminRoute>} />
+              <Route path="customers" element={<AdminRoute><Customers /></AdminRoute>} />
               <Route path="pos" element={<POS />} />
               <Route path="receipts" element={<Receipts />} />
-              <Route path="shifts" element={<Shifts />} />
+              <Route path="shifts" element={<AdminRoute><Shifts /></AdminRoute>} />
               <Route path="shift-summary" element={<ShiftSummary />} />
-              <Route path="preorders" element={<Preorders />} />
-              <Route path="reports" element={<Reports />} />
-              <Route path="printer-settings" element={<PrinterSettings />} />
-              <Route path="logs" element={<AuditLogs />} />
+              <Route path="preorders" element={<AdminRoute><Preorders /></AdminRoute>} />
+              <Route path="reports" element={<AdminRoute><Reports /></AdminRoute>} />
+              <Route path="printer-settings" element={<AdminRoute><PrinterSettings /></AdminRoute>} />
+              <Route path="logs" element={<AdminRoute><AuditLogs /></AdminRoute>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>

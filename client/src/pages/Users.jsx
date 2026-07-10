@@ -301,31 +301,40 @@ export function Users() {
                       />
                     </TableCell>
                     <TableCell>
-                      <ButtonGroup size="small" variant="outlined">
+                      <Box sx={{ display: 'flex', gap: 1 }}>
                         <Button
-                          startIcon={<EditIcon />}
+                          variant="outlined"
+                          size="small"
+                          className="table-action-btn"
                           onClick={() => handleOpenEditDialog(u)}
+                          startIcon={<EditIcon />}
                           sx={{ fontFamily: 'Cairo' }}
                         >
-                          تعديل
+                          <span className="btn-text">تعديل</span>
                         </Button>
                         <Button
-                          startIcon={<KeyIcon />}
+                          variant="outlined"
+                          size="small"
+                          className="table-action-btn"
                           onClick={() => handleOpenPasswordDialog(u)}
+                          startIcon={<KeyIcon />}
                           sx={{ fontFamily: 'Cairo' }}
                         >
-                          الباسورد
+                          <span className="btn-text">الباسورد</span>
                         </Button>
                         <Button
+                          variant="outlined"
+                          size="small"
+                          className="table-action-btn"
                           color={u.is_active === 1 ? 'error' : 'success'}
-                          startIcon={<PowerIcon />}
                           onClick={() => handleToggleUserStatus(u)}
                           disabled={u.id === user?.id}
+                          startIcon={<PowerIcon />}
                           sx={{ fontFamily: 'Cairo' }}
                         >
-                          {u.is_active === 1 ? 'تعطيل' : 'تفعيل'}
+                          <span className="btn-text">{u.is_active === 1 ? 'تعطيل' : 'تفعيل'}</span>
                         </Button>
-                      </ButtonGroup>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))

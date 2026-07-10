@@ -10,8 +10,8 @@
     "Express",
     "SQLite"
   ],
-  "total_steps": 61,
-  "current_step": "061",
+  "total_steps": 60,
+  "current_step": "060",
   "pack_state": "completed",
   "steps": [
     {
@@ -66,7 +66,7 @@
       "id": "007",
       "slug": "rbac_permissions_matrix",
       "title": "RBAC Permissions Matrix",
-      "status": "open",
+      "status": "completed",
       "step_file": "agent_pack/steps/007_rbac_permissions_matrix.md",
       "report": "agent_pack/reports/007_rbac_permissions_matrix_REPORT.md"
     },
@@ -488,19 +488,11 @@
     },
     {
       "id": "060",
-      "slug": "final_acceptance_handoff",
-      "title": "Final Acceptance Handoff",
-      "status": "completed",
-      "step_file": "agent_pack/steps/060_final_acceptance_handoff.md",
-      "report": "agent_pack/reports/060_final_acceptance_handoff_REPORT.md"
-    },
-    {
-      "id": "061",
       "slug": "react_components_css_refactoring",
       "title": "React Components and CSS Refactoring",
       "status": "completed",
-      "step_file": "agent_pack/steps/061_react_components_css_refactoring.md",
-      "report": "agent_pack/reports/061_react_components_css_refactoring_REPORT.md"
+      "step_file": "agent_pack/steps/060_react_components_css_refactoring.md",
+      "report": "agent_pack/reports/060_react_components_css_refactoring_REPORT.md"
     }
   ],
   "docs_version": "sqlite_arabic_ui_simplified_prd_2026_07_10",

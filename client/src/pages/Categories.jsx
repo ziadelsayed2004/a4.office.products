@@ -222,23 +222,29 @@ export function Categories() {
                       />
                     </TableCell>
                     <TableCell>
-                      <ButtonGroup size="small" variant="outlined">
+                      <Box sx={{ display: 'flex', gap: 1 }}>
                         <Button
-                          startIcon={<EditIcon />}
+                          variant="outlined"
+                          size="small"
+                          className="table-action-btn"
                           onClick={() => handleOpenEditDialog(cat)}
+                          startIcon={<EditIcon />}
                           sx={{ fontFamily: 'Cairo' }}
                         >
-                          تعديل
+                          <span className="btn-text">تعديل</span>
                         </Button>
                         <Button
+                          variant="outlined"
+                          size="small"
+                          className="table-action-btn"
                           color={cat.is_active === 1 ? 'error' : 'success'}
-                          startIcon={<PowerIcon />}
                           onClick={() => handleToggleCategoryStatus(cat)}
+                          startIcon={<PowerIcon />}
                           sx={{ fontFamily: 'Cairo' }}
                         >
-                          {cat.is_active === 1 ? 'تعطيل' : 'تفعيل'}
+                          <span className="btn-text">{cat.is_active === 1 ? 'تعطيل' : 'تفعيل'}</span>
                         </Button>
-                      </ButtonGroup>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))

@@ -599,25 +599,49 @@ export function Products() {
                       />
                     </TableCell>
                     <TableCell>
-                      <ButtonGroup size="small" variant="outlined">
-                        <Button startIcon={<EditIcon />} onClick={() => handleOpenEditDialog(p)} sx={{ fontFamily: 'Cairo' }}>
-                          تعديل
-                        </Button>
-                        <Button startIcon={<QrIcon />} onClick={() => handleOpenQrDialog(p)} sx={{ fontFamily: 'Cairo' }}>
-                          ملصق
-                        </Button>
-                        <Button startIcon={<SettingsIcon />} onClick={() => handleOpenAdjustDialog(p)} sx={{ fontFamily: 'Cairo' }}>
-                          تسوية
-                        </Button>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
                         <Button
-                          color={p.is_active === 1 ? 'error' : 'success'}
-                          startIcon={<PowerIcon />}
-                          onClick={() => handleToggleProductStatus(p)}
+                          variant="outlined"
+                          size="small"
+                          className="table-action-btn"
+                          onClick={() => handleOpenEditDialog(p)}
+                          startIcon={<EditIcon />}
                           sx={{ fontFamily: 'Cairo' }}
                         >
-                          {p.is_active === 1 ? 'تعطيل' : 'تفعيل'}
+                          <span className="btn-text">تعديل</span>
                         </Button>
-                      </ButtonGroup>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          className="table-action-btn"
+                          onClick={() => handleOpenQrDialog(p)}
+                          startIcon={<QrIcon />}
+                          sx={{ fontFamily: 'Cairo' }}
+                        >
+                          <span className="btn-text">ملصق</span>
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          className="table-action-btn"
+                          onClick={() => handleOpenAdjustDialog(p)}
+                          startIcon={<SettingsIcon />}
+                          sx={{ fontFamily: 'Cairo' }}
+                        >
+                          <span className="btn-text">تسوية</span>
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          className="table-action-btn"
+                          color={p.is_active === 1 ? 'error' : 'success'}
+                          onClick={() => handleToggleProductStatus(p)}
+                          startIcon={<PowerIcon />}
+                          sx={{ fontFamily: 'Cairo' }}
+                        >
+                          <span className="btn-text">{p.is_active === 1 ? 'تعطيل' : 'تفعيل'}</span>
+                        </Button>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))
@@ -1076,7 +1100,7 @@ export function Products() {
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1, fontFamily: 'Cairo' }}>
                   معرف أمر الطباعة: <code>{qrPrintResult.token}</code>
                 </Typography>
-                <Button variant="outlined" size="small" href={`/api/admin/print-job/${qrPrintResult.token}`} target="_blank" sx={{ mt: 1, fontFamily: 'Cairo' }}>
+                <Button variant="outlined" size="small" href={`/api/admin/print-job/${qrPrintResult.token}?qty=${qrPrintQuantity}&size=${qrPrintSize}`} target="_blank" sx={{ mt: 1, fontFamily: 'Cairo' }}>
                   معاينة وطباعة الملصقات
                 </Button>
               </Box>

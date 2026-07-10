@@ -239,7 +239,7 @@ body {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
   box-shadow: var(--shadow-sm);
 }
 
@@ -450,4 +450,74 @@ body {
     color: black !important;
     page-break-inside: avoid;
   }
+}
+
+/* Premium Custom Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-muted);
+}
+
+/* Global Input Text Direction */
+input, select, textarea {
+  text-align: right;
+  direction: rtl;
+}
+
+/* Override for LTR specific fields (like phone, english inputs, barcodes) */
+input.ltr-value, textarea.ltr-value, [dir="ltr"] input, [dir="ltr"] textarea {
+  text-align: left;
+  direction: ltr;
+}
+
+/* Sliding Table Action Buttons */
+.table-action-btn {
+  min-width: 0 !important;
+  padding: 6px 10px !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Hide startIcon left margin if it is the only element visible */
+.table-action-btn .MuiButton-startIcon {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  transition: margin 0.2s ease !important;
+}
+
+.table-action-btn:hover .MuiButton-startIcon {
+  margin-left: -4px !important;
+  margin-right: 4px !important;
+}
+
+.table-action-btn .btn-text {
+  max-width: 0;
+  overflow: hidden;
+  display: inline-block;
+  white-space: nowrap;
+  transition: max-width 0.2s ease-in-out, opacity 0.15s ease-in-out;
+  opacity: 0;
+  vertical-align: middle;
+}
+
+.table-action-btn:hover .btn-text {
+  max-width: 120px;
+  opacity: 1;
 }

@@ -72,6 +72,5 @@ Current baseline:
 | 057 | completed | Printing QR Final QA |
 | 058 | completed | Performance Indexes Backup |
 | 059 | completed | Deployment Docs |
-| 060 | completed | Final Acceptance Handoff |
-| 061 | completed | React Components and CSS Refactoring |
+| 060 | completed | React Components and CSS Refactoring |
 

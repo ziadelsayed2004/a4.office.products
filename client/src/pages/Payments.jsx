@@ -148,13 +148,14 @@ export function Payments() {
                       <Button
                         variant="outlined"
                         size="small"
+                        className="table-action-btn"
                         color={m.is_active ? 'error' : 'success'}
                         startIcon={<PowerIcon />}
                         onClick={() => handleTogglePaymentMethod(m.id, m.is_active)}
                         disabled={submitting}
                         sx={{ fontFamily: 'Cairo' }}
                       >
-                        {m.is_active ? 'تعطيل' : 'تفعيل'}
+                        <span className="btn-text">{m.is_active ? 'تعطيل' : 'تفعيل'}</span>
                       </Button>
                     </TableCell>
                   </TableRow>
