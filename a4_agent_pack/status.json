@@ -146,7 +146,7 @@
       "id": "017",
       "slug": "payment_methods_module",
       "title": "Payment Methods Module",
-      "status": "open",
+      "status": "completed",
       "step_file": "agent_pack/steps/017_payment_methods_module.md",
       "report": "agent_pack/reports/017_payment_methods_module_REPORT.md"
     },
