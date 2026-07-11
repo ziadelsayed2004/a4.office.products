@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../app/AuthContext.jsx';
 import { Field } from '../components/forms/Field.jsx';
 import logo from '../assets/a4-logo.png';
-import '../styles/login.css';
+import '../styles/Login.css';
 
 export default function Login() {
   const { login } = useAuth();

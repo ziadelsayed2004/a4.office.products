@@ -20,7 +20,7 @@ The previous A4 client was replaced by a clean React/Vite/MUI implementation in 
 - Fixed top bar, right collapsible sidebar, right mobile drawer, grouped role navigation, active pill, and profile card.
 - Reusable page header, fields, form sections, filter panels, drawers, confirmation dialogs, feedback states, metrics, status chips, and desktop/mobile data list.
 - Dedicated POS, preorder, pickup, shift, report, receipt, audit, and printer workflows.
-- External form labels and disabled outlined legends to prevent RTL notch defects.
+- Native animated Material UI outlined labels with top-right RTL notches, shared field dimensions, and local LTR isolation for technical values.
 - Printer-safe receipt styles and product-label workflow.
 
 ## Required pages

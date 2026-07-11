@@ -37,7 +37,7 @@ Status values in this matrix describe the accepted implementation baseline. Fina
 | AuditLog | Sensitive actions with actor/entity/time/details | Admin | implemented |
 | Printer settings | Receipt width/header/footer/printer/label defaults | Admin | implemented |
 | Responsive shell | 282/76px right sidebar and mobile right drawer | Both | implemented |
-| Form system | External labels, no floating label/notch | Both | implemented |
+| Form system | Animated RTL-safe MUI labels/notches, shared Field wrapper, consistent errors/helpers | Both | implemented |
 | Data system | Desktop table plus mobile cards and states | Both | implemented |
 | Performance | Lazy pages, shared components, production build | Both | implemented |
 | Final visual QA | Reference comparison and screenshot evidence | QA | pending Step 049 |

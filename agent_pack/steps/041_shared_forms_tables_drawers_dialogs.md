@@ -14,7 +14,7 @@ Created the shared component system used by all pages.
 
 ## Required implementation evidence
 
-- External-label `Field` component prevents RTL outlined-label notch defects.
+- Shared `Field` component injects animated MUI labels and keeps the outlined notch aligned to the top-right in RTL.
 - Form sections, filter panels, entity drawers, confirmation dialogs, feedback states, metrics, status chips, and adaptive data table/card list are shared.
 - Consistent dimensions, spacing, focus, error, and mobile rules were added.
 

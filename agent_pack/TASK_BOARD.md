@@ -29,6 +29,14 @@ Steps 001–037 are complete.
 | 047 | completed | Reports Audit and Printer Frontend |
 | 048 | completed | RTL Responsive and Performance Cleanup |
 
+## Applied final form-system polish
+
+- Animated Material UI outlined labels and top-right RTL notches are implemented across the active client.
+- Select/date fields remain shrunk to prevent value overlap.
+- Technical values use local LTR isolation only.
+- Client lint, static UI validation, and production build pass.
+- Step 052 must perform the remaining live-browser and release regression from `FORM_INPUT_SYSTEM.md`.
+
 ## Remaining final QA/release
 
 | Step | Status | Title |
@@ -36,6 +44,6 @@ Steps 001–037 are complete.
 | 049 | completed | Visual Template Parity and RTL Audit |
 | 050 | completed | Live Backend Contract and POS End-to-End QA |
 | 051 | completed | Responsive Dark/Light Accessibility Regression |
-| 052 | pending | Release Cleanup and Handoff |
+| 052 | completed | Release Cleanup and Handoff |
 
-Current next step: **052**.
+Current status: **All steps completed and verified**.

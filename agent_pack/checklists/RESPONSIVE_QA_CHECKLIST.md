@@ -15,7 +15,7 @@ For each relevant route:
 
 - [ ] Fixed shell offsets and right-side navigation are correct.
 - [ ] Page header and actions remain reachable.
-- [ ] Forms have clear external labels with no overlap or notch.
+- [ ] Form notches remain right-aligned, readable, and unclipped at every breakpoint.
 - [ ] Filters wrap cleanly.
 - [ ] Tables scroll internally or become mobile cards.
 - [ ] Drawers/dialogs fit the viewport.

@@ -99,7 +99,105 @@ img { max-width: 100%; }
 /* Arabic-only fixed-direction UI. Technical identifiers opt into .a4-ltr explicitly. */
 html, body, #root, .MuiPopover-root, .MuiDialog-root, .MuiDrawer-root { direction: rtl; }
 .MuiMenuItem-root, .MuiListItem-root { text-align: right; }
-.MuiOutlinedInput-root legend { display: none; }
-.MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline { top: 0; }
-input::placeholder, textarea::placeholder { text-align: right; }
-input[type="number"], input[type="tel"] { font-variant-numeric: tabular-nums; }
+/* RTL input system: real animated MUI notches, right-aligned Arabic content, and isolated technical values. */
+.MuiFormControl-root,
+.MuiTextField-root,
+.MuiInputBase-root,
+.MuiOutlinedInput-root {
+  min-width: 0;
+}
+
+.MuiOutlinedInput-notchedOutline {
+  text-align: right;
+}
+
+.MuiOutlinedInput-notchedOutline legend {
+  display: block;
+  float: unset;
+  width: auto;
+  direction: rtl;
+  text-align: right;
+  transition: max-width 180ms cubic-bezier(.4, 0, .2, 1);
+}
+
+.MuiOutlinedInput-notchedOutline legend > span {
+  display: inline-block;
+  padding-inline: 5px;
+  white-space: nowrap;
+}
+
+
+.MuiInputLabel-root {
+  direction: rtl;
+  text-align: right;
+  transform-origin: top right;
+}
+
+.MuiInputBase-input,
+.MuiSelect-select,
+textarea.MuiInputBase-input {
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: plaintext;
+}
+
+.MuiInputBase-input[dir="ltr"],
+.a4-ltr .MuiInputBase-input,
+.a4-ltr.MuiInputBase-input,
+input.a4-ltr,
+textarea.a4-ltr {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: plaintext;
+}
+
+input::placeholder,
+textarea::placeholder {
+  text-align: inherit;
+}
+
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="month"],
+input[type="week"] {
+  direction: ltr;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="number"],
+input[type="tel"] {
+  font-variant-numeric: tabular-nums;
+}
+
+.MuiSelect-icon {
+  right: auto;
+  left: 10px;
+}
+
+.MuiMenu-list,
+.MuiMenuItem-root,
+.MuiAutocomplete-listbox,
+.MuiAutocomplete-option {
+  direction: rtl;
+  text-align: right;
+}
+
+@media (max-width: 720px) {
+  .MuiInputBase-input,
+  .MuiSelect-select,
+  textarea.MuiInputBase-input {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .MuiInputLabel-root,
+  .MuiOutlinedInput-root,
+  .MuiOutlinedInput-notchedOutline,
+  .MuiOutlinedInput-notchedOutline legend,
+  .MuiSelect-icon {
+    transition: none !important;
+  }
+}

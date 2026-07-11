@@ -15,7 +15,7 @@
 - No POS device/terminal model.
 - Runtime UI is Arabic only and fixed RTL.
 - No language switch or English runtime mode.
-- External form labels; no outlined notch.
+- Animated RTL-safe outlined labels/notches; no overlap, clipping, or duplicate label.
 
 ## Money and inventory
 

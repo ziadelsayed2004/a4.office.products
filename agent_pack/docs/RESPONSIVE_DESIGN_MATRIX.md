@@ -26,7 +26,7 @@
 - No page-level horizontal overflow.
 - Sidebar, top bar, and main offsets are correct in RTL.
 - No label, placeholder, helper text, or validation overlap.
-- No outlined-field notch appears.
+- Outlined-field notches remain visible, correctly sized, and anchored to the right without clipping.
 - Arabic text wraps naturally.
 - Technical values remain isolated without changing page direction.
 - Buttons, filters, and action rows wrap or stack instead of clipping.

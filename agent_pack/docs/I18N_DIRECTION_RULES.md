@@ -36,7 +36,7 @@ The surrounding component remains RTL.
 
 - Every field label appears above the control through the shared `Field` component.
 - Do not use `label` on MUI `TextField`, `Select`, or `OutlinedInput`.
-- Do not use outlined legends/notches.
+- Keep Material UI outlined legends enabled and align animated notches to the RTL start edge (right).
 - Placeholder text is supplementary and never replaces a visible label.
 - Errors and hints appear below the control without changing its direction.
 

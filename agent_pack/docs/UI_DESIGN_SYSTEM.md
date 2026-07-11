@@ -41,8 +41,10 @@ The header must not compete with the page header. It shows brand, current route 
 
 ## 5. Forms
 
-- External visible labels only.
-- No floating labels and no outlined notch.
+- Use native Material UI floating labels with an animated outlined notch.
+- The label animates from inside the control to a top-right RTL notch on focus/value.
+- Select/date fields keep the label shrunk to prevent overlap.
+- Use the shared `Field` wrapper and the rules in `FORM_INPUT_SYSTEM.md`.
 - Shared `Field`, `FormSection`, `FilterPanel`, and `EntityDrawer` components.
 - Two-column desktop forms; one column on phones.
 - Consistent required indicator, hint, and error placement.

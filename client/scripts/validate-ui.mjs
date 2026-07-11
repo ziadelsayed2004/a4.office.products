@@ -48,8 +48,12 @@ assert(/document\.documentElement\.dir\s*=\s*['"]rtl['"]/.test(theme), 'Runtime 
 assert(/from\s+['"]\.\/ar\.json['"]/.test(translator), 'Runtime translator reads Arabic JSON.');
 assert(!/from\s+['"]\.\/en\.json['"]/.test(translator), 'English JSON is not loaded at runtime.');
 assert(!/setLocale|toggleLanguage|languageSwitch|changeLanguage/i.test(combinedSource), 'No runtime language switch exists.');
-assert(!/<TextField[^>]*\blabel\s*=/.test(combinedSource), 'TextField floating labels are not used.');
-assert(/MuiOutlinedInput-root legend \{ display: none; \}/.test(read('src/styles/index.css')), 'Outlined-field legends are disabled to prevent RTL notch defects.');
+assert(/cloneElement\(children/.test(read('src/components/forms/Field.jsx')) && /label:\s*label/.test(read('src/components/forms/Field.jsx')), 'Shared Field injects animated MUI labels into TextField controls.');
+assert(!/MuiOutlinedInput-root legend \{ display: none; \}/.test(read('src/styles/index.css')), 'Outlined-field legends remain enabled for animated notches.');
+assert(/MuiOutlinedInput-notchedOutline[\s\S]*text-align:\s*right/.test(read('src/styles/index.css')), 'Outlined notches are aligned to the RTL start edge.');
+assert(/boxShadow:[\s\S]*0 0 0 3px/.test(theme), 'Focused fields use a clear animated focus ring.');
+assert(/MuiInputLabel:[\s\S]*transformOrigin:\s*['"]top right['"]/.test(theme), 'Input labels use RTL transform origin.');
+assert(/prefers-reduced-motion:\s*reduce/.test(read('src/styles/index.css')), 'Input animations respect reduced-motion preference.');
 
 const requiredPages = [
   'Login', 'Dashboard', 'POS', 'Products', 'Categories', 'PriceTiers', 'Inventory',

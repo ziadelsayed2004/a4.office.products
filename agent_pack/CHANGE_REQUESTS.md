@@ -10,7 +10,7 @@ Approved final decisions:
 - Remove every locale/language switch and do not expose English at runtime.
 - Keep `en.json` as an unused future translation store only.
 - Keep light/dark themes.
-- Use external form labels and eliminate outlined-field notches to prevent RTL label defects.
+- Use animated Material UI outlined labels with an RTL-safe top-right notch, consistent dimensions, and local LTR isolation only for technical values.
 - Use a fixed top bar, right collapsible desktop sidebar, right mobile drawer, compact dashboard density, shared cards/tables/filters/drawers/dialogs, and a dedicated responsive POS layout.
 - Preserve A4 identity, SQLite, Express contracts, Admin/Cashier RBAC, shifts, stock rules, preorders, payments, receipts, reports, and AuditLog.
 - Remove obsolete frontend Agent Pack steps and replace them with Steps 038–052.

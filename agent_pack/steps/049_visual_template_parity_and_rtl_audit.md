@@ -23,7 +23,7 @@ Perform a real-browser visual audit of the rebuilt Arabic-only frontend against 
 2. Compare shell morphology: top bar, right sidebar, collapse behavior, grouped navigation, active pill, profile card, density, page headers, cards, filters, tables, drawers, and dialogs.
 3. Inspect every A4 route in Arabic RTL in light and dark.
 4. Specifically verify the defect class shown by the user:
-   - no floating label/notch overlap;
+   - animated RTL notch alignment with no label overlap or clipping;
    - select labels are outside borders;
    - arrows/icons do not collide with Arabic text;
    - fields have consistent height, padding, and visible boundaries;

@@ -7,6 +7,6 @@
 - [ ] `en.json` remains unused storage only.
 - [ ] All visible menus, labels, validation, errors, reports, dialogs, and receipts are Arabic.
 - [ ] SKU, barcode, phone, ID, and token values use local LTR isolation only.
-- [ ] Field labels are external and no outlined notch appears.
+- [ ] Animated outlined labels move into a clean top-right RTL notch with no overlap in light or dark mode.
 - [ ] Light/dark mode persists without breaking any page or overlay.
 - [ ] Print output remains controlled light output in both screen themes.

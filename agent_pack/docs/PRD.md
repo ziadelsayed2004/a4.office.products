@@ -84,7 +84,7 @@ Products are generic retail items. Book fields are optional, so the same catalog
 - `client/src/locales/en.json` may remain as an unused future translation store only. Runtime translation code loads `ar.json` only.
 - All menus, labels, tables, filters, forms, dialogs, validation messages, reports, receipts, and print templates are Arabic.
 - Technical values such as SKU, barcode, phone number, token, and IDs may be direction-isolated with a dedicated LTR utility class.
-- Field labels are rendered above controls. MUI floating labels and outlined notches are not used.
+- Form fields use animated Material UI outlined labels. Labels move into a top-right RTL notch on focus/value; select and date fields remain safely shrunk.
 - Light/dark is the only user-facing display switch.
 - The visual system follows the compact structure of the embedded reference template while using A4 branding and business content only.
 
@@ -262,7 +262,7 @@ Every route must provide loading, empty, error, success, and permission states w
 - Main content never renders under fixed navigation.
 - No page-level horizontal overflow.
 - Tables scroll only inside their container or convert to mobile record cards.
-- Forms use external labels, consistent control heights, clear focus states, and readable validation.
+- Forms use animated RTL-safe outlined labels/notches, consistent control heights, clear focus states, and readable validation.
 - POS uses a dedicated responsive layout; the cart and checkout remain reachable on every supported width.
 - Dialogs and entity drawers become full-screen when needed on phones.
 - Keyboard scanning, tab navigation, visible focus, semantic labels, and minimum touch targets are required.
@@ -293,7 +293,7 @@ The frontend consumes server contracts; it must not duplicate financial or stock
 
 - Arabic-only RTL interface has no language switch and no LTR page mode.
 - Both light and dark themes are complete and persisted.
-- No floating-label notch defect or overlapping form label exists.
+- Animated RTL notches are aligned to the right with no clipped, duplicated, or overlapping label.
 - Admin and Cashier permissions match the role matrix.
 - Normal sale cannot produce negative stock.
 - Preorder requires customer name, phone, deposit, and secure token.

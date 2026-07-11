@@ -35,7 +35,7 @@ The audit was conducted using the `browser_subagent` tool running Chrome to navi
 |---|---|---|
 | **Branding & Context** | Hamza Press Branding, Blue/Purple Colors | A4 Navy Blue Theme, Clean Logo, No Purple |
 | **Document Direction** | Mixed LTR/RTL Runtime Mode | Fixed Arabic RTL Lang/Dir across all views |
-| **Form Labels** | Outline notches/floating labels (MUI defaults) | External labels above fields, legend hidden to prevent RTL overlap notch defects |
+| **Form Labels** | Animated outlined labels/notches | Final implementation uses the same interaction with A4 RTL alignment and dimensions |
 | **Top Bar** | Left profile menu, locale switcher | Right brand logo, right layout breadcrumbs, left status pill + sun/moon toggle |
 | **Sidebar Navigation** | Left expanded/collapsed navigation sidebar | Right expanded/collapsed navigation sidebar with active nav pill and bottom profile card |
 
@@ -44,7 +44,7 @@ The audit was conducted using the `browser_subagent` tool running Chrome to navi
 ## 4. Verification Check Results
 
 1. **Defect Class Verification**:
-   - **No floating label/notch overlap**: All labels render cleanly outside inputs using custom `<Field>` wrapper.
+   - **RTL notched labels**: the final shared `<Field>` wrapper injects animated MUI labels and keeps the notch on the top-right without overlap.
    - **Select labels outside borders**: Verified category & deposit percent dropdown labels.
    - **No icon/arrow collisions**: Dropdown select arrows correctly align left, and Arabic labels/texts align right without overlap.
    - **Consistent heights & visible boundaries**: Checked inputs (heights around 42px) and select fields.

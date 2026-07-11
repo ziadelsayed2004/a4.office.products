@@ -31,9 +31,10 @@ Read:
 8. `agent_pack/docs/API_TARGET_MAP.md`;
 9. `agent_pack/docs/FRONTEND_REBUILD_BASELINE.md`;
 10. `agent_pack/docs/UI_DESIGN_SYSTEM.md`;
-11. `agent_pack/docs/I18N_DIRECTION_RULES.md`;
-12. all documents/checklists linked by the selected step;
-13. relevant client, server, database, and tests.
+11. `agent_pack/docs/FORM_INPUT_SYSTEM.md`;
+12. `agent_pack/docs/I18N_DIRECTION_RULES.md`;
+13. all documents/checklists linked by the selected step;
+14. relevant client, server, database, and tests.
 
 Inspect the actual repository before editing. Do not skip discovery.
 
@@ -69,7 +70,7 @@ Inspect the actual repository before editing. Do not skip discovery.
 - Use the reference template only for shell morphology, density, and interaction comparison.
 - Preserve A4 blue/navy identity. Never copy Hamza/CodzHub branding, content, routes, sample data, permissions, or APIs.
 - Preserve fixed top bar, right 282px/76px desktop sidebar, right mobile drawer, grouped navigation, active pill, profile card, compact cards/tables, drawers/dialogs, and responsive POS.
-- All form labels are external above controls. Do not use MUI floating labels or outlined notches.
+- Use the shared animated Material UI outlined-label system. The notch is visible and anchored to the top-right in RTL; select/date labels stay shrunk; local LTR is limited to technical values.
 - Technical values may use local LTR isolation without changing page direction.
 - No page-level horizontal overflow; tables scroll only inside their own container or adapt to mobile cards.
 - Do not silently alter server contracts or business rules to make the UI easier.

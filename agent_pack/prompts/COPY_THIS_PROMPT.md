@@ -10,7 +10,7 @@ Execute the first eligible pending step from `agent_pack/status.json`. Execute a
 
 Before editing:
 - Read each selected step file fully.
-- Read `agent_pack/docs/PRD.md`, `FEATURE_MATRIX.md`, `BUSINESS_RULES.md`, `RBAC_PERMISSION_MATRIX.md`, `DB_SCHEMA_TARGET.md`, `API_TARGET_MAP.md`, `FRONTEND_REBUILD_BASELINE.md`, `UI_DESIGN_SYSTEM.md`, and `I18N_DIRECTION_RULES.md`.
+- Read `agent_pack/docs/PRD.md`, `FEATURE_MATRIX.md`, `BUSINESS_RULES.md`, `RBAC_PERMISSION_MATRIX.md`, `DB_SCHEMA_TARGET.md`, `API_TARGET_MAP.md`, `FRONTEND_REBUILD_BASELINE.md`, `UI_DESIGN_SYSTEM.md`, `FORM_INPUT_SYSTEM.md`, and `I18N_DIRECTION_RULES.md`.
 - Read every document and checklist linked by the selected step.
 - Inspect the actual client, server, SQLite schema, tests, and current build state before changing code.
 - Treat `client/` as the active implementation baseline.
@@ -40,7 +40,7 @@ Permanent frontend rules:
 - Light/dark is the only user-facing display switch.
 - Preserve the clean A4 shell: fixed top bar, 282px/76px right desktop sidebar, right mobile drawer, grouped navigation, active pill, profile card, compact dashboard/cards/tables, drawers/dialogs, and responsive POS.
 - Preserve A4 blue/navy branding and never copy unrelated template branding/content.
-- All form labels must be external above controls. Do not use MUI floating labels or outlined notches.
+- All ordinary form controls use the shared animated Material UI outlined-label system. The notch opens on the top-right in RTL; select/date labels stay shrunk; technical values may use local LTR isolation.
 - Technical values such as SKU, barcode, phone, token, and IDs may use local LTR isolation without changing page direction.
 - Do not allow page-level horizontal overflow, hidden primary actions, or broken mobile dialogs.
 - Do not silently change Express/SQLite contracts or business rules.
