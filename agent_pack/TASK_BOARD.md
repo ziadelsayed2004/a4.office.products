@@ -33,9 +33,9 @@ Steps 001–037 are complete.
 
 | Step | Status | Title |
 |---|---|---|
-| 049 | pending | Visual Template Parity and RTL Audit |
-| 050 | pending | Live Backend Contract and POS End-to-End QA |
-| 051 | pending | Responsive Dark/Light Accessibility Regression |
+| 049 | completed | Visual Template Parity and RTL Audit |
+| 050 | completed | Live Backend Contract and POS End-to-End QA |
+| 051 | completed | Responsive Dark/Light Accessibility Regression |
 | 052 | pending | Release Cleanup and Handoff |
 
-Current next step: **049**.
+Current next step: **052**.

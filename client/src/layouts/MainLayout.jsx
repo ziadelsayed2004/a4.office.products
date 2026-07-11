@@ -101,18 +101,24 @@ export function MainLayout() {
     </header>
 
     <aside className="app-sidebar">
+      <div className="app-sidebar__profile"><div className="app-profile-card"><Avatar sx={{ width: 35, height: 35, bgcolor: 'primary.main', fontSize: '.78rem' }}>{user?.name?.slice(0,1)}</Avatar><div className="app-profile-card__copy"><strong>{user?.name}</strong><span>{user?.username} · {user?.role === 'Admin' ? 'مدير' : 'كاشير'}</span></div></div></div>
       <div className="app-sidebar__scroll">
         {menu.map((group) => <section className="app-sidebar__section" key={group.section}><div className="app-sidebar__heading">{group.section}</div>{group.items.map((item) => {
           const active = location.pathname === item.path;
           return <Tooltip placement="left" title={collapsed ? item.label : ''} key={item.path}><button type="button" className={`app-nav-item ${active ? 'is-active' : ''}`} onClick={() => go(item.path)}>{item.icon}<span>{item.label}</span></button></Tooltip>;
         })}</section>)}
       </div>
-      <div className="app-sidebar__profile"><div className="app-profile-card"><Avatar sx={{ width: 35, height: 35, bgcolor: 'primary.main', fontSize: '.78rem' }}>{user?.name?.slice(0,1)}</Avatar><div className="app-profile-card__copy"><strong>{user?.name}</strong><span>{user?.username} · {user?.role === 'Admin' ? 'مدير' : 'كاشير'}</span></div></div></div>
+      <div className="app-sidebar__footer">
+        <Tooltip placement="left" title={collapsed ? 'توسيع القائمة' : 'تصغير القائمة'}>
+          <button type="button" className="app-nav-item app-sidebar-toggle" onClick={() => setCollapsed(v => !v)}>
+            {collapsed ? <MenuRounded/> : <MenuOpenRounded/>}
+            <span>{collapsed ? 'توسيع القائمة' : 'تصغير القائمة'}</span>
+          </button>
+        </Tooltip>
+      </div>
     </aside>
 
     <button className="app-mobile-overlay" aria-label="إغلاق القائمة" onClick={() => setMobileOpen(false)}/>
     <main className="app-main"><Outlet/></main>
-
-    <Tooltip title={collapsed ? 'توسيع القائمة' : 'تصغير القائمة'}><IconButton className="sidebar-collapse-button" onClick={() => setCollapsed(v => !v)} sx={{ position: 'fixed', right: collapsed ? 60 : 266, top: 73, zIndex: 1300, display: { xs: 'none', md: 'inline-flex' }, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', transition: 'right .2s ease', '&:hover': { bgcolor: 'background.paper' } }}>{collapsed ? <MenuRounded/> : <MenuOpenRounded/>}</IconButton></Tooltip>
   </div>;
 }

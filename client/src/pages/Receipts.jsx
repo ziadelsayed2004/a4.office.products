@@ -92,7 +92,7 @@ export default function Receipts() {
 
       <section className="a4-page-section no-print">
         <div className="receipt-search-row">
-          <Field label="رقم الإيصال" hint="مثال: REC-20260711-0001">
+          <Field label="رقم الإيصال">
             <TextField
               autoFocus
               value={code}
@@ -104,6 +104,7 @@ export default function Receipts() {
           </Field>
           <Button variant="contained" startIcon={<SearchRounded />} onClick={() => loadReceipt()} disabled={loading}>بحث</Button>
         </div>
+        <span className="field__hint" style={{ marginTop: 5, display: 'block' }}>مثال: REC-20260711-0001</span>
       </section>
 
       {error && <Alert severity="error" className="no-print">{error}</Alert>}

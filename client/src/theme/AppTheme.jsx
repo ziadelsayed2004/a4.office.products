@@ -5,7 +5,7 @@ import { prefixer } from 'stylis';
 import rtlPlugin from 'stylis-plugin-rtl';
 import { alpha, createTheme, CssBaseline, ThemeProvider } from '@mui/material';
 
-const rtlCache = createCache({ key: 'a4rtl', stylisPlugins: [prefixer, rtlPlugin], prepend: true });
+const rtlCache = createCache({ key: 'artl', stylisPlugins: [prefixer, rtlPlugin], prepend: true });
 const ModeContext = createContext(null);
 export const useAppTheme = () => useContext(ModeContext);
 
