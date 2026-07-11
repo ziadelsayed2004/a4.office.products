@@ -1,62 +1,45 @@
-# Internationalization and Direction Rules
+# Arabic Runtime and Direction Rules
 
-## Product language policy
+## Final product decision
 
-- Arabic is the default and complete release language.
-- English may be enabled as a secondary locale.
-- No user-facing text may be hard-coded in React components.
-- No screen may display a translation key or accidental English fallback.
+The runtime application is Arabic only and fixed RTL.
 
-## Locale files
+- `index.html`: `lang="ar"`, `dir="rtl"`.
+- Material UI theme direction: `rtl`.
+- Runtime code forces the document direction to RTL.
+- `ar.json` is the only locale loaded by the translator.
+- `en.json` remains an unused future translation store only.
+- No locale selector, language switch, LTR route, automatic browser-language detection, or mirrored English shell is allowed.
+- Light/dark is the only display-mode switch.
 
-Required structure:
+## Arabic layout rules
 
-```text
-client/src/locales/
-  ar.json
-  en.json
-```
-
-Both files must use identical nested keys. Arabic text is the source-of-truth product wording. English must be a faithful translation, not a different feature definition.
-
-## Direction
-
-- `ar` -> `rtl`
-- `en` -> `ltr`
-- Update the HTML `lang` and `dir` attributes.
-- Update MUI theme direction.
-- Update the Emotion cache safely when direction changes.
-- Use CSS logical properties.
+- Navigation, breadcrumbs, page headers, filters, tables, drawers, dialogs, validation, notifications, reports, and receipts align right.
+- The desktop sidebar and mobile drawer open from the right.
+- Use logical CSS properties (`margin-inline`, `padding-inline`, `inset-inline`) where possible.
+- Avoid hardcoded left/right values except when intentionally positioning a technical LTR element.
+- Arabic headings do not begin with a raw technical token. Write `رمز QR`, `رمز SKU`, or an Arabic phrase first.
 
 ## Technical values
 
-The following values remain LTR even in Arabic:
+Apply `.a4-ltr` or equivalent isolation to:
 
-- phone numbers,
-- SKU,
-- barcodes,
-- QR tokens,
-- invoice/order IDs,
-- URLs,
-- dates when displayed in numeric ISO form.
+- SKU and barcode values;
+- phone numbers;
+- receipt and token values;
+- database/API IDs;
+- URLs and file paths.
 
-Use an isolated `TechnicalValue` component rather than globally forcing form controls to LTR.
+The surrounding component remains RTL.
 
-## Arabic wording rules
+## Form-label rule
 
-- Use `رمز QR` instead of starting a sentence with `QR`.
-- Use `رقم SKU` or `رمز الصنف`.
-- Use `الوردية` consistently; do not mix with `الشيفت` in final UI unless the business explicitly selects the colloquial term.
-- Use one translation for deposit: `العربون` or `الدفعة المقدمة`; the locale glossary must choose one and apply it everywhere.
-- Use one translation for receipt: `الإيصال`.
+- Every field label appears above the control through the shared `Field` component.
+- Do not use `label` on MUI `TextField`, `Select`, or `OutlinedInput`.
+- Do not use outlined legends/notches.
+- Placeholder text is supplementary and never replaces a visible label.
+- Errors and hints appear below the control without changing its direction.
 
-## Formatting
+## Translation-file rule
 
-- Currency: EGP with Arabic label `ج.م` in Arabic locale.
-- Timezone: `Africa/Cairo`.
-- Use locale-aware number and date formatting.
-- Money is formatted from integer minor units; never from floating-point storage.
-
-## Verification
-
-Every frontend step must search for newly introduced visible hard-coded strings and confirm locale parity.
+Arabic visible strings should use `ar.json` when shared or repeated. Page-specific Arabic strings may be moved to the locale file during cleanup. English keys may be kept in sync for future use, but this does not enable English at runtime and is not a release blocker unless a step explicitly asks for key parity.

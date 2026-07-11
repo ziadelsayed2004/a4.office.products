@@ -1,38 +1,31 @@
-# Target Architecture and Scope Lock — A4
+# A4 Architecture Lock
 
-## Technical stack
-
-| Layer | Technology | Locked decision |
-|---|---|---|
-| Frontend | React + Vite + Material UI | Arabic-first responsive SPA using the approved A4 template design system |
-| Styling | MUI theme + shared semantic CSS tokens/scoped styles | No unrelated UI kit, no duplicate page theme systems |
-| Backend | Node.js + Express | Modular API aligned with `API_TARGET_MAP.md` |
-| Database | SQLite | Single embedded relational database with explicit migrations |
-| Localization | Arabic default, optional English parity | Arabic RTL; English LTR; all visible text locale-driven |
-
-## Database lock
-
-- SQLite is the only persistence database.
-- Do not introduce MongoDB, Mongoose, Firebase/Firestore persistence, or another database layer.
-- Enable foreign keys.
-- Use explicit reproducible migrations.
-- Store money as integer minor units.
+| Area | Locked decision |
+|---|---|
+| Frontend | React + Vite + Material UI |
+| Backend | Node.js + Express |
+| Database | SQLite only |
+| Product runtime language | Arabic only, fixed RTL |
+| Future translations | `en.json` storage only; not runtime-loaded |
+| Display modes | Light and dark only |
+| Branch model | One branch |
+| Roles | Admin and Cashier |
+| Product images | Excluded |
+| POS device model | Excluded; account + active shift only |
+| Currency / timezone | EGP / Africa/Cairo |
 
 ## Frontend lock
 
-- Preserve the current compact Material dashboard template character.
-- Use A4 blue/navy identity.
-- Complete light/dark parity.
-- Complete responsive behavior.
-- Arabic is complete/default; translations use locale files and direction-safe switching.
-- No product image UI.
+- `client/` is the active implementation.
+- `TEMPLETE-PROJECT/hamza.printing.press-main/client/` is a visual morphology reference only.
+- Fixed Arabic RTL shell, right sidebar/drawer, A4 brand, external form labels, no outlined notches, responsive POS, and printer-safe outputs are mandatory.
+- No language switch, locale selector, English route, automatic locale detection, or mirrored LTR shell may be introduced.
 
-## Business scope lock
+## Data and business lock
 
-- Single branch.
-- Admin and Cashier roles.
-- Account + active shift tracking only; no terminal/device model.
-- No negative stock.
-- Preorder deposit and QR pickup flow.
-- Arabic thermal receipts and product QR labels.
-- Required AuditLog for sensitive actions.
+- The server is the source of truth for price, stock, payments, shifts, tokens, and financial state.
+- Inventory never becomes negative.
+- Direct sales decrement stock immediately.
+- Preorders increase open counters only until pickup.
+- Pickup validates token/shift/stock/payment and atomically decrements stock and counters.
+- Sensitive operations write AuditLog.

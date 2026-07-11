@@ -1,20 +1,23 @@
 {
-  "name": "client",
+  "name": "a4-office-products-client",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
+    "lint": "oxlint src",
+    "preview": "vite preview --host 0.0.0.0",
+    "test:ui": "node scripts/validate-ui.mjs",
+    "check": "npm run lint && npm run test:ui && npm run build"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^9.1.1",
+    "@mui/icons-material": "^9.2.0",
     "@mui/material": "^9.1.2",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.0",

@@ -1,145 +1,114 @@
 # A4 Office Products — One or Two Step Runner
 
-This is the mandatory execution contract for every agent run.
+## 1. Authority
 
-## 1. Authoritative sources
+Use only the current repository, `agent_pack/status.json`, the selected step file(s), and linked docs/checklists. Do not rely on previous chat memory, removed frontend phases, fixed old step names, or guessed requirements.
 
-Use only:
+The active frontend is `client/`. The embedded client at `TEMPLETE-PROJECT/hamza.printing.press-main/client/` is a visual morphology reference only.
 
-- current repository state,
-- `agent_pack/status.json`,
-- selected step files,
-- linked files in `agent_pack/docs/` and `agent_pack/checklists/`.
-
-Previous chat memory, old phase names, and guessed requirements are not execution sources.
-
-For frontend visual behavior, the embedded template is the mandatory reference:
-
-```text
-TEMPLETE-PROJECT/hamza.printing.press-main/client/
-```
-
-The active implementation remains:
-
-```text
-client/
-```
-
-The template controls visual parity. The A4 docs control business behavior.
-
-## 2. Step-count rule
+## 2. Step count and selection
 
 Read `RUN_STEP_COUNT` from the copied prompt.
 
-- Allowed: `1` or `2` only.
+- Allowed values: `1` or `2`.
 - Missing/invalid value defaults to `1`.
-- Select the first `open` or `pending` step whose dependencies are complete.
-- Complete, verify, report, and mark step one before considering step two.
-- With `RUN_STEP_COUNT=2`, execute a second step only when:
-  - step one passed its verification gate,
-  - its report exists,
-  - status and task board were updated,
-  - the next step has no unmet dependency,
-  - no blocker makes the second step unsafe.
-- Never execute more than two steps.
+- Select the first `pending` or `open` step whose dependencies are complete.
+- Complete, verify, report, and update tracking for the first step before considering a second.
+- Execute the second only when `RUN_STEP_COUNT=2`, the first step passed its gate, its report exists, tracking was updated, and the second step is eligible.
+- Never execute more than two steps and never partially begin a third.
 
-## 3. Required reading
+## 3. Required discovery for every selected step
 
-For every step:
+Read:
 
-1. `agent_pack/status.json`
-2. selected step file
-3. `agent_pack/docs/PRD.md`
-4. `agent_pack/docs/FEATURE_MATRIX.md`
-5. `agent_pack/docs/BUSINESS_RULES.md`
-6. `agent_pack/docs/RBAC_PERMISSION_MATRIX.md`
-7. `agent_pack/docs/DB_SCHEMA_TARGET.md`
-8. `agent_pack/docs/API_TARGET_MAP.md`
-9. all linked docs/checklists
-10. relevant implementation and tests
+1. `agent_pack/status.json`;
+2. the selected step file in full;
+3. `agent_pack/docs/PRD.md`;
+4. `agent_pack/docs/FEATURE_MATRIX.md`;
+5. `agent_pack/docs/BUSINESS_RULES.md`;
+6. `agent_pack/docs/RBAC_PERMISSION_MATRIX.md`;
+7. `agent_pack/docs/DB_SCHEMA_TARGET.md`;
+8. `agent_pack/docs/API_TARGET_MAP.md`;
+9. `agent_pack/docs/FRONTEND_REBUILD_BASELINE.md`;
+10. `agent_pack/docs/UI_DESIGN_SYSTEM.md`;
+11. `agent_pack/docs/I18N_DIRECTION_RULES.md`;
+12. all documents/checklists linked by the selected step;
+13. relevant client, server, database, and tests.
 
-For every frontend step also read:
-
-- `FRONTEND_TEMPLATE_AUDIT.md`
-- `UI_DESIGN_SYSTEM.md`
-- `RESPONSIVE_DESIGN_MATRIX.md`
-- `I18N_DIRECTION_RULES.md`
-- `FRONTEND_COMPONENT_ARCHITECTURE.md`
-- `PAGE_UI_SPECIFICATIONS.md`
-- `FRONTEND_VISUAL_QA_CHECKLIST.md`
-- `RESPONSIVE_QA_CHECKLIST.md`
-- `I18N_THEME_QA_CHECKLIST.md`
-
-Then inspect the relevant reference files under `TEMPLETE-PROJECT/hamza.printing.press-main/client/` and their corresponding target files under `client/`.
+Inspect the actual repository before editing. Do not skip discovery.
 
 ## 4. Permanent product rules
 
-- React + Vite frontend.
-- Node.js + Express backend.
-- SQLite only; no MongoDB or Mongoose.
-- Single branch.
-- EGP and Africa/Cairo.
-- Admin and Cashier roles.
+- Product: A4 Office Products POS Platform.
+- Frontend: React + Vite + Material UI.
+- Backend: Node.js + Express.
+- Database: SQLite only. Never introduce MongoDB or Mongoose.
+- Single branch only.
+- Currency: EGP. Timezone: Africa/Cairo.
+- Roles: Admin and Cashier.
 - No product images.
-- No POS device/terminal model.
-- Active shift required for cashier financial operations.
-- No negative inventory.
+- No POS device/terminal tracking; operations belong to authenticated account + active shift.
+- Cashier sees POS, preorders, permitted receipts, and own shift only.
+- Admin-only: global revenue/KPIs, users, catalog, inventory, reports, and shift approval.
+- No cashier financial operation without the cashier's active shift.
+- Inventory never goes below zero.
 - Normal sale decrements stock immediately.
-- Preorder requires customer name, phone, deposit, and pickup token.
-- Preorder creation does not decrement stock.
-- Pickup validates token, stock, remaining payment, counters, receipt, and AuditLog.
-- Sensitive financial/admin/stock/print actions write AuditLog.
+- Preorder requires customer name, phone, deposit, and secure pickup token; creation does not decrement physical stock.
+- Pickup validates token, active shift, stock, and payment; collects remaining amount; decrements stock and open counters; prints final receipt; writes AuditLog.
+- Product QR/barcode token may identify a product but must not embed price or stock.
+- Financial, stock, user-management, print/reprint, and Admin-review actions write AuditLog.
 
 ## 5. Permanent frontend rules
 
-- Match the embedded template's complete shell and operational design language.
-- Keep a fixed 64px top bar.
-- Keep a permanent collapsible desktop sidebar near 270px/72px and a temporary mobile drawer near 270px.
-- Keep grouped navigation, profile card, active pill, collapse tooltips, breadcrumbs, notifications, account menu, shared page headers, flat bordered cards, dense tables, drawers/dialogs, login composition, and dashboard hierarchy.
-- Arabic places navigation on the right; English places it on the left.
-- Use A4 blue/navy identity.
-- Do not copy CodzHub or printing-press business content.
-- Arabic is complete/default; English has full key parity when enabled.
-- All visible text is locale-driven.
-- Complete light/dark and responsive parity.
-- Shared tokens/components only.
-- No new large duplicated inline styling or page-level color systems.
-- Printer-safe light receipts/labels.
-- Scanner/keyboard optimized POS.
+- Runtime interface is Arabic only and fixed RTL from login through reports and receipts.
+- `index.html`, document direction, and MUI direction remain Arabic RTL.
+- `ar.json` is the only runtime locale. `en.json` is unused future storage only.
+- Do not add a language switch, locale selector, browser-language detection, English route, or LTR runtime mode.
+- Light/dark is the only user-facing display switch.
+- Keep the clean A4 frontend baseline; do not perform another unbounded rewrite during final QA.
+- Use the reference template only for shell morphology, density, and interaction comparison.
+- Preserve A4 blue/navy identity. Never copy Hamza/CodzHub branding, content, routes, sample data, permissions, or APIs.
+- Preserve fixed top bar, right 282px/76px desktop sidebar, right mobile drawer, grouped navigation, active pill, profile card, compact cards/tables, drawers/dialogs, and responsive POS.
+- All form labels are external above controls. Do not use MUI floating labels or outlined notches.
+- Technical values may use local LTR isolation without changing page direction.
+- No page-level horizontal overflow; tables scroll only inside their own container or adapt to mobile cards.
+- Do not silently alter server contracts or business rules to make the UI easier.
 
-## 6. Execution discipline
+## 6. Execution rules
 
-- Implement only selected scope.
-- Preserve working behavior.
-- Do not silently change API or business contracts.
-- Necessary contract changes must update implementation, docs, tests, and reports together.
-- Do not mark a step completed when its verification fails, except for an explicitly allowed and documented environment-only blocker after implementation is complete.
+Implement only the selected step. Targeted supporting fixes are allowed only when required to pass its gate and must be reported.
+
+Do not mark a step complete when its required functional evidence fails. Environment-only blockers must be documented honestly; keep the step pending unless its own completion rule permits otherwise.
 
 ## 7. Verification evidence
 
-Run commands required by the step and the best discovered repository checks.
+Run the commands required by the selected step and the strongest available repository checks. Reports must include:
 
-Frontend reports must include:
+- files changed;
+- behavior implemented/audited;
+- exact commands and results;
+- browser viewports/themes/direction when applicable;
+- API/database/AuditLog assertions when applicable;
+- screenshots when the environment permits;
+- console/runtime findings;
+- unresolved warnings and blockers.
 
-- build/lint/test results,
-- reference template files inspected,
-- pages/components changed,
-- parity notes for top bar/sidebar/navigation/cards/tables/drawers/dialogs as applicable,
-- light and dark verification,
-- Arabic and English verification,
-- RTL/LTR side and direction verification,
-- responsive viewports checked,
-- loading/skeleton/empty/error/disabled/permission states,
-- accessibility and keyboard/scanner notes,
-- screenshots or an explicit environment blocker.
+The standard client gate is:
 
-## 8. Required updates after each step
+```bash
+npm run check --prefix client
+```
 
-1. Update `agent_pack/status.json`.
-2. Update `agent_pack/TASK_BOARD.md`.
-3. Write the defined step report.
-4. Confirm no unrelated step was executed.
+## 8. Tracking
 
-## 9. Stop condition
+After each completed step:
 
-Stop after one completed step when `RUN_STEP_COUNT=1`, or after at most two completed compatible steps when `RUN_STEP_COUNT=2`. Never begin a third step.
+1. update `agent_pack/status.json`;
+2. update `agent_pack/TASK_BOARD.md`;
+3. write the report at the path declared by the step;
+4. verify step/report paths and dependencies;
+5. confirm no unrelated step was executed.
+
+## 9. Stop
+
+Stop after one completed step for `RUN_STEP_COUNT=1`, or after at most two compatible completed steps for `RUN_STEP_COUNT=2`. Never begin a third step.

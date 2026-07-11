@@ -1,249 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { Alert, Button, IconButton, InputAdornment, TextField } from '@mui/material';
+import { LockRounded, PersonRounded, VisibilityOffRounded, VisibilityRounded } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../app/AuthContext.jsx';
-import { useLanguage } from '../i18n/config.js';
-import { useColorMode } from '../theme/ThemeConfig.jsx';
-import {
-  Box,
-  Button,
-  TextField,
-  Typography,
-  Paper,
-  Alert,
-  CircularProgress,
-  IconButton
-} from '@mui/material';
-import {
-  DarkMode as DarkModeIcon,
-  LightMode as LightModeIcon
-} from '@mui/icons-material';
-import logoImg from '../assets/logo.png';
+import { Field } from '../components/forms/Field.jsx';
+import logo from '../assets/a4-logo.png';
+import '../styles/login.css';
 
-export function Login() {
-  const { login, isAuthenticated } = useAuth();
+export default function Login() {
+  const { login } = useAuth();
   const navigate = useNavigate();
-  const { t, locale, changeLanguage, dir } = useLanguage();
-  const { mode, toggleColorMode } = useColorMode();
-
-  const [usernameInput, setUsernameInput] = useState('');
-  const [passwordInput, setPasswordInput] = useState('');
-  const [loginError, setLoginError] = useState('');
+  const [form, setForm] = useState({ username: '', password: '' });
+  const [show, setShow] = useState(false);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/');
-    }
-  }, [isAuthenticated, navigate]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoginError('');
-    if (!usernameInput || !passwordInput) {
-      setLoginError(t('auth.usernameRequired'));
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: usernameInput, password: passwordInput })
-      });
-      
-      const payload = await res.json();
-      if (res.status === 200) {
-        login(payload.data.accessToken, payload.data.user);
-        navigate('/');
-      } else {
-        setLoginError(payload.error || t('auth.loginFailed'));
-      }
-    } catch (err) {
-      setLoginError(t('auth.loginFailed'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100vw',
-        height: '100vh',
-        backgroundColor: 'background.default',
-        position: 'relative'
-      }}
-    >
-      {/* Pre-auth controls: Theme and Language */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: 16,
-          left: dir === 'ltr' ? 'auto' : 16,
-          right: dir === 'rtl' ? 'auto' : 16,
-          display: 'flex',
-          gap: 1.5,
-          alignItems: 'center',
-          zIndex: 10
-        }}
-      >
-        {/* Language selector switch */}
-        <Button
-          size="small"
-          onClick={() => changeLanguage(locale === 'ar' ? 'en' : 'ar')}
-          sx={{
-            fontFamily: 'Cairo',
-            fontWeight: 600,
-            fontSize: '0.8rem',
-            color: 'text.secondary',
-            textTransform: 'none',
-            border: '1px solid',
-            borderColor: 'divider',
-            borderRadius: '4px',
-            px: 1.5,
-            py: 0.5,
-            backgroundColor: 'background.paper',
-            '&:hover': {
-              backgroundColor: 'action.hover'
-            }
-          }}
-        >
-          {locale === 'ar' ? 'English' : 'العربية'}
-        </Button>
-
-        {/* Theme control switch */}
-        <IconButton
-          size="small"
-          onClick={toggleColorMode}
-          sx={{
-            border: '1px solid',
-            borderColor: 'divider',
-            borderRadius: '4px',
-            p: 0.5,
-            color: 'text.secondary',
-            backgroundColor: 'background.paper',
-            '&:hover': {
-              backgroundColor: 'action.hover'
-            }
-          }}
-        >
-          {mode === 'dark' ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
-        </IconButton>
-      </Box>
-
-      <Paper
-        elevation={0}
-        variant="outlined"
-        sx={{
-          width: '100%',
-          maxWidth: 420,
-          p: 4,
-          textAlign: 'center',
-          backgroundColor: 'background.paper',
-          borderRadius: 1,
-          mx: 2
-        }}
-      >
-        <Box component="img" src={logoImg} alt="A4 Logo" sx={{ height: 80, mb: 2, objectFit: 'contain' }} />
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: 'bold',
-            color: 'primary.main',
-            mb: 1,
-            fontFamily: 'Cairo'
-          }}
-        >
-          {t('auth.loginTitle')}
-        </Typography>
-        <Typography
-          variant="body2"
-          sx={{
-            color: 'text.secondary',
-            mb: 4,
-            fontFamily: 'Cairo'
-          }}
-        >
-          {t('auth.loginSubtitle')}
-        </Typography>
-
-        {loginError && (
-          <Alert severity="error" sx={{ mb: 3, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
-            {loginError}
-          </Alert>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            id="username"
-            label={t('auth.username')}
-            name="username"
-            autoComplete="username"
-            autoFocus
-            value={usernameInput}
-            onChange={(e) => setUsernameInput(e.target.value)}
-            disabled={loading}
-            size="small"
-            sx={{
-              mb: 2,
-              '& .MuiInputLabel-root': {
-                fontFamily: 'Cairo',
-                left: dir === 'rtl' ? 'auto' : 0,
-                right: dir === 'rtl' ? 24 : 'auto',
-                transformOrigin: dir === 'rtl' ? 'right' : 'left'
-              },
-              '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
-            }}
-          />
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            name="password"
-            label={t('auth.password')}
-            type="password"
-            id="password"
-            autoComplete="current-password"
-            value={passwordInput}
-            onChange={(e) => setPasswordInput(e.target.value)}
-            disabled={loading}
-            size="small"
-            sx={{
-              mb: 3,
-              '& .MuiInputLabel-root': {
-                fontFamily: 'Cairo',
-                left: dir === 'rtl' ? 'auto' : 0,
-                right: dir === 'rtl' ? 24 : 'auto',
-                transformOrigin: dir === 'rtl' ? 'right' : 'left'
-              },
-              '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
-            }}
-          />
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            size="large"
-            disabled={loading}
-            sx={{
-              py: 1.2,
-              fontFamily: 'Cairo',
-              fontWeight: 'bold'
-            }}
-          >
-            {loading ? <CircularProgress size={24} color="inherit" /> : t('auth.loginButton')}
-          </Button>
-        </form>
-      </Paper>
-    </Box>
-  );
+  const submit = async (e) => { e.preventDefault(); setError(''); setLoading(true); try { const user = await login(form.username.trim(), form.password); navigate(user.role === 'Admin' ? '/' : '/pos', { replace: true }); } catch (err) { setError(err.message); } finally { setLoading(false); } };
+  return <main className="login-page"><section className="login-panel">
+    <div className="login-brand"><img src={logo} alt="A4 Office Products"/><div><strong>A4 Office Products</strong><span>منصة إدارة المكتبة ونقطة البيع</span></div></div>
+    <div className="login-copy"><span className="login-eyebrow">تسجيل الدخول</span><h1>مرحباً بعودتك</h1><p>استخدم حساب الأدمن أو الكاشير للدخول إلى مساحة العمل المخصصة لك.</p></div>
+    {error && <Alert severity="error">{error}</Alert>}
+    <form className="login-form" onSubmit={submit}>
+      <Field label="اسم المستخدم" required><TextField value={form.username} onChange={(e) => setForm(v => ({ ...v, username: e.target.value }))} autoComplete="username" placeholder="أدخل اسم المستخدم" InputProps={{ startAdornment: <InputAdornment position="start"><PersonRounded fontSize="small"/></InputAdornment> }}/></Field>
+      <Field label="كلمة المرور" required><TextField type={show ? 'text' : 'password'} value={form.password} onChange={(e) => setForm(v => ({ ...v, password: e.target.value }))} autoComplete="current-password" placeholder="أدخل كلمة المرور" InputProps={{ startAdornment: <InputAdornment position="start"><LockRounded fontSize="small"/></InputAdornment>, endAdornment: <InputAdornment position="end"><IconButton size="small" onClick={() => setShow(v => !v)}>{show ? <VisibilityOffRounded/> : <VisibilityRounded/>}</IconButton></InputAdornment> }}/></Field>
+      <Button type="submit" variant="contained" size="large" disabled={loading || !form.username || !form.password}>{loading ? 'جاري تسجيل الدخول...' : 'دخول إلى المنصة'}</Button>
+    </form>
+    <div className="login-demo"><span>حساب تجريبي للإدارة</span><code>admin / admin123</code></div>
+  </section><aside className="login-visual"><div className="login-visual__content"><span>نظام واحد متكامل</span><h2>بيع أسرع، مخزون أدق، وحجوزات منظمة</h2><p>واجهة عربية مصممة للعمل اليومي على الكمبيوتر والتابلت والموبايل.</p><div className="login-features"><span>نقطة بيع سريعة</span><span>حجوزات بعربون</span><span>تقفيل شيفتات</span><span>تقارير فورية</span></div></div></aside></main>;
 }
-
-export default Login;

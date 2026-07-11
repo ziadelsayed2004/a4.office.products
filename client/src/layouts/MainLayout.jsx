@@ -1,140 +1,118 @@
-import React, { useState } from 'react';
-import { Outlet, Navigate, useLocation, Link } from 'react-router-dom';
-import Sidebar from '../components/Sidebar.jsx';
-import Breadcrumbs from '../components/navigation/Breadcrumbs.jsx';
-import { Box, Typography, AppBar, Toolbar, IconButton, Drawer, Tooltip } from '@mui/material';
-import { Menu as MenuIcon, DarkMode as DarkModeIcon, LightMode as LightModeIcon } from '@mui/icons-material';
+import { useMemo, useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Avatar, Badge, Box, Chip, IconButton, Menu, MenuItem, Tooltip, Typography
+} from '@mui/material';
+import {
+  AssessmentRounded, BadgeRounded, CategoryRounded, DashboardRounded, DarkModeRounded,
+  GroupsRounded, Inventory2Rounded, LightModeRounded, MenuOpenRounded,
+  MenuRounded, PaymentsRounded, PointOfSaleRounded, PrintRounded, ReceiptLongRounded,
+  SellRounded, ShoppingBasketRounded, SwapHorizRounded, LogoutRounded,
+  AccountCircleRounded, HistoryRounded, EventAvailableRounded
+} from '@mui/icons-material';
 import { useAuth } from '../app/AuthContext.jsx';
-import { useColorMode } from '../theme/ThemeConfig.jsx';
-import { useLanguage } from '../i18n/config.js';
+import { useAppTheme } from '../theme/AppTheme.jsx';
+import { t } from '../locales/t.js';
+import logo from '../assets/a4-logo.png';
+import '../styles/layout.css';
+
+const titles = {
+  '/': ['لوحة التحكم', 'ملخص سريع لحالة المبيعات والمخزون والحجوزات'],
+  '/pos': ['نقطة البيع', 'بيع مباشر أو إنشاء واستلام حجز مسبق'],
+  '/shift-summary': ['شيفتي الحالية', 'متابعة حركات الشيفت وطلب التقفيل'],
+  '/receipts': ['الإيصالات', 'البحث عن الإيصالات وعرضها وإعادة طباعتها'],
+  '/products': ['المنتجات', 'إدارة المنتجات والأسعار وخصائص الحجز'],
+  '/categories': ['التصنيفات', 'تنظيم المنتجات داخل تصنيفات واضحة'],
+  '/price-tiers': ['فئات الأسعار', 'إدارة أسعار القطاعي والجملة والفئات الخاصة'],
+  '/inventory': ['المخزون', 'متابعة الرصيد الفعلي وحركات التسوية'],
+  '/preorders': ['الحجوزات المسبقة', 'متابعة الحجز من العربون حتى الاستلام'],
+  '/customers': ['العملاء', 'بيانات عملاء الحجوزات المسبقة'],
+  '/payments': ['طرق الدفع', 'تفعيل طرق الدفع المتاحة داخل الكاشير'],
+  '/shifts': ['مراجعة الشيفتات', 'اعتماد أو رفض طلبات تقفيل الكاشير'],
+  '/users': ['المستخدمون', 'إدارة حسابات الأدمن والكاشير'],
+  '/reports': ['التقارير', 'تقارير المبيعات والحجوزات والمخزون والشيفتات'],
+  '/logs': ['سجل العمليات', 'تتبع كل العمليات الحساسة داخل النظام'],
+  '/printer-settings': ['إعدادات الطباعة', 'إعدادات ريسيت البيع وملصقات المنتجات']
+};
 
 export function MainLayout() {
-  const { user } = useAuth();
-  const { t, dir } = useLanguage();
+  const { user, isAdmin, currentShift, logout } = useAuth();
+  const { mode, toggleMode } = useAppTheme();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { mode, toggleColorMode } = useColorMode();
+  const [profileAnchor, setProfileAnchor] = useState(null);
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  const menu = useMemo(() => {
+    const cashier = [{ section: t('nav.cashier'), items: [
+      { label: t('nav.pos'), path: '/pos', icon: <PointOfSaleRounded/> },
+      { label: t('nav.currentShift'), path: '/shift-summary', icon: <EventAvailableRounded/> },
+      { label: t('nav.receipts'), path: '/receipts', icon: <ReceiptLongRounded/> }
+    ] }];
+    if (!isAdmin) return cashier;
+    return [
+      { section: t('nav.home'), items: [{ label: t('nav.dashboard'), path: '/', icon: <DashboardRounded/> }] },
+      ...cashier,
+      { section: t('nav.catalog'), items: [
+        { label: t('nav.products'), path: '/products', icon: <ShoppingBasketRounded/> },
+        { label: t('nav.categories'), path: '/categories', icon: <CategoryRounded/> },
+        { label: t('nav.priceTiers'), path: '/price-tiers', icon: <SellRounded/> },
+        { label: t('nav.inventory'), path: '/inventory', icon: <Inventory2Rounded/> }
+      ]},
+      { section: t('nav.operations'), items: [
+        { label: t('nav.preorders'), path: '/preorders', icon: <BadgeRounded/> },
+        { label: t('nav.customers'), path: '/customers', icon: <GroupsRounded/> },
+        { label: t('nav.payments'), path: '/payments', icon: <PaymentsRounded/> }
+      ]},
+      { section: t('nav.management'), items: [
+        { label: t('nav.shifts'), path: '/shifts', icon: <SwapHorizRounded/> },
+        { label: t('nav.users'), path: '/users', icon: <AccountCircleRounded/> },
+        { label: t('nav.reports'), path: '/reports', icon: <AssessmentRounded/> },
+        { label: t('nav.audit'), path: '/logs', icon: <HistoryRounded/> },
+        { label: t('nav.printers'), path: '/printer-settings', icon: <PrintRounded/> }
+      ]}
+    ];
+  }, [isAdmin]);
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
+  const go = (path) => { navigate(path); setMobileOpen(false); };
+  const [pageTitle, pageSubtitle] = titles[location.pathname] || ['منصة A4', 'إدارة المكتبة'];
+  const shellClass = ['app-shell', collapsed ? 'is-collapsed' : '', mobileOpen ? 'is-mobile-open' : ''].filter(Boolean).join(' ');
 
-  // Map route paths to page titles in Arabic/English
-  const PAGE_TITLES = {
-    '/': t('nav.dashboard'),
-    '/users': t('nav.users'),
-    '/categories': t('nav.categories'),
-    '/price-tiers': t('nav.priceTiers'),
-    '/products': t('nav.products'),
-    '/inventory': t('nav.inventory'),
-    '/payments': t('nav.payments'),
-    '/customers': t('nav.customers'),
-    '/shifts': t('nav.shifts'),
-    '/preorders': t('nav.preorders'),
-    '/logs': t('nav.logs'),
-    '/reports': t('nav.reports'),
-    '/printer-settings': t('nav.printerSettings'),
-    '/pos': t('nav.pos'),
-    '/receipts': t('nav.receipts'),
-    '/shift-summary': t('nav.shiftSummary')
-  };
+  return <div className={shellClass}>
+    <header className="app-topbar">
+      <div className="app-topbar__brand">
+        <IconButton className="hide-desktop" onClick={() => setMobileOpen(v => !v)} aria-label="فتح القائمة"><MenuRounded/></IconButton>
+        <img className="app-brand-logo" src={logo} alt="A4 Office Products"/>
+        <div className="app-brand-copy"><strong>A4 Office Products</strong><span>منصة إدارة المكتبة</span></div>
+      </div>
+      <div className="app-topbar__content">
+        <div className="app-page-caption"><strong>{pageTitle}</strong><span>{pageSubtitle}</span></div>
+        <div className="app-topbar__actions">
+          {currentShift?.status === 'OPEN' && <Chip className="hide-mobile" size="small" color="success" variant="outlined" label={`شيفت #${currentShift.id}`}/>}          
+          <Tooltip title={mode === 'light' ? 'الوضع الداكن' : 'الوضع الفاتح'}><IconButton onClick={toggleMode}>{mode === 'light' ? <DarkModeRounded/> : <LightModeRounded/>}</IconButton></Tooltip>
+          <Tooltip title="الحساب"><IconButton onClick={(e) => setProfileAnchor(e.currentTarget)}><Badge color="success" variant="dot" overlap="circular"><Avatar sx={{ width: 34, height: 34, bgcolor: 'primary.main', fontSize: '.78rem' }}>{user?.name?.slice(0, 1) || 'A'}</Avatar></Badge></IconButton></Tooltip>
+          <Menu anchorEl={profileAnchor} open={Boolean(profileAnchor)} onClose={() => setProfileAnchor(null)} transformOrigin={{ horizontal: 'left', vertical: 'top' }} anchorOrigin={{ horizontal: 'left', vertical: 'bottom' }}>
+            <Box sx={{ px: 2, py: 1.1, minWidth: 210 }}><Typography fontWeight={800} fontSize=".8rem">{user?.name}</Typography><Typography color="text.secondary" fontSize=".68rem">{user?.role === 'Admin' ? 'مدير النظام' : 'كاشير'}</Typography></Box>
+            <MenuItem onClick={async () => { setProfileAnchor(null); await logout(); navigate('/login'); }}><LogoutRounded fontSize="small" sx={{ ml: 1 }}/><span>تسجيل الخروج</span></MenuItem>
+          </Menu>
+        </div>
+      </div>
+    </header>
 
-  const title = PAGE_TITLES[location.pathname] || '';
-  const drawerWidth = 270;
+    <aside className="app-sidebar">
+      <div className="app-sidebar__scroll">
+        {menu.map((group) => <section className="app-sidebar__section" key={group.section}><div className="app-sidebar__heading">{group.section}</div>{group.items.map((item) => {
+          const active = location.pathname === item.path;
+          return <Tooltip placement="left" title={collapsed ? item.label : ''} key={item.path}><button type="button" className={`app-nav-item ${active ? 'is-active' : ''}`} onClick={() => go(item.path)}>{item.icon}<span>{item.label}</span></button></Tooltip>;
+        })}</section>)}
+      </div>
+      <div className="app-sidebar__profile"><div className="app-profile-card"><Avatar sx={{ width: 35, height: 35, bgcolor: 'primary.main', fontSize: '.78rem' }}>{user?.name?.slice(0,1)}</Avatar><div className="app-profile-card__copy"><strong>{user?.name}</strong><span>{user?.username} · {user?.role === 'Admin' ? 'مدير' : 'كاشير'}</span></div></div></div>
+    </aside>
 
-  return (
-    <Box dir={dir} sx={{ display: 'flex', minHeight: '100vh', width: '100vw', backgroundColor: 'background.default' }}>
-      {/* AppBar for mobile top bar */}
-      <AppBar
-        position="fixed"
-        elevation={1}
-        sx={{
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          mr: dir === 'rtl' ? { md: `${drawerWidth}px` } : 0,
-          ml: dir === 'ltr' ? { md: `${drawerWidth}px` } : 0,
-          display: { md: 'none' }, // Show only on mobile
-          backgroundColor: 'background.paper',
-          color: 'text.primary',
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          zIndex: (theme) => theme.zIndex.drawer + 1
-        }}
-      >
-        <Toolbar sx={{ justifyContent: 'space-between', px: 2 }}>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ ml: dir === 'rtl' ? 2 : 0, mr: dir === 'ltr' ? 2 : 0 }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ fontFamily: 'Cairo', fontWeight: 'bold' }}>
-            {title}
-          </Typography>
-          <Tooltip title={mode === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}>
-            <IconButton onClick={toggleColorMode} color="inherit">
-              {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
-            </IconButton>
-          </Tooltip>
-        </Toolbar>
-      </AppBar>
+    <button className="app-mobile-overlay" aria-label="إغلاق القائمة" onClick={() => setMobileOpen(false)}/>
+    <main className="app-main"><Outlet/></main>
 
-      {/* Sidebar for Desktop */}
-      <Box
-        component="nav"
-        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 }, display: { xs: 'none', md: 'block' } }}
-      >
-        <Sidebar />
-      </Box>
-
-      {/* Sidebar Drawer for Mobile */}
-      <Drawer
-        variant="temporary"
-        open={mobileOpen}
-        onClose={handleDrawerToggle}
-        ModalProps={{
-          keepMounted: true, // Better open performance on mobile.
-        }}
-        sx={{
-          display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-        }}
-        anchor={dir === 'rtl' ? 'right' : 'left'}
-      >
-        <Sidebar onClose={handleDrawerToggle} />
-      </Drawer>
-
-      {/* Main content workspace */}
-      <Box
-        component="main"
-        dir={dir}
-        sx={{
-          textAlign: dir === 'rtl' ? 'right' : 'left',
-          flexGrow: 1,
-          p: 3,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          mt: { xs: '64px', md: 0 }, // Clear mobile header
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
-        {/* Breadcrumbs Navigation */}
-        <Breadcrumbs />
-
-        {/* Dynamic route view */}
-        <Box sx={{ flexGrow: 1 }}>
-          <Outlet />
-        </Box>
-      </Box>
-    </Box>
-  );
+    <Tooltip title={collapsed ? 'توسيع القائمة' : 'تصغير القائمة'}><IconButton className="sidebar-collapse-button" onClick={() => setCollapsed(v => !v)} sx={{ position: 'fixed', right: collapsed ? 60 : 266, top: 73, zIndex: 1300, display: { xs: 'none', md: 'inline-flex' }, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', transition: 'right .2s ease', '&:hover': { bgcolor: 'background.paper' } }}>{collapsed ? <MenuRounded/> : <MenuOpenRounded/>}</IconButton></Tooltip>
+  </div>;
 }
-
-export default MainLayout;

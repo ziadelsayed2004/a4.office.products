@@ -1,554 +1,204 @@
-import React, { useState } from 'react';
-import { useAuth } from '../app/AuthContext.jsx';
-import { useLanguage } from '../i18n/config.js';
-import PageHeader from '../components/navigation/PageHeader.jsx';
-import ReceiptDetails from '../components/ReceiptDetails.jsx';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Paper, TextField } from '@mui/material';
 import {
-  Box,
-  Typography,
-  Button,
-  Grid,
-  Card,
-  CardContent,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Alert,
-  CircularProgress,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip
-} from '@mui/material';
-import { Search as SearchIcon, Print as PrintIcon, AssignmentReturn as ReturnIcon } from '@mui/icons-material';
+  PrintRounded,
+  QrCode2Rounded,
+  ReceiptLongRounded,
+  RefreshRounded,
+  SearchRounded,
+} from '@mui/icons-material';
+import { useSearchParams } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
+import { api } from '../api/client.js';
+import { PageHeader } from '../components/navigation/PageHeader.jsx';
+import { Field } from '../components/forms/Field.jsx';
+import { LoadingState } from '../components/feedback/LoadingState.jsx';
+import { EmptyState } from '../components/feedback/EmptyState.jsx';
+import { AppSnackbar } from '../components/feedback/AppSnackbar.jsx';
+import { dateTime, money, number, statusLabel } from '../utils/formatters.js';
+import logo from '../assets/a4-logo.png';
 
-export function Receipts() {
-  const { token } = useAuth();
-  const { dir } = useLanguage();
-  
-  // Search state
-  const [receiptSearchCode, setReceiptSearchCode] = useState('');
-  const [receiptDetails, setReceiptDetails] = useState(null);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchError, setSearchError] = useState('');
+const referenceLabels = {
+  order_sale: 'إيصال بيع مباشر',
+  preorder_deposit: 'إيصال حجز مسبق',
+  preorder_pickup: 'إيصال استلام حجز',
+};
 
-  // Return state
-  const [returnQuantities, setReturnQuantities] = useState({});
-  const [returnNotes, setReturnNotes] = useState('');
-  const [returnRefundMethod, setReturnRefundMethod] = useState('Cash');
-  const [returnLoading, setReturnLoading] = useState(false);
-  const [returnError, setReturnError] = useState('');
-  const [returnSuccess, setReturnSuccess] = useState('');
+export default function Receipts() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [code, setCode] = useState(searchParams.get('code') || '');
+  const [receipt, setReceipt] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [reprinting, setReprinting] = useState(false);
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState(null);
 
-  // Reprint state
-  const [reprintReason, setReprintReason] = useState('');
-  const [reprintLoading, setReprintLoading] = useState(false);
-  const [reprintError, setReprintError] = useState('');
-
-  const handleSearchReceipt = async (e) => {
-    if (e) e.preventDefault();
-    setSearchError('');
-    setReturnSuccess('');
-    setReturnError('');
-    setReprintError('');
-    setReceiptDetails(null);
-    if (!receiptSearchCode.trim()) return;
-
-    setSearchLoading(true);
-    try {
-      const res = await fetch(`/api/pos/receipts/${encodeURIComponent(receiptSearchCode.trim())}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const payload = await res.json();
-      if (res.status === 200) {
-        setReceiptDetails(payload.data);
-      } else {
-        setSearchError(payload.error || 'لم يتم العثور على الإيصال المطلوب.');
-      }
-    } catch (err) {
-      setSearchError('حدث خطأ أثناء الاتصال بالخادم.');
-    } finally {
-      setSearchLoading(false);
-    }
-  };
-
-  const handleProcessReturn = async (e) => {
-    e.preventDefault();
-    if (!token || !receiptDetails) return;
-
-    const items = Object.entries(returnQuantities)
-      .map(([productId, qty]) => ({
-        productId: parseInt(productId),
-        quantity: parseInt(qty) || 0
-      }))
-      .filter((item) => item.quantity > 0);
-
-    if (items.length === 0) {
-      setReturnError('يرجى تحديد كمية إرجاع أكبر من الصفر لأحد المنتجات على الأقل.');
+  const loadReceipt = async (value = code) => {
+    const normalized = value.trim();
+    if (!normalized) {
+      setError('اكتب رقم الإيصال أو امسح الرمز أولاً.');
       return;
     }
-
-    setReturnLoading(true);
-    setReturnError('');
-    setReturnSuccess('');
-
+    setLoading(true);
+    setError('');
     try {
-      const res = await fetch(`/api/pos/orders/${receiptDetails.reference_id}/return`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          items,
-          notes: returnNotes,
-          refundMethod: returnRefundMethod
-        })
-      });
-      const payload = await res.json();
-      if (res.status === 200) {
-        setReturnQuantities({});
-        setReturnNotes('');
-        setReturnSuccess('تم تسجيل المرتجع واسترداد المبلغ بنجاح وتحديث المخزون.');
-        
-        // Refresh details
-        const receiptCode = receiptDetails.receipt_number;
-        const detailsRes = await fetch(`/api/pos/receipts/${receiptCode}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const detailsPayload = await detailsRes.json();
-        if (detailsRes.status === 200) {
-          setReceiptDetails(detailsPayload.data);
-        }
-      } else {
-        setReturnError(payload.error || 'فشل تسجيل المرتجع.');
-      }
+      const response = await api.get(`/api/pos/receipts/${encodeURIComponent(normalized)}`);
+      setReceipt(response.data || null);
+      setCode(normalized);
+      setSearchParams({ code: normalized }, { replace: true });
     } catch (err) {
-      setReturnError('حدث خطأ بالاتصال بالخادم.');
+      setReceipt(null);
+      setError(err.message);
     } finally {
-      setReturnLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleReprintReceipt = async (e) => {
-    if (e) e.preventDefault();
-    setReprintError('');
-    setReprintLoading(true);
+  useEffect(() => {
+    const initial = searchParams.get('code');
+    if (initial) loadReceipt(initial);
+    // Query param is intentionally read once on mount.
+  }, []);
 
+  const totalPaid = useMemo(
+    () => (receipt?.payments || []).reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
+    [receipt],
+  );
+
+  const doReprint = async () => {
+    if (!receipt) return;
+    setReprinting(true);
     try {
-      const res = await fetch(`/api/pos/receipts/${receiptDetails.id}/reprint`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ reason: reprintReason.trim() })
-      });
-      const payload = await res.json();
-      if (res.status === 200) {
-        // Refresh details
-        const detailsRes = await fetch(`/api/pos/receipts/${receiptDetails.id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const detailsPayload = await detailsRes.json();
-        if (detailsRes.status === 200) {
-          setReceiptDetails(detailsPayload.data);
-          setReprintReason('');
-          setTimeout(() => {
-            window.print();
-          }, 300);
-        }
-      } else {
-        setReprintError(payload.error || 'فشلت عملية إعادة الطباعة.');
-      }
+      const response = await api.post(`/api/pos/receipts/${receipt.id}/reprint`, { reason: reason.trim() });
+      setReceipt((current) => ({ ...current, print_count: response.data.print_count, last_printed_at: new Date().toISOString() }));
+      setReason('');
+      setToast({ message: 'تم تسجيل إعادة الطباعة في سجل العمليات.' });
+      requestAnimationFrame(() => window.print());
     } catch (err) {
-      setReprintError('حدث خطأ بالاتصال بالخادم.');
+      setToast({ severity: 'error', message: err.message });
     } finally {
-      setReprintLoading(false);
+      setReprinting(false);
     }
   };
 
   return (
-    <Box sx={{ width: '100%' }}>
-      {/* Page Header */}
-      <PageHeader titleKey="nav.receipts" />
+    <div className="a4-page receipts-page">
+      <PageHeader
+        title="الإيصالات"
+        description="ابحث برقم الإيصال، اعرض التفاصيل، ثم اطبع نسخة حرارية واضحة. كل إعادة طباعة تسجل باسم الحساب."
+        actions={receipt ? <Button variant="outlined" startIcon={<RefreshRounded />} onClick={() => loadReceipt()} disabled={loading}>تحديث</Button> : null}
+      />
 
-      <Grid container spacing={3}>
-        {/* Left Side: Search & Actions */}
-        <Grid item xs={12} md={7}>
-          <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 1 }}>
-            <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontFamily: 'Cairo', borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}>
-                البحث عن إيصال واستعراضه
-              </Typography>
+      <section className="a4-page-section no-print">
+        <div className="receipt-search-row">
+          <Field label="رقم الإيصال" hint="مثال: REC-20260711-0001">
+            <TextField
+              autoFocus
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              onKeyDown={(event) => event.key === 'Enter' && loadReceipt()}
+              placeholder="اكتب رقم الإيصال أو امسح الرمز"
+              inputProps={{ dir: 'ltr' }}
+            />
+          </Field>
+          <Button variant="contained" startIcon={<SearchRounded />} onClick={() => loadReceipt()} disabled={loading}>بحث</Button>
+        </div>
+      </section>
 
-              <form onSubmit={handleSearchReceipt}>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="أدخل رقم الإيصال (مثال: REC-20260710-0001)..."
-                    value={receiptSearchCode}
-                    onChange={(e) => setReceiptSearchCode(e.target.value)}
-                    sx={{
-                      '& .MuiOutlinedInput-input': {
-                        fontFamily: 'Cairo',
-                        textAlign: dir === 'rtl' ? 'right' : 'left'
-                      }
-                    }}
-                  />
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    startIcon={<SearchIcon />}
-                    disabled={searchLoading}
-                    sx={{ fontFamily: 'Cairo' }}
-                  >
-                    بحث
-                  </Button>
-                </Box>
-              </form>
+      {error && <Alert severity="error" className="no-print">{error}</Alert>}
+      {loading && <LoadingState label="جاري تحميل الإيصال..." />}
 
-              {searchError && (
-                <Alert severity="error" sx={{ fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
-                  {searchError}
-                </Alert>
-              )}
+      {!loading && !receipt && !error && (
+        <section className="a4-page-section">
+          <EmptyState icon={<ReceiptLongRounded />} title="ابحث عن إيصال" description="أدخل رقم الإيصال لعرض بياناته وطباعته." />
+        </section>
+      )}
 
-              {searchLoading ? (
-                <Box sx={{ display: 'flex', flex: 1, justifyContent: 'center', alignItems: 'center', p: 4 }}>
-                  <CircularProgress />
-                </Box>
-              ) : receiptDetails ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {/* General Info */}
-                  <Paper sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1 }} variant="outlined">
-                    <Grid container spacing={2} sx={{ fontSize: '0.85rem' }}>
-                      <Grid item xs={12} sm={6}>
-                        رقم الإيصال: <strong><bdi>{receiptDetails.receipt_number}</bdi></strong>
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        نوع الحركة:{' '}
-                        <strong>
-                          {receiptDetails.reference_type === 'order_sale'
-                            ? 'بيع مباشر'
-                            : receiptDetails.reference_type === 'preorder_deposit'
-                            ? 'عربون حجز مسبق'
-                            : 'استلام حجز نهائي'}
-                        </strong>
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        طبع بواسطة:{' '}
-                        <strong>
-                          {receiptDetails.printed_by_name} ({receiptDetails.printed_by_username})
-                        </strong>
-                      </Grid>
-                      <Grid item xs={12} sm={6} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        مرات الطباعة:{' '}
-                        <Chip label={`${receiptDetails.print_count} مرات`} size="small" color="info" sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }} />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        تاريخ الإنشاء:{' '}
-                        <strong>
-                          <bdi>{new Date(receiptDetails.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo' })}</bdi>
-                        </strong>
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        آخر طباعة:{' '}
-                        <strong>
-                          <bdi>{new Date(receiptDetails.last_printed_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo' })}</bdi>
-                        </strong>
-                      </Grid>
-                    </Grid>
-                  </Paper>
+      {!loading && receipt && (
+        <div className="receipt-workspace">
+          <Paper variant="outlined" className="receipt-paper" id="printable-receipt">
+            <header className="receipt-paper__brand">
+              <img src={logo} alt="A4 Office Products" />
+              <strong>مكتبة A4 للأدوات المكتبية</strong>
+              <span>{referenceLabels[receipt.reference_type] || 'إيصال'}</span>
+            </header>
 
-                  {/* Items List */}
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, fontFamily: 'Cairo' }}>
-                      تفاصيل الأصناف المباعة
-                    </Typography>
-                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1 }}>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ fontFamily: 'Cairo' }}>اسم الصنف</TableCell>
-                            <TableCell sx={{ fontFamily: 'Cairo' }}>رمز SKU</TableCell>
-                            <TableCell sx={{ fontFamily: 'Cairo' }}>سعر الوحدة</TableCell>
-                            <TableCell sx={{ fontFamily: 'Cairo' }}>الكمية</TableCell>
-                            <TableCell sx={{ fontFamily: 'Cairo' }}>المرتجع</TableCell>
-                            <TableCell sx={{ fontFamily: 'Cairo' }}>الإجمالي</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {receiptDetails.items.map((item, idx) => (
-                            <TableRow key={idx}>
-                              <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}>
-                                {item.product_name}
-                                {item.is_book === 1 && (
-                                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontFamily: 'Cairo' }}>
-                                    ({item.school_grade} / {item.subject})
-                                  </Typography>
-                                )}
-                              </TableCell>
-                              <TableCell><code>{item.product_sku}</code></TableCell>
-                              <TableCell><bdi>{(item.unit_price / 100).toFixed(2)} ج.م</bdi></TableCell>
-                              <TableCell>{item.quantity}</TableCell>
-                              <TableCell sx={{ color: item.returned_qty > 0 ? 'warning.main' : 'inherit', fontWeight: item.returned_qty > 0 ? 'bold' : 'normal' }}>
-                                {item.returned_qty || 0}
-                              </TableCell>
-                              <TableCell><bdi>{(item.total_price / 100).toFixed(2)} ج.م</bdi></TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Box>
+            <div className="receipt-paper__meta">
+              <div className="receipt-paper__row"><span>رقم الإيصال</span><strong className="a4-ltr">{receipt.receipt_number}</strong></div>
+              {receipt.invoice_number && <div className="receipt-paper__row"><span>رقم الفاتورة</span><strong className="a4-ltr">{receipt.invoice_number}</strong></div>}
+              {receipt.preorder_number && <div className="receipt-paper__row"><span>رقم الحجز</span><strong className="a4-ltr">{receipt.preorder_number}</strong></div>}
+              <div className="receipt-paper__row"><span>التاريخ</span><strong>{dateTime(receipt.created_at)}</strong></div>
+              <div className="receipt-paper__row"><span>الكاشير</span><strong>{receipt.printed_by_name}</strong></div>
+              {receipt.customer_name && <div className="receipt-paper__row"><span>العميل</span><strong>{receipt.customer_name}</strong></div>}
+              {receipt.customer_phone && <div className="receipt-paper__row"><span>الهاتف</span><strong className="a4-ltr">{receipt.customer_phone}</strong></div>}
+              {receipt.status && <div className="receipt-paper__row"><span>الحالة</span><strong>{statusLabel(receipt.status)}</strong></div>}
+            </div>
 
-                  {/* Payments List */}
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, fontFamily: 'Cairo' }}>
-                      تفاصيل المدفوعات
-                    </Typography>
-                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1 }}>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ fontFamily: 'Cairo' }}>طريقة الدفع</TableCell>
-                            <TableCell sx={{ fontFamily: 'Cairo' }}>المبلغ المدفوع</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {receiptDetails.payments.map((p, idx) => (
-                            <TableRow key={idx}>
-                              <TableCell sx={{ fontFamily: 'Cairo' }}>
-                                {p.payment_method === 'Cash'
-                                  ? 'نقدي'
-                                  : p.payment_method === 'Card'
-                                  ? 'بطاقة ائتمانية'
-                                  : p.payment_method === 'InstaPay'
-                                  ? 'إنستا باي'
-                                  : p.payment_method === 'Wallet'
-                                  ? 'محفظة'
-                                  : 'تحويل بنكي'}
-                              </TableCell>
-                              <TableCell><bdi>{(p.amount / 100).toFixed(2)} ج.م</bdi></TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Box>
+            <div className="receipt-items">
+              {(receipt.items || []).map((item, index) => (
+                <div className="receipt-item" key={item.id || `${item.product_id}-${index}`}>
+                  <div className="receipt-item__title">
+                    <strong>{item.product_name}</strong>
+                    <span className="a4-ltr">{item.product_sku}</span>
+                  </div>
+                  <div className="receipt-paper__row">
+                    <span>{number(item.quantity)} × {money(item.unit_price)}</span>
+                    <strong>{money(Number(item.quantity || 0) * Number(item.unit_price || 0))}</strong>
+                  </div>
+                  {Number(item.returned_qty || 0) > 0 && <small>مرتجع: {number(item.returned_qty)}</small>}
+                </div>
+              ))}
+            </div>
 
-                  {/* Return Section */}
-                  {receiptDetails.reference_type === 'order_sale' && (
-                    <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2.5, bgcolor: 'action.hover' }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2, color: 'warning.main', fontFamily: 'Cairo' }}>
-                        تسجيل مرتجع لهذه الفاتورة
-                      </Typography>
+            <div className="receipt-totals">
+              <div className="receipt-paper__row"><span>المجموع الفرعي</span><strong>{money(receipt.subtotal)}</strong></div>
+              {Number(receipt.discount || 0) > 0 && <div className="receipt-paper__row"><span>الخصم</span><strong>- {money(receipt.discount)}</strong></div>}
+              {receipt.deposit_paid !== undefined && <div className="receipt-paper__row"><span>العربون المدفوع</span><strong>{money(receipt.deposit_paid)}</strong></div>}
+              {receipt.remaining_amount !== undefined && <div className="receipt-paper__row"><span>المتبقي</span><strong>{money(receipt.remaining_amount)}</strong></div>}
+              <div className="receipt-paper__row receipt-paper__total"><span>الإجمالي</span><strong>{money(receipt.total)}</strong></div>
+            </div>
 
-                      {returnError && (
-                        <Alert severity="error" sx={{ mb: 2, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
-                          {returnError}
-                        </Alert>
-                      )}
-                      {returnSuccess && (
-                        <Alert severity="success" sx={{ mb: 2, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
-                          {returnSuccess}
-                        </Alert>
-                      )}
+            <div className="receipt-payments">
+              <strong>طرق الدفع</strong>
+              {(receipt.payments || []).map((payment, index) => (
+                <div className="receipt-paper__row" key={`${payment.payment_method}-${index}`}>
+                  <span>{payment.payment_method}</span><strong>{money(payment.amount)}</strong>
+                </div>
+              ))}
+              <div className="receipt-paper__row"><span>إجمالي المسجل</span><strong>{money(totalPaid)}</strong></div>
+            </div>
 
-                      <form onSubmit={handleProcessReturn}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                          {receiptDetails.items.map((item) => {
-                            const maxReturn = item.quantity - (item.returned_qty || 0);
-                            return (
-                              <Box
-                                key={item.product_id}
-                                sx={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                  bgcolor: 'background.paper',
-                                  p: 1.5,
-                                  borderRadius: 1,
-                                  border: '1px solid',
-                                  borderColor: 'divider',
-                                  fontSize: '0.85rem'
-                                }}
-                              >
-                                <span style={{ flex: 1, fontFamily: 'Cairo', fontWeight: 'bold' }}>{item.product_name}</span>
-                                <span style={{ width: '160px', color: 'text.secondary', fontFamily: 'Cairo', fontSize: '0.8rem' }}>
-                                  الكل: {item.quantity} | المسترجع: {item.returned_qty || 0}
-                                </span>
-                                <TextField
-                                  type="number"
-                                  inputProps={{ min: 0, max: maxReturn }}
-                                  disabled={maxReturn <= 0}
-                                  placeholder="0"
-                                  value={returnQuantities[item.product_id] || ''}
-                                  onChange={(e) => {
-                                    const val = Math.min(maxReturn, Math.max(0, parseInt(e.target.value) || 0));
-                                    setReturnQuantities((prev) => ({ ...prev, [item.product_id]: val }));
-                                  }}
-                                  size="small"
-                                  sx={{ width: 80 }}
-                                />
-                              </Box>
-                            );
-                          })}
+            {receipt.qr_token && (
+              <div className="receipt-qr">
+                <QRCodeSVG value={String(receipt.qr_token)} size={112} level="M" includeMargin />
+                <span>امسح الرمز للاستعلام داخل النظام</span>
+                <code dir="ltr">{receipt.qr_token}</code>
+              </div>
+            )}
 
-                          <Grid container spacing={2} sx={{ mt: 0.5 }}>
-                            <Grid item xs={12} sm={8}>
-                              <TextField
-                                fullWidth
-                                label="سبب الإرجاع / البيان"
-                                placeholder="سبب المرتجع..."
-                                value={returnNotes}
-                                onChange={(e) => setReturnNotes(e.target.value)}
-                                size="small"
-                                sx={{
-                                  '& .MuiInputLabel-root': {
-                                    fontFamily: 'Cairo',
-                                    left: dir === 'rtl' ? 'auto' : 0,
-                                    right: dir === 'rtl' ? 24 : 'auto',
-                                    transformOrigin: dir === 'rtl' ? 'right' : 'left'
-                                  },
-                                  '& .MuiOutlinedInput-input': {
-                                    fontFamily: 'Cairo',
-                                    textAlign: dir === 'rtl' ? 'right' : 'left'
-                                  }
-                                }}
-                              />
-                            </Grid>
-                            <Grid item xs={12} sm={4}>
-                              <FormControl fullWidth size="small">
-                                <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>طريقة الاسترداد</InputLabel>
-                                <Select
-                                  value={returnRefundMethod}
-                                  label="طريقة الاسترداد"
-                                  onChange={(e) => setReturnRefundMethod(e.target.value)}
-                                >
-                                  <MenuItem value="Cash">نقدي (من الصندوق)</MenuItem>
-                                  <MenuItem value="Card">بطاقة ائتمانية</MenuItem>
-                                  <MenuItem value="InstaPay">إنستا باي</MenuItem>
-                                  <MenuItem value="Wallet">محفظة إلكترونية</MenuItem>
-                                  <MenuItem value="Transfer">تحويل بنكي</MenuItem>
-                                </Select>
-                              </FormControl>
-                            </Grid>
-                          </Grid>
+            <footer className="receipt-paper__footer">
+              <p>شكراً لتعاملكم مع مكتبة A4</p>
+              <span>عدد مرات الطباعة: {number(receipt.print_count)}</span>
+            </footer>
+          </Paper>
 
-                          <Button
-                            fullWidth
-                            type="submit"
-                            variant="contained"
-                            color="warning"
-                            startIcon={<ReturnIcon />}
-                            disabled={returnLoading}
-                            sx={{ fontFamily: 'Cairo', fontWeight: 'bold', mt: 1, color: '#000' }}
-                          >
-                            {returnLoading ? 'جاري تنفيذ المرتجع...' : 'تأكيد تسجيل المرتجع وتحديث المخزن'}
-                          </Button>
-                        </Box>
-                      </form>
-                    </Box>
-                  )}
-                </Box>
-              ) : (
-                <Box sx={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'text.secondary', p: 4, fontFamily: 'Cairo' }}>
-                  أدخل رقم إيصال مبيعات نشط في الحقل أعلاه لعرض التفاصيل وإعادة طباعته.
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
+          <aside className="receipt-actions no-print">
+            <div className="receipt-actions__icon"><QrCode2Rounded /></div>
+            <h2>خيارات الطباعة</h2>
+            <p>استخدم الطباعة العادية لأول نسخة. عند إعادة الطباعة، اكتب سبباً مختصراً حتى يظهر في سجل العمليات.</p>
+            <Button fullWidth variant="contained" startIcon={<PrintRounded />} onClick={() => window.print()}>طباعة الإيصال</Button>
+            <Field label="سبب إعادة الطباعة" hint="اختياري، لكنه مفضل للمراجعة المالية.">
+              <TextField multiline minRows={3} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="مثال: العميل فقد النسخة الأولى" />
+            </Field>
+            <Button fullWidth variant="outlined" startIcon={<PrintRounded />} onClick={doReprint} disabled={reprinting}>
+              {reprinting ? 'جاري التسجيل...' : 'تسجيل وإعادة الطباعة'}
+            </Button>
+          </aside>
+        </div>
+      )}
 
-        {/* Right Side: Thermal Print Preview */}
-        <Grid item xs={12} md={5}>
-          <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 1 }}>
-            <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontFamily: 'Cairo', borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}>
-                معاينة الإيصال الحراري
-              </Typography>
-
-              {receiptDetails ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-                  <Box
-                    className="print-area"
-                    sx={{
-                      bgcolor: '#fff',
-                      color: '#000',
-                      p: 2,
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      maxHeight: 400,
-                      overflowY: 'auto'
-                    }}
-                  >
-                    <ReceiptDetails receipt={receiptDetails} />
-                  </Box>
-
-                  <form onSubmit={handleReprintReceipt} style={{ marginTop: 'auto' }}>
-                    {reprintError && (
-                      <Alert severity="error" sx={{ mb: 2, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
-                        {reprintError}
-                      </Alert>
-                    )}
-
-                    <TextField
-                      fullWidth
-                      required
-                      label="سبب إعادة الطباعة (إلزامي للـ Audit)"
-                      placeholder="أدخل سبب إعادة طباعة الإيصال..."
-                      value={reprintReason}
-                      onChange={(e) => setReprintReason(e.target.value)}
-                      size="small"
-                      sx={{
-                        mb: 2,
-                        '& .MuiInputLabel-root': {
-                          fontFamily: 'Cairo',
-                          left: dir === 'rtl' ? 'auto' : 0,
-                          right: dir === 'rtl' ? 24 : 'auto',
-                          transformOrigin: dir === 'rtl' ? 'right' : 'left'
-                        },
-                        '& .MuiOutlinedInput-input': {
-                          fontFamily: 'Cairo',
-                          textAlign: dir === 'rtl' ? 'right' : 'left'
-                        }
-                      }}
-                    />
-
-                    <Button
-                      fullWidth
-                      type="submit"
-                      variant="contained"
-                      color="secondary"
-                      startIcon={<PrintIcon />}
-                      disabled={reprintLoading}
-                      sx={{ fontFamily: 'Cairo', fontWeight: 'bold' }}
-                    >
-                      {reprintLoading ? 'جاري تحضير الطباعة...' : 'إعادة طباعة الإيصال'}
-                    </Button>
-                  </form>
-                </Box>
-              ) : (
-                <Box sx={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'text.secondary', p: 4, fontFamily: 'Cairo' }}>
-                  ابحث عن إيصال لعرض معاينة الطباعة الحرارية.
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-    </Box>
+      <AppSnackbar state={toast} onClose={() => setToast(null)} />
+    </div>
   );
 }
-
-export default Receipts;

@@ -1,86 +1,22 @@
-import React from 'react';
-import { Box, Typography } from '@mui/material';
-import Breadcrumbs from './Breadcrumbs.jsx';
-import { useLanguage } from '../../i18n/config.js';
+import { ChevronLeft, HomeRounded } from '@mui/icons-material';
+import { useLocation } from 'react-router-dom';
+import { t } from '../../locales/t.js';
 
-export const PageHeader = ({
-  title,
-  titleKey,
-  description,
-  descriptionKey,
-  actions,
-  status,
-  showBreadcrumbs = true
-}) => {
-  const { t, dir } = useLanguage();
-
-  const renderedTitle = titleKey ? t(titleKey) : title;
-  const renderedDescription = descriptionKey ? t(descriptionKey) : description;
-
-  return (
-    <Box sx={{ mb: 3, width: '100%' }}>
-      {showBreadcrumbs && <Breadcrumbs />}
-
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          justifyContent: 'space-between',
-          alignItems: { xs: 'flex-start', sm: 'center' },
-          gap: 2,
-          mt: 1
-        }}
-      >
-        <Box sx={{ textAlign: dir === 'rtl' ? 'right' : 'left' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-            <Typography
-              variant="h5"
-              component="h1"
-              sx={{
-                fontWeight: 700,
-                color: 'text.primary',
-                fontFamily: 'Cairo',
-                fontSize: { xs: '1.25rem', md: '1.5rem' }
-              }}
-            >
-              {renderedTitle}
-            </Typography>
-            {status}
-          </Box>
-          {renderedDescription && (
-            <Typography
-              variant="body2"
-              sx={{
-                color: 'text.secondary',
-                mt: 0.5,
-                fontFamily: 'Cairo',
-                fontSize: '0.825rem'
-              }}
-            >
-              {renderedDescription}
-            </Typography>
-          )}
-        </Box>
-
-        {actions && (
-          <Box
-            sx={{
-              display: 'flex',
-              gap: 1.5,
-              alignItems: 'center',
-              width: { xs: '100%', sm: 'auto' },
-              justifyContent: { xs: 'stretch', sm: 'flex-end' },
-              '& > button': {
-                width: { xs: '100%', sm: 'auto' }
-              }
-            }}
-          >
-            {actions}
-          </Box>
-        )}
-      </Box>
-    </Box>
-  );
+const labels = {
+  '/': 'nav.dashboard', '/pos': 'nav.pos', '/shift-summary': 'nav.currentShift', '/receipts': 'nav.receipts',
+  '/products': 'nav.products', '/categories': 'nav.categories', '/price-tiers': 'nav.priceTiers', '/inventory': 'nav.inventory',
+  '/preorders': 'nav.preorders', '/customers': 'nav.customers', '/payments': 'nav.payments', '/shifts': 'nav.shifts', '/users': 'nav.users',
+  '/reports': 'nav.reports', '/logs': 'nav.audit', '/printer-settings': 'nav.printers'
 };
 
-export default PageHeader;
+export function PageHeader({ title, description, actions }) {
+  const location = useLocation();
+  return <header className="page-header">
+    <div className="page-header__copy">
+      <div className="breadcrumbs"><HomeRounded fontSize="inherit"/><span>{t('nav.home')}</span><ChevronLeft fontSize="inherit"/><span>{t(labels[location.pathname] || '', title)}</span></div>
+      <h1 className="page-header__title">{title}</h1>
+      {description && <p className="page-header__description">{description}</p>}
+    </div>
+    {actions && <div className="page-header__actions">{actions}</div>}
+  </header>;
+}

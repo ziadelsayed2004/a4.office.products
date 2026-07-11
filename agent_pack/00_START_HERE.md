@@ -1,13 +1,10 @@
-# Start Here — A4 Office Products
+# Start Here
 
-1. Open `agent_pack/prompts/COPY_THIS_PROMPT.md`.
-2. Set `RUN_STEP_COUNT` to `1` or `2`.
-3. Paste the full prompt into the coding agent.
-4. The agent reads `agent_pack/prompts/ONE_PROMPT_RUNNER.md` and `agent_pack/status.json`.
-5. The agent executes only the next one or two pending steps.
+1. Read `agent_pack/README.md`.
+2. Copy `agent_pack/prompts/COPY_THIS_PROMPT.md`.
+3. Keep `RUN_STEP_COUNT: 2` or change it to `1`.
+4. Run the first eligible pending step from `agent_pack/status.json`.
+5. Complete and verify the first before a possible second.
+6. Never execute more than two steps.
 
-The frontend modernization phase begins at Step 061. All frontend work must preserve the current template character and obey the A4 design, responsive, theme, localization, POS, print, and RBAC contracts.
-
-## Frontend visual source of truth
-
-The authoritative reference template is `TEMPLETE-PROJECT/hamza.printing.press-main/client/`. The active target is `client/`. Copy the template's visual system and responsive interaction patterns only; replace all CodzHub/printing-press branding, wording, data, routes, permissions, and APIs with A4 requirements.
+The next step is **049 — Visual Template Parity and RTL Audit**.

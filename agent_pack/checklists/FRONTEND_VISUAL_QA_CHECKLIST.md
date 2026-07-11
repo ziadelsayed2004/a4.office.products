@@ -1,15 +1,17 @@
 # Frontend Visual QA Checklist
 
-- [ ] Matches A4 blue/navy template identity.
-- [ ] No purple or unrelated source-template branding remains.
-- [ ] Uses shared page header, cards, filters, tables, drawers, and dialogs.
-- [ ] No unintended page-level horizontal scrolling.
-- [ ] Loading, empty, error, and success states exist.
-- [ ] Arabic labels are readable and do not clip.
-- [ ] Technical values are isolated LTR.
-- [ ] Light mode verified.
-- [ ] Dark mode verified.
-- [ ] Focus state and keyboard navigation verified.
-- [ ] No product image UI introduced.
-- [ ] Print UI is isolated from screen theme.
-- [ ] Build and lint commands run or blockers documented.
+- [ ] A4 blue/navy identity is consistent.
+- [ ] Reference template morphology is matched without copying unrelated branding/content.
+- [ ] Top bar, right sidebar, collapsed sidebar, and right mobile drawer align correctly.
+- [ ] No page renders below fixed navigation.
+- [ ] No unintended body-level horizontal scrolling.
+- [ ] Page headers, cards, filters, tables, drawers, dialogs, and states use shared components.
+- [ ] Arabic text is readable and aligned right.
+- [ ] No label overlaps, broken dimensions, or MUI notch defects exist.
+- [ ] Technical values are locally isolated.
+- [ ] Loading, empty, error, success, and permission states are present.
+- [ ] Light and dark modes are complete.
+- [ ] Keyboard focus and scan-first behavior are visible and stable.
+- [ ] No product image UI, locale switch, or legacy branding remains.
+- [ ] Receipt/label preview is independent of screen theme.
+- [ ] Browser screenshots or an explicit environment blocker are attached to the report.

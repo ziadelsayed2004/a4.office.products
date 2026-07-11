@@ -1,13 +1,12 @@
-# I18N and Theme QA Checklist
+# Arabic RTL and Theme QA Checklist
 
-- [ ] Arabic is complete and default.
-- [ ] No visible hard-coded strings were added.
-- [ ] `ar.json` and `en.json` have matching keys when English is enabled.
-- [ ] Arabic direction is RTL.
-- [ ] English direction is LTR.
-- [ ] Phone, SKU, IDs, and tokens remain isolated LTR in Arabic.
-- [ ] Theme mode persists.
-- [ ] No first-paint theme flash.
-- [ ] Every page works in light mode.
-- [ ] Every page works in dark mode.
-- [ ] Print output is independent of screen mode.
+- [ ] `html` is `lang="ar" dir="rtl"`.
+- [ ] MUI and the runtime document are RTL.
+- [ ] No language switch, locale selector, or English runtime mode exists.
+- [ ] `ar.json` is the only locale loaded at runtime.
+- [ ] `en.json` remains unused storage only.
+- [ ] All visible menus, labels, validation, errors, reports, dialogs, and receipts are Arabic.
+- [ ] SKU, barcode, phone, ID, and token values use local LTR isolation only.
+- [ ] Field labels are external and no outlined notch appears.
+- [ ] Light/dark mode persists without breaking any page or overlay.
+- [ ] Print output remains controlled light output in both screen themes.

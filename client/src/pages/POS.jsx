@@ -1,1390 +1,195 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../app/AuthContext.jsx';
-import { useLanguage } from '../i18n/config.js';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Box,
-  Typography,
-  Button,
-  Grid,
-  Card,
-  CardContent,
-  TextField,
-  FormControl,
-  Select,
-  MenuItem,
-  Alert,
-  Divider,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControlLabel,
-  Checkbox,
-  Tabs,
-  Tab,
-  useTheme,
-  useMediaQuery
+  Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton,
+  InputAdornment, MenuItem, Paper, Tab, Tabs, TextField, Typography, useMediaQuery, useTheme
 } from '@mui/material';
 import {
-  QrCodeScanner as ScanIcon,
-  Search as SearchIcon,
-  Delete as DeleteIcon,
-  Payment as PaymentIcon,
-  Print as PrintIcon,
-  CheckCircle as CheckIcon
+  AddRounded, DeleteOutlineRounded, LocalOfferRounded, PointOfSaleRounded, QrCodeScannerRounded,
+  ReceiptLongRounded, RemoveRounded, SearchRounded, ShoppingCartRounded, SwapHorizRounded
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../api/client.js';
+import { useAuth } from '../app/AuthContext.jsx';
+import { PageHeader } from '../components/navigation/PageHeader.jsx';
+import { Field } from '../components/forms/Field.jsx';
+import { AppSnackbar } from '../components/feedback/AppSnackbar.jsx';
+import { EmptyState } from '../components/feedback/EmptyState.jsx';
+import { money, number, statusLabel } from '../utils/formatters.js';
+import '../styles/pos.css';
 
-export function POS() {
-  const { token, user, currentShift, setCurrentShift, loadCurrentShift } = useAuth();
-  const { dir } = useLanguage();
-  const [activeMobileTab, setActiveMobileTab] = useState(0);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+const emptyCustomer = { customerName: '', customerPhone: '', pickupMethod: 'walk_in' };
+
+export default function POS() {
+  const { currentShift, loadShift, setCurrentShift } = useAuth();
   const navigate = useNavigate();
-  
-  // Catalog lists
-  const [paymentMethodsList, setPaymentMethodsList] = useState([]);
-
-  // Opening Shift state
-  const [openingCashInput, setOpeningCashInput] = useState('1000');
-  const [openShiftLoading, setOpenShiftLoading] = useState(false);
-  const [openShiftError, setOpenShiftError] = useState('');
-
-  // POS Scanner state
-  const [posScanCode, setPosScanCode] = useState('');
-  const [posScanError, setPosScanError] = useState('');
-
-  // Fuzzy Search state
-  const [posSearchQuery, setPosSearchQuery] = useState('');
-  const [posSearchResults, setPosSearchResults] = useState([]);
-  const [posSearchLoading, setPosSearchLoading] = useState(false);
-
-  // Cart state
-  const [posCart, setPosCart] = useState([]);
-  const [posDiscount, setPosDiscount] = useState('0');
-
-  // Preorder options state
-  const [posPreorder, setPosPreorder] = useState(false);
-  const [posPreorderName, setPosPreorderName] = useState('');
-  const [posPreorderPhone, setPosPreorderPhone] = useState('');
-  const [posPreorderDeposit, setPosPreorderDeposit] = useState('0');
-
-  // Payment Modal state
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentAmounts, setPaymentAmounts] = useState({});
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [checkoutError, setCheckoutError] = useState('');
-  const [checkoutSuccessData, setCheckoutSuccessData] = useState(null);
-
-  // Preorder pickup state
-  const [showPreorderPickupModal, setShowPreorderPickupModal] = useState(false);
-  const [scannedPreorder, setScannedPreorder] = useState(null);
-  const [preorderPickupError, setPreorderPickupError] = useState('');
-  const [isPreorderPickupCheckout, setIsPreorderPickupCheckout] = useState(false);
-
-  // Manual preorder lookup state
-  const [showManualPickupLookup, setShowManualPickupLookup] = useState(false);
-  const [pickupSearchQuery, setPickupSearchQuery] = useState('');
-  const [pickupSearchResults, setPickupSearchResults] = useState([]);
-  const [pickupSearchLoading, setPickupSearchLoading] = useState(false);
-  const [pickupSearchError, setPickupSearchError] = useState('');
-
-
-
-  const loadPaymentMethods = async () => {
-    if (!token) return;
-    try {
-      const res = await fetch('/api/payment-methods', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const payload = await res.json();
-      if (res.status === 200) setPaymentMethodsList(payload.data || []);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const scanRef = useRef(null);
+  const [tab, setTab] = useState('sale');
+  const [scan, setScan] = useState('');
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [discountEgp, setDiscountEgp] = useState('0');
+  const [customer, setCustomer] = useState(emptyCustomer);
+  const [openingCash, setOpeningCash] = useState('0');
+  const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [payments, setPayments] = useState({});
+  const [success, setSuccess] = useState(null);
+  const [pickupOpen, setPickupOpen] = useState(false);
+  const [pickupData, setPickupData] = useState(null);
+  const [pickupPayments, setPickupPayments] = useState({});
 
   useEffect(() => {
-    if (token) {
-      loadPaymentMethods();
-    }
-  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+    api.get('/api/payment-methods').then(r => setPaymentMethods((r.data || []).filter(x => x.is_active))).catch(e => setToast({ severity: 'error', message: e.message }));
+    setTimeout(() => scanRef.current?.focus(), 150);
+  }, []);
 
-  // Derived totals
-  const posSubtotal = posCart.reduce((sum, item) => sum + item.selectedPrice * item.quantity, 0);
-  const discountVal = Math.round((parseFloat(posDiscount) || 0) * 100);
-  const posTotal = Math.max(0, posSubtotal - discountVal);
+  const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0), [cart]);
+  const discountMinor = Math.max(0, Math.round(Number(discountEgp || 0) * 100));
+  const saleTotal = Math.max(0, subtotal - discountMinor);
+  const depositRequired = useMemo(() => {
+    const raw = cart.reduce((sum, item) => sum + Math.round(item.quantity * item.unitPrice * ((item.product.default_preorder_deposit_pct || 50) / 100)), 0);
+    return subtotal > 0 && discountMinor > 0 ? Math.round(raw * (saleTotal / subtotal)) : raw;
+  }, [cart, subtotal, discountMinor, saleTotal]);
+  const due = tab === 'preorder' ? depositRequired : saleTotal;
 
-  // Recalculate deposit required when preorder cart changes
-  useEffect(() => {
-    if (posPreorder && posCart.length > 0) {
-      let calculatedDepositRequired = 0;
-      for (const item of posCart) {
-        const pct = item.product.default_preorder_deposit_pct || 50;
-        calculatedDepositRequired += item.selectedPrice * item.quantity * (pct / 100);
-      }
-      if (posSubtotal > 0 && discountVal > 0) {
-        calculatedDepositRequired = Math.round(calculatedDepositRequired * (posTotal / posSubtotal));
-      }
-      const depositEgp = (calculatedDepositRequired / 100).toFixed(2);
-      setPosPreorderDeposit(depositEgp);
-    } else if (!posPreorder) {
-      setPosPreorderDeposit('0');
-    }
-  }, [posPreorder, posCart, posDiscount, posTotal, posSubtotal, discountVal]);
-
-  const handleOpenShift = async (e) => {
-    e.preventDefault();
-    setOpenShiftError('');
-    setOpenShiftLoading(true);
-    try {
-      const res = await fetch('/api/shifts/open', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ openingCash: parseFloat(openingCashInput) || 0 })
-      });
-      const payload = await res.json();
-      if (res.status === 200) {
-        setCurrentShift(payload.data.shift);
-        setOpeningCashInput('1000');
-        loadCurrentShift(token);
-      } else {
-        setOpenShiftError(payload.error || 'فشل فتح الوردية.');
-      }
-    } catch (err) {
-      setOpenShiftError('حدث خطأ أثناء الاتصال بالخادم.');
-    } finally {
-      setOpenShiftLoading(false);
-    }
-  };
-
-  const handleScanPreorder = async (preorderToken) => {
-    setPosScanError('');
-    setPreorderPickupError('');
-    setScannedPreorder(null);
-    try {
-      const res = await fetch('/api/pos/preorders/scan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ token: preorderToken })
-      });
-      const payload = await res.json();
-      if (res.status === 200) {
-        setScannedPreorder(payload.data);
-        setShowPreorderPickupModal(true);
-      } else {
-        setPosScanError(payload.error || 'رمز الاستلام غير صحيح أو منتهي.');
-      }
-    } catch (err) {
-      setPosScanError('حدث خطأ بالاتصال بالخادم.');
-    }
-  };
-
-  const handlePreorderSearch = async (query) => {
-    setPickupSearchQuery(query);
-    if (!query.trim()) {
-      setPickupSearchResults([]);
-      return;
-    }
-    setPickupSearchLoading(true);
-    setPickupSearchError('');
-    try {
-      const res = await fetch(`/api/admin/preorders?q=${encodeURIComponent(query)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const payload = await res.json();
-      if (res.status === 200) {
-        setPickupSearchResults(payload.data || []);
-      } else {
-        setPickupSearchError(payload.error || 'فشل البحث عن الحجوزات.');
-      }
-    } catch (err) {
-      setPickupSearchError('حدث خطأ بالاتصال بالخادم.');
-    } finally {
-      setPickupSearchLoading(false);
-    }
-  };
-
-  const handleTokenLookup = async (tokenCode) => {
-    if (!tokenCode.trim()) return;
-    setPickupSearchLoading(true);
-    setPickupSearchError('');
-    try {
-      const res = await fetch('/api/pos/preorders/scan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ token: tokenCode.trim() })
-      });
-      const payload = await res.json();
-      if (res.status === 200) {
-        setScannedPreorder(payload.data);
-        setShowManualPickupLookup(false);
-        setShowPreorderPickupModal(true);
-      } else {
-        setPickupSearchError(payload.error || 'رمز الاستلام غير صحيح أو منتهي.');
-      }
-    } catch (err) {
-      setPickupSearchError('حدث خطأ بالاتصال بالخادم.');
-    } finally {
-      setPickupSearchLoading(false);
-    }
-  };
-
-  const addProductToCart = (product) => {
-    const existingIndex = posCart.findIndex((item) => item.product.id === product.id);
-
-    if (existingIndex > -1) {
-      const item = posCart[existingIndex];
-      const nextQty = item.quantity + 1;
-
-      // Stock guard check (only enforce when NOT in preorder mode)
-      if (!posPreorder && nextQty > product.stock) {
-        setPosScanError('عذراً، لا يمكن تجاوز المخزون الفعلي المتاح للمنتج.');
-        return;
-      }
-
-      const updated = [...posCart];
-      updated[existingIndex].quantity = nextQty;
-      setPosCart(updated);
-    } else {
-      // Stock guard check for new item
-      if (!posPreorder && product.stock < 1) {
-        setPosScanError('عذراً، المخزون الفعلي للمنتج غير متوفر (0).');
-        return;
-      }
-
-      const defaultTier = product.prices && product.prices.length > 0 ? product.prices[0] : null;
-      const newItem = {
-        product,
-        quantity: 1,
-        selectedPriceTierId: defaultTier ? defaultTier.price_tier_id : null,
-        selectedPrice: defaultTier ? defaultTier.price : 0
-      };
-      setPosCart([...posCart, newItem]);
-    }
-  };
-
-  const handlePosScan = async (e) => {
-    e.preventDefault();
-    setPosScanError('');
-    const scannedVal = posScanCode.trim();
-    if (!scannedVal) return;
-
-    if (scannedVal.startsWith('pre_')) {
-      handleScanPreorder(scannedVal);
-      setPosScanCode('');
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/pos/scan-product', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ code: posScanCode.trim() })
-      });
-      const payload = await res.json();
-      if (res.status === 200) {
-        addProductToCart(payload.data);
-        setPosScanCode('');
-      } else {
-        setPosScanError(payload.error || 'فشلت عملية مسح المنتج.');
-      }
-    } catch (err) {
-      setPosScanError('حدث خطأ بالاتصال بالخادم.');
-    }
-  };
-
-  const handlePosSearch = async (query) => {
-    setPosSearchQuery(query);
-    if (!query.trim()) {
-      setPosSearchResults([]);
-      return;
-    }
-
-    setPosSearchLoading(true);
-    try {
-      const res = await fetch(`/api/pos/products/search?q=${encodeURIComponent(query)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const payload = await res.json();
-      if (res.status === 200) {
-        setPosSearchResults(payload.data || []);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setPosSearchLoading(false);
-    }
-  };
-
-  const updateCartItemPriceTier = (productId, tierId) => {
-    const updated = posCart.map((item) => {
-      if (item.product.id === productId) {
-        const foundPrice = item.product.prices.find((p) => p.price_tier_id === parseInt(tierId, 10));
-        return {
-          ...item,
-          selectedPriceTierId: parseInt(tierId, 10),
-          selectedPrice: foundPrice ? foundPrice.price : 0
-        };
-      }
-      return item;
+  const ensureDefaultPayment = (totalMinor, setter) => {
+    if (!paymentMethods.length) return;
+    setter(prev => {
+      const hasAny = Object.values(prev).some(v => Number(v) > 0);
+      if (hasAny) return prev;
+      return { [paymentMethods[0].id]: (totalMinor / 100).toFixed(2) };
     });
-    setPosCart(updated);
   };
 
-  const updateCartItemQuantity = (productId, nextQty) => {
-    const qty = parseInt(nextQty, 10);
-    if (isNaN(qty) || qty <= 0) return;
-
-    const item = posCart.find((i) => i.product.id === productId);
-    if (!item) return;
-
-    // Stock validation check (only check if NOT preorder)
-    if (!posPreorder && qty > item.product.stock) {
-      alert('لا توجد كمية كافية في المخزون للمنتج.');
-      return;
-    }
-
-    const updated = posCart.map((i) => {
-      if (i.product.id === productId) {
-        return { ...i, quantity: qty };
-      }
-      return i;
-    });
-    setPosCart(updated);
-  };
-
-  const removeCartItem = (productId) => {
-    setPosCart(posCart.filter((item) => item.product.id !== productId));
-  };
-
-  const openPaymentModal = () => {
-    if (posCart.length === 0) return;
-
-    if (posPreorder) {
-      if (!posPreorderName.trim()) {
-        alert('اسم العميل مطلوب لعمل الحجز المسبق.');
-        return;
-      }
-      if (!posPreorderPhone.trim()) {
-        alert('رقم هاتف العميل مطلوب لعمل الحجز المسبق.');
-        return;
-      }
-      const depVal = parseFloat(posPreorderDeposit) || 0;
-      if (depVal <= 0) {
-        alert('مبلغ العربون مطلوب ويجب أن يكون أكبر من صفر.');
-        return;
-      }
-    }
-
-    const activeMethods = paymentMethodsList.filter((m) => m.is_active);
-    const initialAmounts = {};
-    if (activeMethods.length > 0) {
-      const initialSum = posPreorder ? parseFloat(posPreorderDeposit) || 0 : posTotal / 100;
-      initialAmounts[activeMethods[0].id] = initialSum.toString();
-    }
-
-    setPaymentAmounts(initialAmounts);
-    setCheckoutError('');
-    setCheckoutSuccessData(null);
-    setShowPaymentModal(true);
-  };
-
-  const startPreorderPickupCheckout = () => {
-    if (!scannedPreorder) return;
-    setIsPreorderPickupCheckout(true);
-    setShowPreorderPickupModal(false);
-
-    const activeMethods = paymentMethodsList.filter((m) => m.is_active);
-    const initialAmounts = {};
-    if (activeMethods.length > 0) {
-      const initialSum = scannedPreorder.preorder.remaining_amount / 100;
-      initialAmounts[activeMethods[0].id] = initialSum.toString();
-    }
-
-    setPaymentAmounts(initialAmounts);
-    setCheckoutError('');
-    setCheckoutSuccessData(null);
-    setShowPaymentModal(true);
-  };
-
-  const handleCheckoutSubmit = async (e) => {
-    e.preventDefault();
-    setCheckoutError('');
-    setCheckoutLoading(true);
-
+  const openShift = async () => {
+    setLoading(true);
     try {
-      const paymentsPayload = Object.entries(paymentAmounts)
-        .map(([method, amountStr]) => {
-          const val = parseFloat(amountStr) || 0;
-          return {
-            method,
-            amount: Math.round(val * 100)
-          };
-        })
-        .filter((p) => p.amount > 0);
-
-      const expectedSum = isPreorderPickupCheckout
-        ? scannedPreorder.preorder.remaining_amount
-        : posPreorder
-        ? Math.round((parseFloat(posPreorderDeposit) || 0) * 100)
-        : posTotal;
-
-      const totalPaymentsSum = paymentsPayload.reduce((sum, p) => sum + p.amount, 0);
-      if (totalPaymentsSum !== expectedSum) {
-        throw new Error(
-          `إجمالي الدفعات (${(totalPaymentsSum / 100).toFixed(2)} ج.م) لا يتطابق مع المبلغ المطلوب (${(
-            expectedSum / 100
-          ).toFixed(2)} ج.م).`
-        );
-      }
-
-      let res, url, body;
-      if (isPreorderPickupCheckout) {
-        url = `/api/pos/preorders/${scannedPreorder.preorder.id}/pickup`;
-        body = {
-          payments: paymentsPayload
-        };
-      } else {
-        const itemsPayload = posCart.map((item) => ({
-          product_id: item.product.id,
-          quantity: item.quantity,
-          price_tier_id: item.selectedPriceTierId
-        }));
-
-        if (posPreorder) {
-          url = '/api/pos/preorders';
-          body = {
-            customerName: posPreorderName,
-            customerPhone: posPreorderPhone,
-            items: itemsPayload,
-            discount: discountVal,
-            depositPaid: expectedSum,
-            pickupMethod: 'walk_in',
-            payments: paymentsPayload
-          };
-        } else {
-          url = '/api/pos/orders/checkout';
-          body = {
-            customerId: null,
-            items: itemsPayload,
-            discount: discountVal,
-            payments: paymentsPayload
-          };
-        }
-      }
-
-      res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(body)
-      });
-
-      const payload = await res.json();
-      if (res.status === 201 || res.status === 200) {
-        const receiptId = payload.data.receipt_id;
-        if (receiptId) {
-          try {
-            const rRes = await fetch(`/api/pos/receipts/${receiptId}`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const rPayload = await rRes.json();
-            if (rRes.status === 200) {
-              setReceiptDetails(rPayload.data);
-            }
-          } catch (rErr) {
-            console.error(rErr);
-          }
-        }
-
-        setCheckoutSuccessData(payload.data);
-        setPosCart([]);
-        setPosDiscount('0');
-        setPosPreorder(false);
-        setPosPreorderName('');
-        setPosPreorderPhone('');
-        setPosPreorderDeposit('0');
-        setIsPreorderPickupCheckout(false);
-        setScannedPreorder(null);
-      } else {
-        setCheckoutError(payload.error || 'فشلت عملية إتمام الطلب.');
-      }
-    } catch (err) {
-      setCheckoutError(err.message || 'حدث خطأ بالخادم.');
-    } finally {
-      setCheckoutLoading(false);
-    }
+      const res = await api.post('/api/shifts/open', { openingCash: Number(openingCash || 0) });
+      setCurrentShift(res.data.shift);
+      setToast({ message: res.data.resumed ? 'تم استكمال الشيفت المفتوح.' : 'تم فتح الشيفت بنجاح.' });
+    } catch (e) { setToast({ severity: 'error', message: e.message }); }
+    finally { setLoading(false); }
   };
 
-  // Close shift request check
-  if (currentShift && currentShift.status === 'CLOSE_REQUESTED') {
-    return (
-      <Box sx={{ maxWidth: 500, mx: 'auto', mt: 10, p: 4 }}>
-        <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h5" sx={{ color: 'warning.main', fontWeight: 'bold', mb: 2, fontFamily: 'Cairo' }}>
-            الوردية قيد مراجعة الإغلاق
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, fontFamily: 'Cairo' }}>
-            الوردية الحالية قيد المراجعة للإغلاق من قبل الإدارة. لا يمكن إجراء أي عمليات بيع أو حجز أو استلام جديدة حتى
-            يقوم المسؤول بالموافقة على إغلاق الوردية الحالية.
-          </Typography>
-        </Paper>
-      </Box>
-    );
-  }
+  const searchProducts = async (value = query) => {
+    setSearching(true);
+    try { setResults((await api.get(`/api/pos/products/search?q=${encodeURIComponent(value.trim())}`)).data || []); }
+    catch (e) { setToast({ severity: 'error', message: e.message }); }
+    finally { setSearching(false); }
+  };
 
-  // Open shift prompt check
-  if (!currentShift || (currentShift.status !== 'OPEN' && currentShift.status !== 'CLOSE_REQUESTED')) {
-    return (
-      <Box sx={{ maxWidth: 500, mx: 'auto', mt: 10, p: 4 }}>
-        <Paper variant="outlined" sx={{ p: 4 }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2, borderBottom: '1px solid', borderColor: 'divider', pb: 1, fontFamily: 'Cairo' }}>
-            بدء وردية جديدة
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, lineHeight: 1.6, fontFamily: 'Cairo' }}>
-            لا يمكن إجراء أي عمليات بيع أو حجز مسبق أو استلام بدون وردية نشطة مفتوحة حالياً للكاشير. الرجاء إدخال مبلغ عهدة
-            الصندوق الابتدائية لفتح ورديتك الحالية.
-          </Typography>
+  const addProduct = (product) => {
+    if (tab === 'sale' && product.stock <= 0) return setToast({ severity: 'warning', message: 'المنتج غير متوفر بالمخزون. استخدم الحجز المسبق.' });
+    if (tab === 'sale' && !product.can_be_sold) return setToast({ severity: 'warning', message: 'هذا المنتج غير متاح للبيع المباشر.' });
+    if (tab === 'preorder' && !product.can_be_preordered) return setToast({ severity: 'warning', message: 'هذا المنتج غير متاح للحجز المسبق.' });
+    const price = product.prices?.find(p => p.price > 0) || product.prices?.[0];
+    if (!price) return setToast({ severity: 'error', message: 'لا يوجد سعر متاح لهذا المنتج.' });
+    setCart(prev => {
+      const found = prev.find(x => x.product.id === product.id && x.priceTierId === price.price_tier_id);
+      if (found) {
+        const nextQty = found.quantity + 1;
+        if (tab === 'sale' && nextQty > product.stock) { setToast({ severity: 'warning', message: `المتاح من المنتج ${product.stock} فقط.` }); return prev; }
+        return prev.map(x => x === found ? { ...x, quantity: nextQty } : x);
+      }
+      return [...prev, { product, quantity: 1, priceTierId: price.price_tier_id, unitPrice: price.price }];
+    });
+    setQuery(''); setScan(''); setTimeout(() => scanRef.current?.focus(), 50);
+  };
 
-          {openShiftError && (
-            <Alert severity="error" sx={{ mb: 2, fontFamily: 'Cairo', textAlign: 'right' }}>
-              {openShiftError}
-            </Alert>
-          )}
+  const scanCode = async () => {
+    const code = scan.trim(); if (!code) return;
+    if (code.startsWith('pre_')) { await scanPreorder(code); return; }
+    setSearching(true);
+    try { addProduct((await api.post('/api/pos/scan-product', { code })).data); }
+    catch (e) { setToast({ severity: 'error', message: e.message }); }
+    finally { setSearching(false); }
+  };
 
-          <form onSubmit={handleOpenShift}>
-            <TextField
-              fullWidth
-              required
-              type="number"
-              inputProps={{ step: '0.01', min: '0' }}
-              label="مبلغ عهدة البداية (بالجنيه المصري) *"
-              value={openingCashInput}
-              onChange={(e) => setOpeningCashInput(e.target.value)}
-              disabled={openShiftLoading}
-              size="small"
-              sx={{ mb: 3, '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
-            />
-            <Button
-              fullWidth
-              type="submit"
-              variant="contained"
-              disabled={openShiftLoading}
-              sx={{ fontFamily: 'Cairo', fontWeight: 'bold' }}
-            >
-              {openShiftLoading ? 'جاري فتح الوردية...' : 'فتح الوردية والبدء'}
-            </Button>
-          </form>
-        </Paper>
-      </Box>
-    );
-  }
+  const updateQty = (index, delta) => setCart(prev => prev.flatMap((item, i) => {
+    if (i !== index) return [item];
+    const quantity = item.quantity + delta;
+    if (quantity <= 0) return [];
+    if (tab === 'sale' && quantity > item.product.stock) { setToast({ severity: 'warning', message: `الحد الأقصى المتاح ${item.product.stock}.` }); return [item]; }
+    return [{ ...item, quantity }];
+  }));
+  const updateTier = (index, tierId) => setCart(prev => prev.map((item, i) => {
+    if (i !== index) return item;
+    const price = item.product.prices.find(p => p.price_tier_id === Number(tierId));
+    return price ? { ...item, priceTierId: price.price_tier_id, unitPrice: price.price } : item;
+  }));
 
-  return (
-    <Box sx={{ width: '100%', height: { xs: 'auto', md: 'calc(100vh - 120px)' }, pb: { xs: 8, md: 0 }, position: 'relative' }}>
-      {/* Mobile/Tablet Tab bar toggle */}
-      <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 2 }}>
-        <Tabs
-          value={activeMobileTab}
-          onChange={(e, val) => setActiveMobileTab(val)}
-          variant="fullWidth"
-          sx={{ borderBottom: 1, borderColor: 'divider' }}
-        >
-          <Tab label="البحث والمسح" sx={{ fontFamily: 'Cairo', fontWeight: 'bold' }} />
-          <Tab
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <span>السلة</span>
-                <Chip
-                  label={posCart.reduce((sum, item) => sum + item.quantity, 0)}
-                  size="small"
-                  color="primary"
-                  sx={{ height: 20, fontSize: '0.75rem', fontWeight: 'bold' }}
-                />
-              </Box>
-            }
-            sx={{ fontFamily: 'Cairo', fontWeight: 'bold' }}
-          />
-        </Tabs>
-      </Box>
+  const startCheckout = () => {
+    if (!cart.length) return setToast({ severity: 'warning', message: 'أضف منتجاً واحداً على الأقل.' });
+    if (tab === 'preorder' && (!customer.customerName.trim() || !customer.customerPhone.trim())) return setToast({ severity: 'warning', message: 'اسم العميل ورقم الهاتف مطلوبان للحجز.' });
+    setSuccess(null); setPayments({}); ensureDefaultPayment(due, setPayments); setCheckoutOpen(true);
+  };
+  const paymentPayload = (state) => Object.entries(state).filter(([,v]) => Number(v) > 0).map(([method, v]) => ({ method, amount: Math.round(Number(v) * 100) }));
+  const completeCheckout = async () => {
+    const list = paymentPayload(payments); const paid = list.reduce((a,b) => a + b.amount, 0);
+    if (paid !== due) return setToast({ severity: 'error', message: `مجموع الدفعات ${money(paid)} ويجب أن يساوي ${money(due)}.` });
+    setLoading(true);
+    try {
+      const items = cart.map(i => ({ product_id: i.product.id, quantity: i.quantity, price_tier_id: i.priceTierId }));
+      const body = tab === 'preorder'
+        ? { ...customer, items, discount: discountMinor, depositPaid: due, payments: list }
+        : { customerId: null, items, discount: discountMinor, payments: list };
+      const endpoint = tab === 'preorder' ? '/api/pos/preorders' : '/api/pos/orders/checkout';
+      const res = await api.post(endpoint, body);
+      setSuccess(res.data); setCart([]); setDiscountEgp('0'); setCustomer(emptyCustomer); setPayments({}); await loadShift();
+    } catch (e) { setToast({ severity: 'error', message: e.message }); }
+    finally { setLoading(false); }
+  };
 
-      <Grid container spacing={3} sx={{ height: { xs: 'auto', md: '100%' } }}>
-        {/* Left Side: Scan & Fuzzy search */}
-        <Grid item xs={12} md={3} sx={{ height: { xs: 'auto', md: '100%' }, display: { xs: activeMobileTab === 0 ? 'block' : 'none', md: 'block' } }}>
-          <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, overflowY: 'auto' }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', borderBottom: '1px solid', borderColor: 'divider', pb: 1, fontFamily: 'Cairo' }}>
-                إضافة المنتجات للسلة
-              </Typography>
+  const scanPreorder = async (token = scan) => {
+    if (!token.trim()) return setToast({ severity: 'warning', message: 'أدخل رمز استلام الحجز.' });
+    setLoading(true);
+    try {
+      const data = (await api.post('/api/pos/preorders/scan', { token: token.trim() })).data;
+      setPickupData(data); setPickupPayments({}); ensureDefaultPayment(data.preorder.remaining_amount, setPickupPayments); setPickupOpen(true); setScan('');
+    } catch (e) { setToast({ severity: 'error', message: e.message }); }
+    finally { setLoading(false); }
+  };
+  const completePickup = async () => {
+    const list = paymentPayload(pickupPayments); const dueMinor = pickupData.preorder.remaining_amount; const paid = list.reduce((a,b) => a + b.amount, 0);
+    if (paid !== dueMinor) return setToast({ severity: 'error', message: `مجموع الدفعات يجب أن يساوي ${money(dueMinor)}.` });
+    setLoading(true);
+    try { const res = await api.post(`/api/pos/preorders/${pickupData.preorder.id}/pickup`, { payments: list }); setSuccess(res.data); setPickupOpen(false); setCheckoutOpen(true); setPickupData(null); setPickupPayments({}); await loadShift(); }
+    catch (e) { setToast({ severity: 'error', message: e.message }); }
+    finally { setLoading(false); }
+  };
 
-              {/* Barcode scanner scan input */}
-              <form onSubmit={handlePosScan}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="مسح الرمز (QR أو SKU أو الباركود)"
-                  placeholder="امسح الرمز أو اكتبه واضغط Enter..."
-                  value={posScanCode}
-                  onChange={(e) => setPosScanCode(e.target.value)}
-                  InputProps={{
-                    startAdornment: <ScanIcon sx={{ color: 'text.secondary', mr: 1 }} />
-                  }}
-                  sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo', fontSize: '0.85rem' } }}
-                />
-              </form>
+  if (!currentShift || currentShift.status !== 'OPEN') return <div className="a4-page"><PageHeader title="نقطة البيع" description="يجب فتح شيفت نشط قبل تنفيذ أي عملية بيع أو حجز أو استلام."/><section className="shift-gate"><div className="shift-gate__icon"><PointOfSaleRounded/></div><h2>ابدأ الشيفت</h2><p>أدخل عهدة بداية الدرج. يمكن أن تكون صفر إذا لم توجد عهدة افتتاحية.</p><Field label="عهدة البداية بالجنيه"><TextField type="number" value={openingCash} onChange={e => setOpeningCash(e.target.value)} inputProps={{ min: 0, step: .01 }}/></Field><Button variant="contained" size="large" onClick={openShift} disabled={loading}>{loading ? 'جاري فتح الشيفت...' : 'فتح الشيفت وبدء العمل'}</Button></section><AppSnackbar state={toast} onClose={() => setToast(null)}/></div>;
 
-              {posScanError && (
-                <Alert severity="error" sx={{ py: 0.5, fontFamily: 'Cairo', fontSize: '0.75rem', textAlign: 'right' }}>
-                  {posScanError}
-                </Alert>
-              )}
+  return <div className="a4-page pos-page">
+    <PageHeader title="نقطة البيع" description="واجهة سريعة مهيأة للسكان ولوحة المفاتيح واللمس." actions={<Button variant="outlined" startIcon={<SwapHorizRounded/>} onClick={() => navigate('/shift-summary')}>ملخص الشيفت</Button>}/>
+    <Paper variant="outlined" className="pos-mode-tabs"><Tabs value={tab} onChange={(_,v) => { setTab(v); setCart([]); setDiscountEgp('0'); }} variant="scrollable"><Tab value="sale" icon={<PointOfSaleRounded/>} iconPosition="start" label="بيع مباشر"/><Tab value="preorder" icon={<LocalOfferRounded/>} iconPosition="start" label="حجز مسبق"/><Tab value="pickup" icon={<QrCodeScannerRounded/>} iconPosition="start" label="استلام حجز"/></Tabs></Paper>
 
-              {/* Fuzzy Search */}
-              <TextField
-                fullWidth
-                size="small"
-                label="البحث اليدوي بالاسم"
-                placeholder="اكتب اسم المنتج للبحث..."
-                value={posSearchQuery}
-                onChange={(e) => handlePosSearch(e.target.value)}
-                InputProps={{
-                  startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
-                }}
-                sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo', fontSize: '0.85rem' } }}
-              />
+    {tab === 'pickup' ? <section className="pickup-scanner a4-page-section"><div className="pickup-scanner__icon"><QrCodeScannerRounded/></div><h2>سكان رمز الحجز</h2><p>امسح الرمز الموجود على ريسيت الحجز أو الصقه في الحقل التالي.</p><div className="pickup-scanner__form"><TextField autoFocus value={scan} onChange={e => setScan(e.target.value)} onKeyDown={e => e.key === 'Enter' && scanPreorder()} placeholder="pre_xxxxxxxxxxxxxxxxx" inputProps={{ dir: 'ltr' }} fullWidth/><Button variant="contained" onClick={() => scanPreorder()} disabled={loading}>عرض الحجز</Button></div></section> : <>
+      <section className="pos-scanbar"><TextField inputRef={scanRef} value={scan} onChange={e => setScan(e.target.value)} onKeyDown={e => e.key === 'Enter' && scanCode()} placeholder="امسح رمز المنتج أو اكتب SKU / الباركود" fullWidth InputProps={{ startAdornment: <InputAdornment position="start"><QrCodeScannerRounded color="primary"/></InputAdornment>, endAdornment: <InputAdornment position="end"><Button size="small" onClick={scanCode}>إضافة</Button></InputAdornment> }}/></section>
+      <div className="pos-workspace">
+        <section className="pos-catalog a4-page-section"><div className="a4-toolbar"><div><h2 className="a4-section-title">البحث عن المنتجات</h2><p className="a4-section-subtitle">النتائج النشطة المتاحة للبيع أو الحجز.</p></div></div><div className="pos-search"><TextField value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchProducts()} placeholder="ابحث باسم المنتج أو الكود" fullWidth InputProps={{ startAdornment: <InputAdornment position="start"><SearchRounded/></InputAdornment> }}/><Button variant="outlined" onClick={() => searchProducts()} disabled={searching}>بحث</Button></div>
+          <div className="pos-product-grid">{results.length ? results.map(product => <button className="pos-product-card" type="button" key={product.id} onClick={() => addProduct(product)}><div className="pos-product-card__head"><span>{product.category_name}</span><strong className={product.stock <= 0 ? 'is-out' : ''}>{product.stock <= 0 ? 'غير متوفر' : `${number(product.stock)} متاح`}</strong></div><h3>{product.name}</h3><div className="pos-product-card__meta"><span className="a4-ltr">{product.sku}</span><b>{money(product.prices?.find(p => p.price > 0)?.price || 0)}</b></div></button>) : <EmptyState title="ابدأ البحث" description="اكتب جزءاً من الاسم أو امسح رمز المنتج لإضافته مباشرة."/>}</div>
+        </section>
+        <aside className="pos-cart a4-page-section"><div className="a4-toolbar"><div><h2 className="a4-section-title">{tab === 'preorder' ? 'منتجات الحجز' : 'سلة البيع'}</h2><p className="a4-section-subtitle">{number(cart.reduce((s,i) => s + i.quantity, 0))} قطعة</p></div><ShoppingCartRounded color="primary"/></div>
+          <div className="pos-cart__items">{cart.length ? cart.map((item,index) => <article className="pos-cart-item" key={`${item.product.id}-${index}`}><div className="pos-cart-item__head"><div><strong>{item.product.name}</strong><span className="a4-ltr">{item.product.sku}</span></div><IconButton size="small" color="error" onClick={() => setCart(v => v.filter((_,i) => i !== index))}><DeleteOutlineRounded fontSize="small"/></IconButton></div><TextField select size="small" value={item.priceTierId} onChange={e => updateTier(index,e.target.value)} fullWidth>{item.product.prices.map(p => <MenuItem key={p.price_tier_id} value={p.price_tier_id}>{p.tier_name} — {money(p.price)}</MenuItem>)}</TextField><div className="pos-cart-item__bottom"><div className="qty-control"><IconButton size="small" onClick={() => updateQty(index,-1)}><RemoveRounded/></IconButton><strong>{number(item.quantity)}</strong><IconButton size="small" onClick={() => updateQty(index,1)}><AddRounded/></IconButton></div><b>{money(item.quantity * item.unitPrice)}</b></div></article>) : <EmptyState title="السلة فارغة" description="أضف المنتجات بالسكان أو من نتائج البحث."/>}</div>
+          {tab === 'preorder' && <div className="pos-customer"><Field label="اسم العميل" required><TextField size="small" value={customer.customerName} onChange={e => setCustomer(v => ({ ...v, customerName: e.target.value }))}/></Field><Field label="رقم الهاتف" required><TextField size="small" inputProps={{ dir: 'ltr' }} value={customer.customerPhone} onChange={e => setCustomer(v => ({ ...v, customerPhone: e.target.value }))}/></Field><Field label="طريقة الاستلام"><TextField select size="small" value={customer.pickupMethod} onChange={e => setCustomer(v => ({ ...v, pickupMethod: e.target.value }))}><MenuItem value="walk_in">استلام من المكتبة</MenuItem><MenuItem value="delivery">توصيل</MenuItem></TextField></Field></div>}
+          <div className="pos-summary"><div><span>المجموع الفرعي</span><strong>{money(subtotal)}</strong></div><div><span>الخصم</span><TextField size="small" type="number" value={discountEgp} onChange={e => setDiscountEgp(e.target.value)} inputProps={{ min: 0, step: .01 }} sx={{ width: 120 }}/></div>{tab === 'preorder' && <div><span>الحد الأدنى للعربون</span><strong>{money(depositRequired)}</strong></div>}<div className="pos-summary__total"><span>{tab === 'preorder' ? 'المطلوب الآن' : 'الإجمالي'}</span><strong>{money(due)}</strong></div></div>
+          <Button variant="contained" size="large" fullWidth startIcon={<ReceiptLongRounded/>} onClick={startCheckout} disabled={!cart.length}>{tab === 'preorder' ? 'تحصيل العربون وإنشاء الحجز' : 'الدفع وإصدار الريسيت'}</Button>
+        </aside>
+      </div>
+    </>}
 
-              {/* Suggestions results listing */}
-              <Box sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {posSearchLoading ? (
-                  <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', py: 2, fontFamily: 'Cairo' }}>
-                    جاري البحث...
-                  </Typography>
-                ) : posSearchResults.length > 0 ? (
-                  posSearchResults.map((p) => (
-                    <Paper
-                      key={p.id}
-                      onClick={() => {
-                        addProductToCart(p);
-                        setPosSearchResults([]);
-                        setPosSearchQuery('');
-                      }}
-                      sx={{
-                        p: 1.5,
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: 'action.hover' }
-                      }}
-                      variant="outlined"
-                    >
-                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                        {p.name}
-                      </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5, fontSize: '0.7rem', color: 'text.secondary' }}>
-                        <span>SKU: {p.sku}</span>
-                        <span>
-                          المخزون:{' '}
-                          <strong style={{ color: p.stock > 0 ? '#34c759' : '#ff3b30' }}>
-                            {p.stock}
-                          </strong>
-                        </span>
-                      </Box>
-                    </Paper>
-                  ))
-                ) : posSearchQuery ? (
-                  <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', py: 2, fontFamily: 'Cairo' }}>
-                    لا توجد نتائج مطابقة.
-                  </Typography>
-                ) : (
-                  <Typography variant="caption" sx={{ textAlign: 'center', color: 'text.secondary', py: 2, fontFamily: 'Cairo' }}>
-                    استخدم البحث بالاسم أو الرمز لإضافة منتجات.
-                  </Typography>
-                )}
-              </Box>
+    <Dialog open={checkoutOpen} onClose={loading ? undefined : () => { setCheckoutOpen(false); setSuccess(null); }} fullScreen={fullScreen} fullWidth maxWidth="sm">
+      <DialogTitle>{success ? 'تمت العملية بنجاح' : 'توزيع مبلغ الدفع'}</DialogTitle><DialogContent dividers>{success ? <div className="checkout-success"><div className="checkout-success__icon"><ReceiptLongRounded/></div><h2>{success.preorder_number ? 'تم إنشاء الحجز' : success.preorder_id ? 'تم استلام الحجز' : 'تم تسجيل البيع'}</h2><p>رقم الإيصال: <strong className="a4-ltr">{success.receipt_number}</strong></p>{success.invoice_number && <p>رقم الفاتورة: <strong className="a4-ltr">{success.invoice_number}</strong></p>}{success.preorder_number && <><p>رقم الحجز: <strong className="a4-ltr">{success.preorder_number}</strong></p><p>المتبقي عند الاستلام: <strong>{money(success.remaining_amount)}</strong></p></>}</div> : <><Alert severity="info" sx={{ mb: 2 }}>وزّع المبلغ المطلوب بالكامل على طريقة دفع واحدة أو أكثر. المطلوب: <strong>{money(due)}</strong></Alert><div className="a4-form-grid">{paymentMethods.map(method => <Field key={method.id} label={method.name_ar}><TextField type="number" inputProps={{ min: 0, step: .01, dir: 'ltr' }} value={payments[method.id] || ''} onChange={e => setPayments(v => ({ ...v, [method.id]: e.target.value }))}/></Field>)}</div></>}</DialogContent><DialogActions>{success ? <><Button onClick={() => { setCheckoutOpen(false); setSuccess(null); }}>عملية جديدة</Button><Button variant="contained" onClick={() => navigate(`/receipts?code=${encodeURIComponent(success.receipt_number)}`)}>عرض وطباعة الريسيت</Button></> : <><Button onClick={() => setCheckoutOpen(false)}>إلغاء</Button><Button variant="contained" onClick={completeCheckout} disabled={loading}>{loading ? 'جاري التسجيل...' : 'تأكيد الدفع'}</Button></>}</DialogActions>
+    </Dialog>
 
-              {/* Manual Preorder Pickup Action */}
-              <Box sx={{ mt: 'auto', pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  color="secondary"
-                  onClick={() => {
-                    setPickupSearchQuery('');
-                    setPickupSearchResults([]);
-                    setPickupSearchError('');
-                    setShowManualPickupLookup(true);
-                  }}
-                  sx={{ fontFamily: 'Cairo', fontWeight: 'bold' }}
-                >
-                  استلام حجز مسبق (Pickup)
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Center: Cart Grid List */}
-        <Grid item xs={12} md={6} sx={{ height: { xs: 'auto', md: '100%' }, display: { xs: activeMobileTab === 1 ? 'block' : 'none', md: 'block' } }}>
-          <Card variant="outlined" sx={{ height: { xs: 'auto', md: '100%' }, display: 'flex', flexDirection: 'column' }}>
-            <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, overflowY: 'auto' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}>
-                  سلة المبيعات الحالية
-                </Typography>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="error"
-                  startIcon={<DeleteIcon />}
-                  disabled={posCart.length === 0}
-                  onClick={() => setPosCart([])}
-                  sx={{ fontFamily: 'Cairo' }}
-                >
-                  تفريغ السلة
-                </Button>
-              </Box>
-
-              <TableContainer component={Paper} variant="outlined" sx={{ flex: 1, overflowY: 'auto' }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>المنتج</TableCell>
-                      <TableCell>رمز SKU</TableCell>
-                      <TableCell>المخزون</TableCell>
-                      <TableCell>فئة السعر</TableCell>
-                      <TableCell>سعر الوحدة</TableCell>
-                      <TableCell>الكمية</TableCell>
-                      <TableCell>الإجمالي</TableCell>
-                      <TableCell>حذف</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {posCart.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={8} align="center" sx={{ color: 'text.secondary', py: 4, fontFamily: 'Cairo' }}>
-                          السلة فارغة. يرجى مسح المنتجات لإضافتها.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      posCart.map((item) => (
-                        <TableRow key={item.product.id} hover>
-                          <TableCell sx={{ fontWeight: 'bold' }}>
-                            {item.product.name}
-                            {item.product.is_book === 1 && (
-                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                                كتاب تعليمي ({item.product.book_details?.school_grade || '—'} /{' '}
-                                {item.product.book_details?.subject || '—'})
-                              </Typography>
-                            )}
-                          </TableCell>
-                          <TableCell><code>{item.product.sku}</code></TableCell>
-                          <TableCell>
-                            <Chip
-                              label={item.product.stock}
-                              color={item.product.stock <= item.product.low_stock_threshold ? 'error' : 'success'}
-                              size="small"
-                              sx={{ fontWeight: 'bold' }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <FormControl size="small" sx={{ width: 110 }}>
-                              <Select
-                                value={item.selectedPriceTierId || ''}
-                                onChange={(e) => updateCartItemPriceTier(item.product.id, e.target.value)}
-                                sx={{ fontSize: '0.75rem' }}
-                              >
-                                {item.product.prices?.map((p) => (
-                                  <MenuItem key={p.price_tier_id} value={p.price_tier_id}>
-                                    {p.tier_name}
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
-                          </TableCell>
-                          <TableCell>{(item.selectedPrice / 100).toFixed(2)} ج.م</TableCell>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <Button size="small" sx={{ minWidth: 24, px: 0.5 }} onClick={() => updateCartItemQuantity(item.product.id, item.quantity - 1)}>-</Button>
-                              <TextField
-                                type="number"
-                                value={item.quantity}
-                                onChange={(e) => updateCartItemQuantity(item.product.id, parseInt(e.target.value, 10) || 1)}
-                                inputProps={{ min: 1, style: { textAlign: 'center', padding: '4px 0', width: 40 } }}
-                                size="small"
-                              />
-                              <Button size="small" sx={{ minWidth: 24, px: 0.5 }} onClick={() => updateCartItemQuantity(item.product.id, item.quantity + 1)}>+</Button>
-                            </Box>
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }}>
-                            {((item.selectedPrice * item.quantity) / 100).toFixed(2)} ج.م
-                          </TableCell>
-                          <TableCell>
-                            <Button size="small" color="error" onClick={() => removeCartItem(item.product.id)}>
-                              حذف
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Right Side: Totals and Preorder checkout settings */}
-        <Grid item xs={12} md={3} sx={{ height: { xs: 'auto', md: '100%' }, display: { xs: activeMobileTab === 1 ? 'block' : 'none', md: 'block' } }}>
-          <Card variant="outlined" sx={{ height: { xs: 'auto', md: '100%' }, display: 'flex', flexDirection: 'column' }}>
-            <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, overflowY: 'auto' }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', borderBottom: '1px solid', borderColor: 'divider', pb: 1, fontFamily: 'Cairo' }}>
-                ملخص الحساب والدفع
-              </Typography>
-
-              <Paper sx={{ p: 2, bgcolor: 'action.hover' }} variant="outlined">
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', mb: 1.5 }}>
-                  <span>المجموع الفرعي:</span>
-                  <strong>{(posSubtotal / 100).toFixed(2)} ج.م</strong>
-                </Box>
-
-                <TextField
-                  fullWidth
-                  type="number"
-                  inputProps={{ step: '0.01', min: '0' }}
-                  label="قيمة الخصم للفاتورة (ج.م)"
-                  value={posDiscount}
-                  onChange={(e) => setPosDiscount(e.target.value)}
-                  size="small"
-                  sx={{ mb: 2, '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
-                />
-
-                <Divider sx={{ my: 1 }} />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 'bold', color: 'success.main' }}>
-                  <span>الإجمالي الصافي:</span>
-                  <span>{(posTotal / 100).toFixed(2)} ج.م</span>
-                </Box>
-              </Paper>
-
-              {/* Preorders switch config */}
-              <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={posPreorder}
-                      onChange={(e) => {
-                        setPosPreorder(e.target.checked);
-                        if (!e.target.checked) {
-                          const updated = posCart.map((item) => {
-                            if (item.quantity > item.product.stock) {
-                              return { ...item, quantity: item.product.stock };
-                            }
-                            return item;
-                          });
-                          setPosCart(updated);
-                        }
-                      }}
-                    />
-                  }
-                  label="حجز مسبق للعميل (Preorder)"
-                  sx={{ '& .MuiFormControlLabel-label': { fontFamily: 'Cairo', fontWeight: 'bold', fontSize: '0.85rem' } }}
-                />
-
-                {posPreorder && (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1.5, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
-                    <TextField
-                      required
-                      fullWidth
-                      label="اسم العميل الكامل *"
-                      value={posPreorderName}
-                      onChange={(e) => setPosPreorderName(e.target.value)}
-                      size="small"
-                      sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
-                    />
-                    <TextField
-                      required
-                      fullWidth
-                      label="رقم الهاتف *"
-                      value={posPreorderPhone}
-                      onChange={(e) => setPosPreorderPhone(e.target.value)}
-                      size="small"
-                      sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
-                    />
-                    <TextField
-                      required
-                      fullWidth
-                      type="number"
-                      inputProps={{ step: '0.01', min: '0' }}
-                      label="مبلغ العربون المدفوع (ج.م) *"
-                      value={posPreorderDeposit}
-                      onChange={(e) => setPosPreorderDeposit(e.target.value)}
-                      size="small"
-                      sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
-                    />
-                  </Box>
-                )}
-              </Box>
-
-              {/* Checkout Button */}
-              <Box sx={{ flex: 1, display: 'flex', alignItems: 'flex-end', mt: 3 }}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  startIcon={<PaymentIcon />}
-                  disabled={posCart.length === 0}
-                  onClick={openPaymentModal}
-                  sx={{ py: 1.5, fontFamily: 'Cairo', fontWeight: 'bold' }}
-                >
-                  {posPreorder ? 'حفظ الحجز وطباعة الإيصال' : 'إتمام البيع والدفع'}
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Sticky mobile action bar when cart has items and search is active */}
-      {posCart.length > 0 && activeMobileTab === 0 && (
-        <Paper
-          elevation={10}
-          sx={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            p: 2,
-            zIndex: 1000,
-            display: { xs: 'flex', md: 'none' },
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            borderTop: '1px solid',
-            borderColor: 'divider',
-            backgroundColor: 'background.paper'
-          }}
-        >
-          <Box sx={{ textAlign: dir === 'rtl' ? 'right' : 'left' }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo', display: 'block' }}>
-              إجمالي السلة الصافي ({posCart.reduce((sum, item) => sum + item.quantity, 0)} قطعة):
-            </Typography>
-            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'success.main', fontFamily: 'Cairo' }}>
-              {(posTotal / 100).toFixed(2)} ج.م
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            size="medium"
-            onClick={() => setActiveMobileTab(1)}
-            sx={{ fontFamily: 'Cairo', fontWeight: 'bold', px: 3, height: 44 }}
-          >
-            عرض السلة والدفع
-          </Button>
-        </Paper>
-      )}
-
-      {/* Payment Split & Checkout Result Dialog */}
-      <Dialog
-        open={showPaymentModal}
-        onClose={() => !checkoutLoading && !checkoutSuccessData && setShowPaymentModal(false)}
-        maxWidth="xs"
-        fullWidth
-        fullScreen={isMobile}
-      >
-        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: 'right' }}>
-          {checkoutSuccessData
-            ? 'عملية ناجحة'
-            : isPreorderPickupCheckout
-            ? 'استلام الحجز ودفع المتبقي'
-            : posPreorder
-            ? 'تسجيل عربون الحجز وطباعة الإيصال'
-            : 'إتمام الدفع وتسجيل الفاتورة'}
-        </DialogTitle>
-        {checkoutSuccessData ? (
-          <DialogContent sx={{ textAlign: 'center', py: 3 }}>
-            <CheckIcon color="success" sx={{ fontSize: 60, mb: 2 }} />
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, fontFamily: 'Cairo' }}>
-              {checkoutSuccessData.preorder_id
-                ? 'تم استلام وتأكيد الحجز بنجاح!'
-                : checkoutSuccessData.preorder_number
-                ? 'تم تسجيل الحجز بنجاح!'
-                : 'تمت عملية البيع بنجاح!'}
-            </Typography>
-
-            <Paper variant="outlined" sx={{ p: 2, mb: 3, textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 1, fontSize: '0.85rem' }}>
-              {checkoutSuccessData.preorder_id ? (
-                <>
-                  <div>رقم الفاتورة: <strong>{checkoutSuccessData.invoice_number}</strong></div>
-                  <div>رقم الإيصال: <strong>{checkoutSuccessData.receipt_number}</strong></div>
-                  <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold', mt: 1, fontFamily: 'Cairo' }}>
-                    تم تسليم الحجز ودفع كامل المبلغ المتبقي بنجاح.
-                  </Typography>
-                </>
-              ) : checkoutSuccessData.preorder_number ? (
-                <>
-                  <div>رقم الحجز: <strong>{checkoutSuccessData.preorder_number}</strong></div>
-                  <div>رقم الإيصال: <strong>{checkoutSuccessData.receipt_number}</strong></div>
-                  <div>اسم العميل: <strong>{checkoutSuccessData.customer_name}</strong></div>
-                  <div>المجموع الكلي: <strong>{(checkoutSuccessData.total_amount / 100).toFixed(2)} ج.م</strong></div>
-                  <div>عربون مدفوع: <strong style={{ color: 'success.main' }}>{(checkoutSuccessData.deposit_paid / 100).toFixed(2)} ج.م</strong></div>
-                  <div>متبقي للاستلام: <strong>{(checkoutSuccessData.remaining_amount / 100).toFixed(2)} ج.م</strong></div>
-                </>
-              ) : (
-                <>
-                  <div>رقم الفاتورة: <strong>{checkoutSuccessData.invoice_number}</strong></div>
-                  <div>رقم الإيصال: <strong>{checkoutSuccessData.receipt_number}</strong></div>
-                  <div>المجموع الفرعي: <strong>{(checkoutSuccessData.subtotal / 100).toFixed(2)} ج.م</strong></div>
-                  {checkoutSuccessData.discount > 0 && <div>الخصم: <strong>{(checkoutSuccessData.discount / 100).toFixed(2)} ج.م</strong></div>}
-                  <Divider sx={{ my: 0.5 }} />
-                  <div>الإجمالي الصافي: <strong style={{ color: '#34c759' }}>{(checkoutSuccessData.total / 100).toFixed(2)} ج.م</strong></div>
-                </>
-              )}
-            </Paper>
-
-            <DialogActions sx={{ px: 0, pb: 0, justifyContent: 'stretch' }}>
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<PrintIcon />}
-                onClick={() => {
-                  setShowPaymentModal(false);
-                  // Redirect to receipts search tab and print
-                  navigate(`/receipts?code=${checkoutSuccessData.receipt_number}`);
-                  setCheckoutSuccessData(null);
-                }}
-                sx={{ fontFamily: 'Cairo' }}
-              >
-                طباعة الإيصال
-              </Button>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => {
-                  setShowPaymentModal(false);
-                  setCheckoutSuccessData(null);
-                }}
-                sx={{ fontFamily: 'Cairo' }}
-              >
-                إغلاق
-              </Button>
-            </DialogActions>
-          </DialogContent>
-        ) : (
-          <form onSubmit={handleCheckoutSubmit}>
-            <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {checkoutError && (
-                <Alert severity="error" sx={{ fontFamily: 'Cairo', textAlign: 'right' }}>
-                  {checkoutError}
-                </Alert>
-              )}
-
-              <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2" sx={{ fontFamily: 'Cairo' }}>
-                  {posPreorder ? 'مبلغ العربون المطلوب:' : 'المجموع المطلوب:'}
-                </Typography>
-                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                  {posPreorder ? (parseFloat(posPreorderDeposit) || 0).toFixed(2) : (posTotal / 100).toFixed(2)} ج.م
-                </Typography>
-              </Paper>
-
-              <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo', fontWeight: 'bold' }}>
-                توزيع مبالغ الدفع حسب الطريقة:
-              </Typography>
-
-              {paymentMethodsList.filter((m) => m.is_active).map((method) => (
-                <Grid container spacing={2} alignItems="center" key={method.id}>
-                  <Grid item xs={6}>
-                    <Typography variant="body2" sx={{ fontSize: '0.8rem', fontFamily: 'Cairo' }}>
-                      {method.name_ar}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      type="number"
-                      inputProps={{ step: '0.01', min: '0' }}
-                      placeholder="0.00"
-                      value={paymentAmounts[method.id] || ''}
-                      onChange={(e) =>
-                        setPaymentAmounts({
-                          ...paymentAmounts,
-                          [method.id]: e.target.value
-                        })
-                      }
-                    />
-                  </Grid>
-                </Grid>
-              ))}
-            </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 2 }}>
-              <Button type="button" onClick={() => setShowPaymentModal(false)} disabled={checkoutLoading} sx={{ fontFamily: 'Cairo' }}>
-                إلغاء
-              </Button>
-              <Button type="submit" variant="contained" disabled={checkoutLoading} sx={{ fontFamily: 'Cairo' }}>
-                {checkoutLoading ? 'جاري تسجيل الفاتورة...' : 'تأكيد ودفع'}
-              </Button>
-            </DialogActions>
-          </form>
-        )}
-      </Dialog>
-
-      {/* Preorder Pickup Scanned details modal Dialog */}
-      <Dialog
-        open={showPreorderPickupModal && !!scannedPreorder}
-        onClose={() => setShowPreorderPickupModal(false)}
-        maxWidth="xs"
-        fullWidth
-        fullScreen={isMobile}
-      >
-        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
-          استلام الحجز المسبق رقم {scannedPreorder?.preorder.preorder_number}
-        </DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {preorderPickupError && (
-            <Alert severity="error" sx={{ fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
-              {preorderPickupError}
-            </Alert>
-          )}
-
-          {scannedPreorder && (
-            <>
-              <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <div>اسم العميل: <strong>{scannedPreorder.preorder.customer_name}</strong></div>
-                <div>هاتف العميل LTR: <strong style={{ direction: 'ltr', display: 'inline-block' }}>{scannedPreorder.preorder.customer_phone}</strong></div>
-                <div>طريقة التسليم: <strong>{scannedPreorder.preorder.pickup_method === 'walk_in' ? 'استلام من المعرض' : 'توصيل منزلي'}</strong></div>
-                <div>تاريخ الحجز: <strong>{new Date(scannedPreorder.preorder.created_at).toLocaleDateString('ar-EG')}</strong></div>
-              </Paper>
-
-              <Typography variant="caption" sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}>الأصناف المحجوزة والمخزون الحالي:</Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {scannedPreorder.items.map((item, idx) => {
-                  const isStockInsufficient = (item.stock || 0) < item.quantity;
-                  return (
-                    <Box key={idx} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, bgcolor: 'background.paper', p: 1, border: '1px solid', borderColor: isStockInsufficient ? 'error.main' : 'divider', borderRadius: 0.5, fontSize: '0.8rem' }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: 'bold' }}>{item.product_name}</span>
-                        <span>{(item.total_price / 100).toFixed(2)} ج.م</span>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'text.secondary' }}>
-                        <span>الكمية المطلوبة: {item.quantity}</span>
-                        <span>
-                          المخزون الحالي:{' '}
-                          <Chip
-                            label={item.stock || 0}
-                            color={isStockInsufficient ? 'error' : 'success'}
-                            size="small"
-                            sx={{ height: 18, fontSize: '0.7rem', fontWeight: 'bold' }}
-                          />
-                        </span>
-                      </Box>
-                      {isStockInsufficient && (
-                        <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 'bold', fontFamily: 'Cairo', display: 'block', mt: 0.5 }}>
-                          ⚠️ عجز بالمخزون! لا يمكن تسليم هذا الصنف حالياً.
-                        </Typography>
-                      )}
-                    </Box>
-                  );
-                })}
-              </Box>
-
-              <Divider sx={{ my: 1 }} />
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, fontSize: '0.85rem' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>المجموع الفرعي:</span>
-                  <span>{(scannedPreorder.preorder.subtotal / 100).toFixed(2)} ج.م</span>
-                </Box>
-                {scannedPreorder.preorder.discount > 0 && (
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>الخصم:</span>
-                    <span>-{(scannedPreorder.preorder.discount / 100).toFixed(2)} ج.م</span>
-                  </Box>
-                )}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                  <span>إجمالي القيمة:</span>
-                  <span>{(scannedPreorder.preorder.total_amount / 100).toFixed(2)} ج.م</span>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'success.main', fontWeight: 'bold' }}>
-                  <span>العربون المدفوع:</span>
-                  <span>{(scannedPreorder.preorder.deposit_paid / 100).toFixed(2)} ج.م</span>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'warning.main', fontWeight: 'bold', fontSize: '1rem', borderTop: '1px dotted', borderColor: 'divider', pt: 1, mt: 1 }}>
-                  <span>المبلغ المتبقي للتحصيل:</span>
-                  <span>{(scannedPreorder.preorder.remaining_amount / 100).toFixed(2)} ج.م</span>
-                </Box>
-              </Box>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setShowPreorderPickupModal(false)} sx={{ fontFamily: 'Cairo' }}>
-            إغلاق
-          </Button>
-          {scannedPreorder?.preorder.status === 'PICKED_UP' ? (
-            <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold', fontFamily: 'Cairo' }}>تم تسليم هذا الحجز مسبقاً.</Typography>
-          ) : scannedPreorder?.preorder.status === 'CANCELLED' ? (
-            <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 'bold', fontFamily: 'Cairo' }}>هذا الحجز ملغي.</Typography>
-          ) : (
-            <Button
-              variant="contained"
-              onClick={startPreorderPickupCheckout}
-              disabled={scannedPreorder?.items?.some(item => (item.stock || 0) < item.quantity)}
-              sx={{ fontFamily: 'Cairo' }}
-            >
-              {scannedPreorder?.items?.some(item => (item.stock || 0) < item.quantity) ? 'غير متاح (عجز مخزون)' : 'الذهاب للدفع واستلام الحجز'}
-            </Button>
-          )}
-        </DialogActions>
-      </Dialog>
-
-      {/* Manual Preorder Search / Pickup Dialog */}
-      <Dialog
-        open={showManualPickupLookup}
-        onClose={() => setShowManualPickupLookup(false)}
-        maxWidth="sm"
-        fullWidth
-        fullScreen={isMobile}
-      >
-        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
-          بحث واستلام حجز مسبق
-        </DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-          {pickupSearchError && (
-            <Alert severity="error" sx={{ fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
-              {pickupSearchError}
-            </Alert>
-          )}
-
-          {user?.role === 'Admin' ? (
-            <>
-              <TextField
-                fullWidth
-                size="small"
-                label="بحث بالاسم، الهاتف، أو رقم الحجز"
-                placeholder="اكتب وابدأ البحث..."
-                value={pickupSearchQuery}
-                onChange={(e) => handlePreorderSearch(e.target.value)}
-                InputProps={{
-                  startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
-                }}
-                sx={{
-                  '& .MuiInputLabel-root': {
-                    fontFamily: 'Cairo',
-                    left: dir === 'rtl' ? 'auto' : 0,
-                    right: dir === 'rtl' ? 24 : 'auto',
-                    transformOrigin: dir === 'rtl' ? 'right' : 'left'
-                  },
-                  '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
-                }}
-              />
-              
-              <Box sx={{ mt: 1, maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {pickupSearchLoading ? (
-                  <Typography variant="body2" sx={{ textAlign: 'center', py: 2, color: 'text.secondary', fontFamily: 'Cairo' }}>جاري البحث...</Typography>
-                ) : pickupSearchResults.length === 0 ? (
-                  <Typography variant="body2" sx={{ textAlign: 'center', py: 2, color: 'text.secondary', fontFamily: 'Cairo' }}>
-                    {pickupSearchQuery ? 'لا توجد نتائج مطابقة.' : 'اكتب للبحث عن الحجوزات النشطة.'}
-                  </Typography>
-                ) : (
-                  pickupSearchResults.map((order) => (
-                    <Paper
-                      key={order.id}
-                      onClick={async () => {
-                        setShowManualPickupLookup(false);
-                        await handleScanPreorder(order.qr_pickup_token);
-                      }}
-                      variant="outlined"
-                      sx={{ p: 2, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
-                    >
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>رقم: {order.preorder_number}</Typography>
-                        <Chip
-                          label={
-                            order.status === 'DEPOSIT_PAID_WAITING_STOCK' ? 'بانتظار المخزون' :
-                            order.status === 'READY_FOR_PICKUP' ? 'جاهز للاستلام' :
-                            order.status === 'PICKED_UP' ? 'تم التسليم' :
-                            order.status === 'CANCELLED' ? 'ملغي' : 'منتهي'
-                          }
-                          color={
-                            order.status === 'DEPOSIT_PAID_WAITING_STOCK' ? 'info' :
-                            order.status === 'READY_FOR_PICKUP' ? 'warning' :
-                            order.status === 'PICKED_UP' ? 'success' : 'error'
-                          }
-                          size="small"
-                          sx={{ fontFamily: 'Cairo', fontWeight: 'bold' }}
-                        />
-                      </Box>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
-                        العميل: {order.customer_name} | هاتف: <code style={{ direction: 'ltr', display: 'inline-block' }}>{order.customer_phone}</code>
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'warning.main', fontSize: '0.8rem', mt: 0.5, fontWeight: 'bold' }}>
-                        المتبقي للتحصيل: {(order.remaining_amount / 100).toFixed(2)} ج.م
-                      </Typography>
-                    </Paper>
-                  ))
-                )}
-              </Box>
-            </>
-          ) : (
-            <>
-              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1, fontFamily: 'Cairo' }}>
-                أدخل رمز الاستلام الخاص بالعميل (مثال: pre_abc123) لتحميل تفاصيل الحجز:
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                label="رمز الاستلام (Token)"
-                value={pickupSearchQuery}
-                onChange={(e) => setPickupSearchQuery(e.target.value)}
-                sx={{
-                  '& .MuiInputLabel-root': {
-                    fontFamily: 'Cairo',
-                    left: dir === 'rtl' ? 'auto' : 0,
-                    right: dir === 'rtl' ? 24 : 'auto',
-                    transformOrigin: dir === 'rtl' ? 'right' : 'left'
-                  },
-                  '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
-                }}
-              />
-              <Button
-                fullWidth
-                variant="contained"
-                disabled={pickupSearchLoading || !pickupSearchQuery.trim()}
-                onClick={() => handleTokenLookup(pickupSearchQuery)}
-                sx={{ mt: 2, fontFamily: 'Cairo' }}
-              >
-                {pickupSearchLoading ? 'جاري البحث بالرمز...' : 'تحميل الحجز والتحقق'}
-              </Button>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setShowManualPickupLookup(false)} sx={{ fontFamily: 'Cairo' }}>
-            إغلاق
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
-  );
+    <Dialog open={pickupOpen} onClose={loading ? undefined : () => setPickupOpen(false)} fullScreen={fullScreen} fullWidth maxWidth="md"><DialogTitle>استلام الحجز {pickupData?.preorder?.preorder_number}</DialogTitle><DialogContent dividers>{pickupData && <div className="pickup-dialog"><div className="a4-grid a4-grid--two"><Paper variant="outlined" sx={{ p: 2 }}><Typography color="text.secondary" variant="caption">العميل</Typography><Typography fontWeight={800}>{pickupData.preorder.customer_name}</Typography><Typography className="a4-ltr">{pickupData.preorder.customer_phone}</Typography></Paper><Paper variant="outlined" sx={{ p: 2 }}><Typography color="text.secondary" variant="caption">الحالة</Typography><Typography fontWeight={800}>{statusLabel(pickupData.preorder.status)}</Typography><Typography>المتبقي: {money(pickupData.preorder.remaining_amount)}</Typography></Paper></div><div className="pickup-items">{pickupData.items.map(item => <div key={item.id}><span>{item.product_name} × {number(item.quantity)}</span><strong className={item.stock < item.quantity ? 'stock-error' : ''}>المتاح {number(item.stock)}</strong></div>)}</div><Divider sx={{ my: 2 }}/><div className="a4-form-grid">{paymentMethods.map(method => <Field key={method.id} label={method.name_ar}><TextField type="number" inputProps={{ min: 0, step: .01, dir: 'ltr' }} value={pickupPayments[method.id] || ''} onChange={e => setPickupPayments(v => ({ ...v, [method.id]: e.target.value }))}/></Field>)}</div></div>}</DialogContent><DialogActions><Button onClick={() => setPickupOpen(false)}>إلغاء</Button><Button variant="contained" onClick={completePickup} disabled={loading || pickupData?.items?.some(i => i.stock < i.quantity)}>{pickupData?.items?.some(i => i.stock < i.quantity) ? 'المخزون غير كافٍ' : loading ? 'جاري التسليم...' : 'تحصيل المتبقي وتسليم الحجز'}</Button></DialogActions></Dialog>
+    <AppSnackbar state={toast} onClose={() => setToast(null)}/>
+  </div>;
 }
-
-export default POS;

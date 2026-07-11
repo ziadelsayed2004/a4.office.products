@@ -1,213 +1,97 @@
-# A4 Frontend Page and Navigation Specifications
+# A4 Page UI Specifications — Arabic RTL
 
-## 1. Role-aware navigation
+## Shared shell
 
-### Cashier
+All protected pages use the fixed A4 shell. Navigation visibility is role-based. The top bar contains A4 identity, page context, optional shift state, theme switch, and account menu. No language control exists.
 
-- نقطة البيع
-- إنشاء حجز مسبق
-- استلام حجز
-- الإيصالات
-- الشيفت الحالي
-- تسجيل الخروج
+## Login
 
-The cashier must not see global revenue, users, inventory management, reports, or another cashier's shift.
+- Compact A4 branded authentication panel.
+- Arabic username/password labels above fields.
+- Clear loading, invalid credentials, server error, and disabled account states.
+- Theme-safe and usable at 320px width.
 
-### Admin
+## Dashboard — Admin
 
-- لوحة التحكم
-- التصنيفات
-- فئات الأسعار
-- المنتجات
-- المخزون
-- العملاء
-- الحجوزات
-- المبيعات والإيصالات
-- طرق الدفع
-- الشيفتات
-- التقارير والمؤشرات
-- المستخدمون
-- سجل العمليات
-- إعدادات الطباعة والنشاط
+- KPI cards for sales, deposits, pickups, active preorders, low stock, and shift review.
+- Quick actions for POS, product, inventory, preorder, and shift workflows.
+- Recent activities and operational alerts.
+- No cashier-only user may access this route or data.
 
-## 2. Shared shell
+## POS — Cashier and Admin
 
-Match the embedded template:
+- Modes: direct sale, preorder creation, preorder pickup.
+- Scanner/search first, product results, price tier selection, quantities, and cart.
+- Direct sale: stock guard, payment split, server-confirmed total, success/receipt state.
+- Preorder: required customer name/phone, deposit validation, pickup method, receipt.
+- Pickup: secure token scan/entry, detail dialog, stock validation, remaining payment, final receipt.
+- Active shift gate before any financial workflow.
 
-- fixed top bar,
-- expanded/collapsed grouped sidebar,
-- profile card,
-- active pill navigation,
-- theme/notification/account controls,
-- locale-aware side and direction,
-- breadcrumbs,
-- shared page header,
-- A4-only footer.
+## Catalog administration
 
-## 3. Login
+### Products
 
-- centered A4 card derived from the template login,
-- A4 logo, title, subtitle,
-- username/password and show-password control,
-- validation, server error, loading,
-- theme control before login,
-- Arabic default and optional English switch,
-- keyboard submit and correct autocomplete.
+- Search/filter by name, SKU/barcode, category, status, stock state, and book/non-book type.
+- Product table/card shows key price, actual stock, open preorder quantity, and status.
+- Create/edit drawer uses clear sections: identity, classification, pricing, inventory rules, preorder settings, optional book metadata, QR labels.
 
-## 4. Admin dashboard
+### Categories and price tiers
 
-Preserve the template hierarchy:
+- Compact list plus create/edit drawer.
+- Prevent destructive changes that violate server rules.
+- Price tiers are Admin-created and attached to product prices.
 
-- welcome/summary header with Cairo date,
-- direct sales KPI,
-- deposits KPI,
-- remaining payments KPI,
-- open/ready preorder KPI,
-- low-stock KPI,
-- pending-shift KPI,
-- payment-method summary,
-- stock/preorder operational snapshot,
-- quick actions,
-- recent sales/preorders/stock changes/shift submissions,
-- top products and simple accessible trend visualization.
+### Inventory
 
-## 5. Cashier POS
+- Product balance, open preorder quantity, low-stock state, and ledger access.
+- Stock adjustment requires reason and confirmation.
+- No UI path can submit negative stock.
 
-- scanner-first product input,
-- search by product name, SKU, category, and relevant book fields,
-- product rows without images,
-- price-tier selection subject to rules,
-- quantity and stock validation,
-- cart with totals and payment action,
-- clear direct-sale and preorder paths,
-- split-payment dialog,
-- receipt print action,
-- fast reset for the next customer,
-- scanner and keyboard workflow preserved.
+## Operational administration
 
-## 6. Categories and price tiers
+### Preorders
 
-- compact table/card list,
-- active/inactive state,
-- create/edit drawer,
-- dependency warning before deactivate/delete,
-- prices managed by Admin only.
+- Filter by status, customer, phone, token/number, product, and date.
+- Show deposit, remaining amount, readiness, stock state, creator, and shift.
+- Admin status actions remain subject to API rules.
 
-## 7. Products
+### Customers
 
-- no image fields or image columns,
-- generic product fields,
-- optional book fields: book type, grade, subject, teacher, publisher, edition year, term, educational classification,
-- category and price-tier values,
-- direct-sale/preorder eligibility,
-- preorder deposit percentage and pickup method,
-- current stock/open preorder counters,
-- QR label generation/print action.
+- Reservation customer records and history; name/phone are primary.
 
-## 8. Inventory
+### Payments
 
-- stock on hand,
-- open preorder quantity,
-- available-for-direct-sale state,
-- low-stock status,
-- adjustment drawer with reason,
-- immutable ledger view,
-- no adjustment that results in negative stock.
+- Manage available methods and activation state.
 
-## 9. Customers and payment methods
+### Shifts
 
-- customer identity and preorder history,
-- phone values displayed LTR,
-- admin-managed active payment methods,
-- cash/card/InstaPay/wallet/transfer semantics,
-- no unsupported global financial data for Cashier.
+- Expected vs actual totals per payment method.
+- Difference indicators, cashier identity, open/close timestamps, and full transaction summary.
+- Approve/reject with required note and confirmation.
 
-## 10. Preorders
+### Users
 
-### Creation
+- Admin creates, edits, disables, and resets passwords.
+- Cashier cannot self-edit protected profile fields.
 
-- required customer name and phone,
-- product quantities and price tier,
-- deposit percentage/value,
-- remaining amount,
-- payment method,
-- pickup method,
-- expected date and notes where enabled,
-- confirmation and Arabic reservation receipt with pickup token.
+## Reports
 
-### Admin list
+- Tabs for sales, preorders, inventory, and shifts.
+- Filter panel, KPI summary, table, and CSV export using the active filter snapshot.
+- Reports are Admin-only.
 
-- status, customer, phone, product, date, cashier, deposit, remaining amount, stock readiness,
-- list and detail states,
-- authorized status actions only.
+## Receipts
 
-### Pickup
+- Search by receipt number.
+- Preview, print, and authorized reprint with reason.
+- Sale, preorder deposit, and pickup variants.
+- Real QR token rendering and thermal print dimensions.
 
-- scan token or authorized search,
-- full customer/order identity,
-- previous deposit and remaining amount,
-- stock check per item,
-- remaining payment collection,
-- final confirmation,
-- stock decrement and open-preorder decrement,
-- final receipt and AuditLog.
+## AuditLog and printers
 
-## 11. Shifts
+- Audit list filters action/entity/date and presents immutable details.
+- Printer settings cover business header/footer, receipt width, default printer names, and label size.
 
-### Cashier shift
+## Required states
 
-- start/open state,
-- timeline/transactions,
-- totals by payment method,
-- expected cash and other method totals,
-- actual amounts entry,
-- difference preview,
-- close-request confirmation.
-
-### Admin review
-
-- pending reviews first,
-- cashier and shift times,
-- expected/actual/difference by method,
-- activity summary,
-- approve/reject with note,
-- no silent financial edits.
-
-## 12. Receipts
-
-- search by receipt/order/preorder number and token,
-- preview and print,
-- authorized reprint with reason,
-- sale, reservation, and pickup receipt variants,
-- Arabic thermal layout,
-- screen theme does not affect print output.
-
-## 13. Reports and KPIs
-
-- sales,
-- preorders,
-- inventory,
-- shifts,
-- payment methods,
-- products/categories/cashiers,
-- filter panel,
-- KPI summary,
-- table/chart view,
-- export using current filters,
-- Admin only.
-
-## 14. Users and audit logs
-
-- user list, role, status, last login,
-- create/edit/disable/reset password by Admin,
-- cashier cannot edit own identity/password,
-- audit search by date, actor, action, entity, shift,
-- before/after details with sensitive data protection.
-
-## 15. Printer and business settings
-
-- receipt width and template settings,
-- QR label width, height, rows/columns where applicable, count, gap, and margins,
-- test print and preview,
-- business identity on receipts,
-- no device/terminal tracking model.
+Each page must include relevant loading, empty, error, success, validation, disabled, permission-denied, and offline/server-unavailable states.

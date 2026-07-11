@@ -1,21 +1,18 @@
 # Change Requests
 
-## CR-2026-07-11 — Frontend Template Lock and Modernization Phase
+## CR-2026-07-11 — Clean Arabic RTL Frontend Rebuild
 
-Approved changes:
+Approved final decisions:
 
-- Analyze and lock the current frontend template as the visual baseline.
-- Use A4 blue/navy colors only; remove purple and unrelated legacy branding.
-- Complete responsive behavior for mobile, tablet, laptop, and wide desktop.
-- Complete light and dark modes.
-- Make Arabic the complete default UI.
-- Move visible text to locale files and support direction-safe translation architecture.
-- Add comprehensive frontend design, component, responsive, page, theme, and QA documentation.
-- Add Steps 061–090 as a new pending frontend modernization phase.
-- Change runner policy from exactly one step to one or two steps, controlled by `RUN_STEP_COUNT`.
-- Normalize the pack folder name to `agent_pack` so prompt paths match repository paths.
-- Preserve all existing POS, preorder, stock, receipt, shift, reports, audit, and SQLite rules.
-
-## Frontend visual source of truth
-
-The authoritative reference template is `TEMPLETE-PROJECT/hamza.printing.press-main/client/`. The active target is `client/`. Copy the template's visual system and responsive interaction patterns only; replace all CodzHub/printing-press branding, wording, data, routes, permissions, and APIs with A4 requirements.
+- Replace the previous frontend implementation with a clean A4 React/Vite/MUI client.
+- Use the embedded Hamza client only as a visual morphology reference.
+- Runtime product UI is Arabic only and fixed RTL.
+- Remove every locale/language switch and do not expose English at runtime.
+- Keep `en.json` as an unused future translation store only.
+- Keep light/dark themes.
+- Use external form labels and eliminate outlined-field notches to prevent RTL label defects.
+- Use a fixed top bar, right collapsible desktop sidebar, right mobile drawer, compact dashboard density, shared cards/tables/filters/drawers/dialogs, and a dedicated responsive POS layout.
+- Preserve A4 identity, SQLite, Express contracts, Admin/Cashier RBAC, shifts, stock rules, preorders, payments, receipts, reports, and AuditLog.
+- Remove obsolete frontend Agent Pack steps and replace them with Steps 038–052.
+- Record implementation Steps 038–048 as completed and leave only four final QA/release Steps 049–052.
+- Runner accepts `RUN_STEP_COUNT` of one or two and never executes more than two steps.

@@ -1,39 +1,31 @@
-# وثيقة التسليم والقبول النهائي للمنصة — A4 POS Platform
+# A4 Office Products — Current Handoff
 
-تمثل هذه الوثيقة تقرير القبول والتسليم النهائي لمنصة **A4 Office Products POS Platform**، وتوضح مراجعة الميزات والامتثال الفني للضوابط والقيود الدائمة، مع سرد الثغرات البرمجية والتحسينات المستقبلية المقترحة.
+## Implemented baseline
 
----
+- React/Vite/MUI client rebuilt in `client/`.
+- Arabic-only fixed RTL user interface; no language switch.
+- Light and dark modes.
+- A4 dashboard shell, right sidebar/mobile drawer, shared form/list/dialog system, and responsive POS.
+- Admin and Cashier route guards.
+- Product/category/price/inventory/preorder/customer/payment/shift/user/report/receipt/audit/printer pages.
+- Express backend and SQLite architecture retained.
+- Product has no image model; operations belong to account + active shift, not a POS terminal.
 
-## 1. مراجعة مصفوفة الميزات والتحقق الفني (Feature Checklist)
+## Source checks completed
 
-تم التحقق من مطابقة النظام لجميع المتطلبات الأساسية المدرجة في بوابة التحقق ومصفوفة الميزات:
+- Client lint: passed.
+- Client static UI validation: passed.
+- Client production build: passed.
+- Server JavaScript syntax scan: passed.
+- Agent Pack graph: 52 valid sequential steps; 49–52 remain pending.
 
-| البند | متطلبات المنتج (PRD) | حالة التحقق والامتثال |
-|---|---|---|
-| 1 | **لغة الواجهة بالكامل عربي RTL** | **مكتملة تماماً**. جميع الشاشات والتقارير والفواتير والملصقات والنماذج مكتوبة باللغة العربية مع دعم اتجاه RTL. |
-| 2 | **تقييد الحساب الفردي والشيفت النشط** | **مكتملة تماماً**. لا يمكن تسجيل مبيعات أو حجز مسبق أو استلام حجز بدون وردية مفتوحة ونشطة للكاشير الحالي. |
-| 3 | **الحد الفاصل للمخزون (عدم البيع بالسالب)** | **مكتملة تماماً**. يمنع النظام شحن أو إتمام المبيعات إذا كان المخزون المتاح للمنتج أقل من الكمية المطلوبة. |
-| 4 | **الحجز المسبق وإيصال العربون** | **مكتملة تماماً**. يتم تسجيل اسم وهاتف العميل وفرض نسبة عربون (50% كحد أدنى) مع إصدار إيصال عربون بترميز الوقت وتوليد رمز QR آمن للحجز. |
-| 5 | **استلام الحجز المسبق عبر سكان رمز الـ QR** | **مكتملة تماماً**. يدعم نظام الكاشير مسح رمز الحجز للتحقق منه وتأكيد استلام المنتجات ودفع باقي المبلغ المستحق ثم خصم المخزون وتسجيل فاتورة نهائية. |
-| 6 | **إعادة طباعة الفواتير مع التسجيل الأمني** | **مكتملة تماماً**. يسمح النظام بإعادة طباعة الفواتير مع كتابة السبب وزيادة عداد مرات الطباعة التراكمي وتدوين العملية في سجل العمليات `AuditLog`. |
-| 7 | **جدار الصلاحيات (Admin vs Cashier)** | **مكتملة تماماً**. صلاحيات الكاشير مقتصرة على المبيعات والحجوزات والورديات الخاصة به فقط. لوحات الأداء والتقارير العامة وسجل العمليات وتهيئة النظام حصرية للمدير فقط. |
-| 8 | **إعدادات الطابعات وقوالب الطباعة** | **مكتملة تماماً**. لوحة تحكم متكاملة للأدمن لتهيئة طابعة الفواتير والملصقات وتحديد الحجم وتفعيل أو تعطيل حقول الفاتورة. |
-| 9 | **النسخ الاحتياطي ومؤشرات الأداء** | **مكتملة تماماً**. نظام نسخ احتياطي مجدول للملفات، مع إعداد كشافات البحث (Indexes) في قاعدة البيانات SQLite لتسريع تجميع بيانات الورديات والمخزون. |
+## Final QA still required
 
----
+The following are intentionally not claimed as complete until run in an environment with browser and native SQLite dependency support:
 
-## 2. الثغرات المعروفة والتحسينات المستقبلية (Known Gaps & Future Improvements)
+1. Real-browser template/RTL visual audit.
+2. Live Express + SQLite POS/preorder/pickup/shift E2E flow.
+3. Full responsive dark/light/accessibility regression.
+4. Release cleanup and reproducible handoff.
 
-أثناء المراجعة النهائية، تم رصد النقاط التالية التي يمكن العمل عليها كتحسينات في الإصدارات القادمة:
-
-### أ. الربط المباشر مع طابعات الـ USB / Serial
-- **الوضع الحالي**: يدعم النظام محاكاة الطباعة (Screen Simulation)، والطباعة عبر مخدم الويب للشبكة (Network/IP TCP)، والطباعة الافتراضية للمتصفح.
-- **التطوير المقترح**: للربط المباشر مع طابعات نقاط البيع المحلية الموصلة بكابل USB أو COM دون تدخل المتصفح، يفضل دمج تطبيق وسيط محلي (Thin Local Helper) مثل **QZ Tray** أو بناء تطبيق سطح مكتب للمنصة باستخدام **Electron**.
-
-### ب. وضع التشغيل دون اتصال بالشبكة (Offline Mode)
-- **الوضع الحالي**: المنصة تعتمد على وجود اتصال نشط بخادم الـ Node.js لمعالجة العمليات والتحقق من الجلسات والورديات.
-- **التطوير المقترح**: تحويل الواجهة الأمامية إلى تطبيق ويب تقدمي (PWA) مع استخدام آلية تخزين مؤقت محلي (IndexedDB) لمزامنة فواتير الكاشير عند انقطاع الإنترنت ومعالجتها فور عودة الاتصال بالخادم الرئيسي.
-
-### ج. فحص واعتماد ملفات السيرفر عبر Docker
-- **الوضع الحالي**: يتم تشغيل المنصة مباشرة عبر Node.js ومدير العمليات PM2.
-- **التطوير المقترح**: إعداد حاوية Docker لتبسيط بيئة التشغيل والإنتاج (Containerization) لجمع السيرفر وقاعدة البيانات المدمجة SQLite والـ Nginx في ملف `docker-compose` واحد لسهولة النقل والتوزيع.
+Run these through `agent_pack/prompts/COPY_THIS_PROMPT.md` starting with Step 049.

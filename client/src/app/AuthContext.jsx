@@ -1,103 +1,82 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { api } from '../api/client.js';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [token, setToken] = useState('');
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [currentShift, setCurrentShift] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const savedToken = localStorage.getItem('a4_token');
-    if (savedToken) {
-      setToken(savedToken);
-      fetchProfile(savedToken);
-      loadCurrentShift(savedToken);
-    } else {
-      setLoading(false);
+  const clearSession = useCallback(() => {
+    localStorage.removeItem('a4_access_token');
+    localStorage.removeItem('a4_refresh_token');
+    setUser(null);
+    setCurrentShift(null);
+  }, []);
+
+  const loadShift = useCallback(async () => {
+    if (!localStorage.getItem('a4_access_token')) return null;
+    try {
+      const response = await api.get('/api/shifts/current');
+      const shift = response?.data || null;
+      setCurrentShift(shift);
+      return shift;
+    } catch {
+      setCurrentShift(null);
+      return null;
     }
   }, []);
 
-  async function fetchProfile(jwtToken) {
+  const bootstrap = useCallback(async () => {
+    const token = localStorage.getItem('a4_access_token');
+    if (!token) { setLoading(false); return; }
     try {
-      const res = await fetch('/api/auth/me', {
-        headers: { 'Authorization': `Bearer ${jwtToken}` }
-      });
-      if (res.status === 200) {
-        const payload = await res.json();
-        setUser(payload.data);
-        setIsAuthenticated(true);
-      } else {
-        logout();
-      }
-    } catch (err) {
-      logout();
+      const response = await api.get('/api/auth/me');
+      setUser(response.data);
+      await loadShift();
+    } catch {
+      clearSession();
     } finally {
       setLoading(false);
     }
-  }
+  }, [clearSession, loadShift]);
 
-  async function loadCurrentShift(jwtToken = token) {
-    if (!jwtToken) return;
-    try {
-      const res = await fetch('/api/shifts/current', {
-        headers: { 'Authorization': `Bearer ${jwtToken}` }
-      });
-      if (res.status === 200) {
-        const payload = await res.json();
-        setCurrentShift(payload.data);
-        return payload.data;
-      } else {
-        setCurrentShift(null);
-      }
-    } catch (err) {
-      console.error('Failed to load current shift:', err);
-      setCurrentShift(null);
-    }
-  }
+  useEffect(() => { bootstrap(); }, [bootstrap]);
 
-  function login(accessToken, userPayload) {
-    localStorage.setItem('a4_token', accessToken);
-    setToken(accessToken);
-    setUser(userPayload);
-    setIsAuthenticated(true);
-    loadCurrentShift(accessToken);
-  }
+  const login = useCallback(async (username, password) => {
+    const response = await api.post('/api/auth/login', { username, password });
+    const auth = response.data;
+    localStorage.setItem('a4_access_token', auth.accessToken);
+    if (auth.refreshToken) localStorage.setItem('a4_refresh_token', auth.refreshToken);
+    setUser(auth.user);
+    await loadShift();
+    return auth.user;
+  }, [loadShift]);
 
-  function logout() {
-    localStorage.removeItem('a4_token');
-    setToken('');
-    setUser(null);
-    setIsAuthenticated(false);
-    setCurrentShift(null);
-  }
+  const logout = useCallback(async () => {
+    const refreshToken = localStorage.getItem('a4_refresh_token');
+    try { if (refreshToken) await api.post('/api/auth/logout', { refreshToken }); } catch { /* local logout remains valid */ }
+    clearSession();
+  }, [clearSession]);
 
-  return (
-    <AuthContext.Provider value={{
-      isAuthenticated,
-      token,
-      user,
-      loading,
-      login,
-      logout,
-      fetchProfile,
-      currentShift,
-      setCurrentShift,
-      loadCurrentShift
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = useMemo(() => ({
+    user,
+    loading,
+    isAuthenticated: Boolean(user),
+    isAdmin: user?.role === 'Admin',
+    currentShift,
+    setCurrentShift,
+    loadShift,
+    login,
+    logout,
+  }), [user, loading, currentShift, loadShift, login, logout]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const value = useContext(AuthContext);
+  if (!value) throw new Error('useAuth must be used inside AuthProvider');
+  return value;
 }
-
-export default AuthContext;

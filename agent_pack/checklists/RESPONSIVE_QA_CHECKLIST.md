@@ -1,6 +1,6 @@
 # Responsive QA Checklist
 
-Verify at:
+Verify Arabic RTL in light and dark at:
 
 - [ ] 360×800
 - [ ] 390×844
@@ -9,14 +9,16 @@ Verify at:
 - [ ] 1366×768
 - [ ] 1440×900
 - [ ] 1920×1080
+- [ ] Desktop browser at 125% zoom
 
-For every required viewport:
+For each relevant route:
 
-- [ ] Shell and navigation are usable.
-- [ ] Page header actions remain accessible.
-- [ ] Filters do not clip.
-- [ ] Tables scroll only inside their container or use mobile cards.
-- [ ] Dialogs/drawers fit the viewport.
-- [ ] POS cart and payment remain reachable.
-- [ ] No text overlap or hidden critical action.
-- [ ] No horizontal body overflow.
+- [ ] Fixed shell offsets and right-side navigation are correct.
+- [ ] Page header and actions remain reachable.
+- [ ] Forms have clear external labels with no overlap or notch.
+- [ ] Filters wrap cleanly.
+- [ ] Tables scroll internally or become mobile cards.
+- [ ] Drawers/dialogs fit the viewport.
+- [ ] POS scanner, product results, cart, totals, and checkout remain reachable.
+- [ ] No critical action is hidden by sticky UI or mobile keyboard.
+- [ ] No page-level horizontal overflow exists.

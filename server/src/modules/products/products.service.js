@@ -10,7 +10,8 @@ export async function searchProducts(filters = {}) {
   let query = `
     SELECT p.*, c.name AS category_name,
            COALESCE((SELECT after_quantity FROM inventory_ledger WHERE product_id = p.id ORDER BY id DESC LIMIT 1), 0) AS stock,
-           COALESCE((SELECT SUM(pi.quantity) FROM preorder_items pi JOIN preorders pr ON pi.preorder_id = pr.id WHERE pi.product_id = p.id AND pr.status IN ('DEPOSIT_PAID_WAITING_STOCK', 'READY_FOR_PICKUP')), 0) AS open_preorders
+           COALESCE((SELECT SUM(pi.quantity) FROM preorder_items pi JOIN preorders pr ON pi.preorder_id = pr.id WHERE pi.product_id = p.id AND pr.status IN ('DEPOSIT_PAID_WAITING_STOCK', 'READY_FOR_PICKUP')), 0) AS open_preorders,
+           CASE WHEN EXISTS (SELECT 1 FROM product_book_details pbd WHERE pbd.product_id = p.id) THEN 1 ELSE 0 END AS is_book
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
     WHERE 1=1
@@ -50,7 +51,8 @@ export async function getProductDetails(id) {
   const product = await db.get(
     `SELECT p.*, c.name AS category_name,
             COALESCE((SELECT after_quantity FROM inventory_ledger WHERE product_id = p.id ORDER BY id DESC LIMIT 1), 0) AS stock,
-            COALESCE((SELECT SUM(pi.quantity) FROM preorder_items pi JOIN preorders pr ON pi.preorder_id = pr.id WHERE pi.product_id = p.id AND pr.status IN ('DEPOSIT_PAID_WAITING_STOCK', 'READY_FOR_PICKUP')), 0) AS open_preorders
+            COALESCE((SELECT SUM(pi.quantity) FROM preorder_items pi JOIN preorders pr ON pi.preorder_id = pr.id WHERE pi.product_id = p.id AND pr.status IN ('DEPOSIT_PAID_WAITING_STOCK', 'READY_FOR_PICKUP')), 0) AS open_preorders,
+            CASE WHEN EXISTS (SELECT 1 FROM product_book_details pbd WHERE pbd.product_id = p.id) THEN 1 ELSE 0 END AS is_book
      FROM products p
      LEFT JOIN categories c ON p.category_id = c.id
      WHERE p.id = ?;`,

@@ -10,9 +10,9 @@
     "Express",
     "SQLite"
   ],
-  "total_steps": 90,
-  "current_step": "090",
-  "pack_state": "active",
+  "total_steps": 52,
+  "current_step": "049",
+  "pack_state": "active_final_qa",
   "steps": [
     {
       "id": "001",
@@ -312,567 +312,205 @@
     },
     {
       "id": "038",
-      "slug": "frontend_bootstrap_vite",
-      "title": "Frontend Bootstrap Vite",
-      "status": "completed",
-      "step_file": "agent_pack/steps/038_frontend_bootstrap_vite.md",
-      "report": "agent_pack/reports/038_frontend_bootstrap_vite_REPORT.md"
-    },
-    {
-      "id": "039",
-      "slug": "frontend_design_system",
-      "title": "Frontend Design System",
-      "status": "completed",
-      "step_file": "agent_pack/steps/039_frontend_design_system.md",
-      "report": "agent_pack/reports/039_frontend_design_system_REPORT.md"
-    },
-    {
-      "id": "040",
-      "slug": "login_and_session_ui",
-      "title": "Login And Session UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/040_login_and_session_ui.md",
-      "report": "agent_pack/reports/040_login_and_session_ui_REPORT.md"
-    },
-    {
-      "id": "041",
-      "slug": "admin_layout_navigation",
-      "title": "Admin Layout Navigation",
-      "status": "completed",
-      "step_file": "agent_pack/steps/041_admin_layout_navigation.md",
-      "report": "agent_pack/reports/041_admin_layout_navigation_REPORT.md"
-    },
-    {
-      "id": "042",
-      "slug": "cashier_pos_layout",
-      "title": "Cashier POS Layout",
-      "status": "completed",
-      "step_file": "agent_pack/steps/042_cashier_pos_layout.md",
-      "report": "agent_pack/reports/042_cashier_pos_layout_REPORT.md"
-    },
-    {
-      "id": "043",
-      "slug": "categories_price_tiers_ui",
-      "title": "Categories Price Tiers UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/043_categories_price_tiers_ui.md",
-      "report": "agent_pack/reports/043_categories_price_tiers_ui_REPORT.md"
-    },
-    {
-      "id": "044",
-      "slug": "products_inventory_ui",
-      "title": "Products Inventory UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/044_products_inventory_ui.md",
-      "report": "agent_pack/reports/044_products_inventory_ui_REPORT.md"
-    },
-    {
-      "id": "045",
-      "slug": "product_qr_print_ui",
-      "title": "Product QR Print UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/045_product_qr_print_ui.md",
-      "report": "agent_pack/reports/045_product_qr_print_ui_REPORT.md"
-    },
-    {
-      "id": "046",
-      "slug": "normal_checkout_ui",
-      "title": "Normal Checkout UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/046_normal_checkout_ui.md",
-      "report": "agent_pack/reports/046_normal_checkout_ui_REPORT.md"
-    },
-    {
-      "id": "047",
-      "slug": "preorder_create_ui",
-      "title": "Preorder Create UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/047_preorder_create_ui.md",
-      "report": "agent_pack/reports/047_preorder_create_ui_REPORT.md"
-    },
-    {
-      "id": "048",
-      "slug": "preorder_scan_pickup_ui",
-      "title": "Preorder Scan Pickup UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/048_preorder_scan_pickup_ui.md",
-      "report": "agent_pack/reports/048_preorder_scan_pickup_ui_REPORT.md"
-    },
-    {
-      "id": "049",
-      "slug": "shift_close_cashier_ui",
-      "title": "Shift Close Cashier UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/049_shift_close_cashier_ui.md",
-      "report": "agent_pack/reports/049_shift_close_cashier_ui_REPORT.md"
-    },
-    {
-      "id": "050",
-      "slug": "admin_shifts_review_ui",
-      "title": "Admin Shifts Review UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/050_admin_shifts_review_ui.md",
-      "report": "agent_pack/reports/050_admin_shifts_review_ui_REPORT.md"
-    },
-    {
-      "id": "051",
-      "slug": "reports_kpis_ui",
-      "title": "Reports KPIs UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/051_reports_kpis_ui.md",
-      "report": "agent_pack/reports/051_reports_kpis_ui_REPORT.md"
-    },
-    {
-      "id": "052",
-      "slug": "audit_logs_ui",
-      "title": "Audit Logs UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/052_audit_logs_ui.md",
-      "report": "agent_pack/reports/052_audit_logs_ui_REPORT.md"
-    },
-    {
-      "id": "053",
-      "slug": "printer_settings_ui",
-      "title": "Printer Settings UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/053_printer_settings_ui.md",
-      "report": "agent_pack/reports/053_printer_settings_ui_REPORT.md"
-    },
-    {
-      "id": "054",
-      "slug": "seed_demo_data",
-      "title": "Seed Demo Data",
-      "status": "completed",
-      "step_file": "agent_pack/steps/054_seed_demo_data.md",
-      "report": "agent_pack/reports/054_seed_demo_data_REPORT.md"
-    },
-    {
-      "id": "055",
-      "slug": "integration_smoke_tests",
-      "title": "Integration Smoke Tests",
-      "status": "completed",
-      "step_file": "agent_pack/steps/055_integration_smoke_tests.md",
-      "report": "agent_pack/reports/055_integration_smoke_tests_REPORT.md"
-    },
-    {
-      "id": "056",
-      "slug": "security_rbac_final_audit",
-      "title": "Security RBAC Final Audit",
-      "status": "completed",
-      "step_file": "agent_pack/steps/056_security_rbac_final_audit.md",
-      "report": "agent_pack/reports/056_security_rbac_final_audit_REPORT.md"
-    },
-    {
-      "id": "057",
-      "slug": "printing_qr_final_qa",
-      "title": "Printing QR Final QA",
-      "status": "completed",
-      "step_file": "agent_pack/steps/057_printing_qr_final_qa.md",
-      "report": "agent_pack/reports/057_printing_qr_final_qa_REPORT.md"
-    },
-    {
-      "id": "058",
-      "slug": "performance_indexes_backup",
-      "title": "Performance Indexes Backup",
-      "status": "completed",
-      "step_file": "agent_pack/steps/058_performance_indexes_backup.md",
-      "report": "agent_pack/reports/058_performance_indexes_backup_REPORT.md"
-    },
-    {
-      "id": "059",
-      "slug": "deployment_docs",
-      "title": "Deployment Docs",
-      "status": "completed",
-      "step_file": "agent_pack/steps/059_deployment_docs.md",
-      "report": "agent_pack/reports/059_deployment_docs_REPORT.md"
-    },
-    {
-      "id": "060",
-      "slug": "react_components_css_refactoring",
-      "title": "React Components and CSS Refactoring",
-      "status": "completed",
-      "step_file": "agent_pack/steps/060_react_components_css_refactoring.md",
-      "report": "agent_pack/reports/060_react_components_css_refactoring_REPORT.md"
-    },
-    {
-      "id": "061",
       "slug": "frontend_template_reality_audit",
       "title": "Frontend Template Reality Audit",
       "status": "completed",
-      "step_file": "agent_pack/steps/061_frontend_template_reality_audit.md",
-      "report": "agent_pack/reports/061_frontend_template_reality_audit_REPORT.md",
-      "depends_on": [],
-      "batch_compatible": true
-    },
-    {
-      "id": "062",
-      "slug": "frontend_structure_and_legacy_cleanup_plan",
-      "title": "Frontend Structure and Legacy Cleanup Plan",
-      "status": "completed",
-      "step_file": "agent_pack/steps/062_frontend_structure_and_legacy_cleanup_plan.md",
-      "report": "agent_pack/reports/062_frontend_structure_and_legacy_cleanup_plan_REPORT.md",
+      "step_file": "agent_pack/steps/038_frontend_template_reality_audit.md",
+      "report": "agent_pack/reports/038_frontend_template_reality_audit_REPORT.md",
       "depends_on": [
-        "061"
+        "037"
       ],
       "batch_compatible": true
     },
     {
-      "id": "063",
-      "slug": "a4_design_tokens_and_brand_theme",
-      "title": "A4 Design Tokens and Brand Theme",
+      "id": "039",
+      "slug": "frontend_clean_slate_arabic_rtl_foundation",
+      "title": "Clean-Slate Arabic RTL Foundation",
       "status": "completed",
-      "step_file": "agent_pack/steps/063_a4_design_tokens_and_brand_theme.md",
-      "report": "agent_pack/reports/063_a4_design_tokens_and_brand_theme_REPORT.md",
+      "step_file": "agent_pack/steps/039_frontend_clean_slate_arabic_rtl_foundation.md",
+      "report": "agent_pack/reports/039_frontend_clean_slate_arabic_rtl_foundation_REPORT.md",
       "depends_on": [
-        "062"
+        "038"
       ],
       "batch_compatible": true
     },
     {
-      "id": "064",
-      "slug": "theme_provider_light_dark_foundation",
-      "title": "Theme Provider and Light/Dark Foundation",
+      "id": "040",
+      "slug": "a4_theme_shell_dark_light",
+      "title": "A4 Theme Shell and Dark/Light Modes",
       "status": "completed",
-      "step_file": "agent_pack/steps/064_theme_provider_light_dark_foundation.md",
-      "report": "agent_pack/reports/064_theme_provider_light_dark_foundation_REPORT.md",
+      "step_file": "agent_pack/steps/040_a4_theme_shell_dark_light.md",
+      "report": "agent_pack/reports/040_a4_theme_shell_dark_light_REPORT.md",
       "depends_on": [
-        "063"
+        "039"
       ],
       "batch_compatible": true
     },
     {
-      "id": "065",
-      "slug": "i18n_arabic_english_direction_foundation",
-      "title": "I18N Arabic/English and Direction Foundation",
+      "id": "041",
+      "slug": "shared_forms_tables_drawers_dialogs",
+      "title": "Shared Forms Tables Drawers and Dialogs",
       "status": "completed",
-      "step_file": "agent_pack/steps/065_i18n_arabic_english_direction_foundation.md",
-      "report": "agent_pack/reports/065_i18n_arabic_english_direction_foundation_REPORT.md",
+      "step_file": "agent_pack/steps/041_shared_forms_tables_drawers_dialogs.md",
+      "report": "agent_pack/reports/041_shared_forms_tables_drawers_dialogs_REPORT.md",
       "depends_on": [
-        "064"
+        "040"
       ],
       "batch_compatible": true
     },
     {
-      "id": "066",
-      "slug": "shared_app_shell_sidebar_topbar",
-      "title": "Shared App Shell, Sidebar, and Top Bar",
+      "id": "042",
+      "slug": "auth_routes_and_error_boundaries",
+      "title": "Authentication Routes and Runtime Boundaries",
       "status": "completed",
-      "step_file": "agent_pack/steps/066_shared_app_shell_sidebar_topbar.md",
-      "report": "agent_pack/reports/066_shared_app_shell_sidebar_topbar_REPORT.md",
+      "step_file": "agent_pack/steps/042_auth_routes_and_error_boundaries.md",
+      "report": "agent_pack/reports/042_auth_routes_and_error_boundaries_REPORT.md",
       "depends_on": [
-        "065"
+        "041"
       ],
       "batch_compatible": true
     },
     {
-      "id": "067",
-      "slug": "responsive_shell_and_navigation_qa",
-      "title": "Responsive Shell and Navigation QA",
+      "id": "043",
+      "slug": "dashboard_catalog_reference_pages",
+      "title": "Dashboard and Catalog Reference Pages",
       "status": "completed",
-      "step_file": "agent_pack/steps/067_responsive_shell_and_navigation_qa.md",
-      "report": "agent_pack/reports/067_responsive_shell_and_navigation_qa_REPORT.md",
+      "step_file": "agent_pack/steps/043_dashboard_catalog_reference_pages.md",
+      "report": "agent_pack/reports/043_dashboard_catalog_reference_pages_REPORT.md",
       "depends_on": [
-        "066"
+        "042"
       ],
       "batch_compatible": true
     },
     {
-      "id": "068",
-      "slug": "shared_page_headers_actions_breadcrumbs",
-      "title": "Shared Page Headers, Actions, and Breadcrumbs",
+      "id": "044",
+      "slug": "products_pricing_inventory_frontend",
+      "title": "Products Pricing and Inventory Frontend",
       "status": "completed",
-      "step_file": "agent_pack/steps/068_shared_page_headers_actions_breadcrumbs.md",
-      "report": "agent_pack/reports/068_shared_page_headers_actions_breadcrumbs_REPORT.md",
+      "step_file": "agent_pack/steps/044_products_pricing_inventory_frontend.md",
+      "report": "agent_pack/reports/044_products_pricing_inventory_frontend_REPORT.md",
       "depends_on": [
-        "067"
+        "043"
       ],
       "batch_compatible": true
     },
     {
-      "id": "069",
-      "slug": "shared_cards_filters_tables_states",
-      "title": "Shared Cards, Filters, Tables, and States",
+      "id": "045",
+      "slug": "pos_sale_preorder_pickup_frontend",
+      "title": "POS Sale Preorder and Pickup Frontend",
       "status": "completed",
-      "step_file": "agent_pack/steps/069_shared_cards_filters_tables_states.md",
-      "report": "agent_pack/reports/069_shared_cards_filters_tables_states_REPORT.md",
+      "step_file": "agent_pack/steps/045_pos_sale_preorder_pickup_frontend.md",
+      "report": "agent_pack/reports/045_pos_sale_preorder_pickup_frontend_REPORT.md",
       "depends_on": [
-        "068"
+        "044"
       ],
       "batch_compatible": true
     },
     {
-      "id": "070",
-      "slug": "shared_forms_drawers_dialogs",
-      "title": "Shared Forms, Drawers, and Dialogs",
+      "id": "046",
+      "slug": "shifts_receipts_operations_frontend",
+      "title": "Shifts Receipts and Operations Frontend",
       "status": "completed",
-      "step_file": "agent_pack/steps/070_shared_forms_drawers_dialogs.md",
-      "report": "agent_pack/reports/070_shared_forms_drawers_dialogs_REPORT.md",
+      "step_file": "agent_pack/steps/046_shifts_receipts_operations_frontend.md",
+      "report": "agent_pack/reports/046_shifts_receipts_operations_frontend_REPORT.md",
       "depends_on": [
-        "069"
+        "045"
       ],
       "batch_compatible": true
     },
     {
-      "id": "071",
-      "slug": "login_session_and_pre_auth_experience",
-      "title": "Login, Session, and Pre-Auth Experience",
+      "id": "047",
+      "slug": "reports_audit_printer_frontend",
+      "title": "Reports Audit and Printer Frontend",
       "status": "completed",
-      "step_file": "agent_pack/steps/071_login_session_and_pre_auth_experience.md",
-      "report": "agent_pack/reports/071_login_session_and_pre_auth_experience_REPORT.md",
+      "step_file": "agent_pack/steps/047_reports_audit_printer_frontend.md",
+      "report": "agent_pack/reports/047_reports_audit_printer_frontend_REPORT.md",
       "depends_on": [
-        "070"
+        "046"
       ],
       "batch_compatible": true
     },
     {
-      "id": "072",
-      "slug": "admin_dashboard_template_parity",
-      "title": "Admin Dashboard Template Parity",
+      "id": "048",
+      "slug": "rtl_responsive_performance_cleanup",
+      "title": "RTL Responsive and Performance Cleanup",
       "status": "completed",
-      "step_file": "agent_pack/steps/072_admin_dashboard_template_parity.md",
-      "report": "agent_pack/reports/072_admin_dashboard_template_parity_REPORT.md",
+      "step_file": "agent_pack/steps/048_rtl_responsive_performance_cleanup.md",
+      "report": "agent_pack/reports/048_rtl_responsive_performance_cleanup_REPORT.md",
       "depends_on": [
-        "071"
+        "047"
       ],
       "batch_compatible": true
     },
     {
-      "id": "073",
-      "slug": "cashier_pos_desktop_scanner_workspace",
-      "title": "Cashier POS Desktop Scanner Workspace",
-      "status": "completed",
-      "step_file": "agent_pack/steps/073_cashier_pos_desktop_scanner_workspace.md",
-      "report": "agent_pack/reports/073_cashier_pos_desktop_scanner_workspace_REPORT.md",
-      "depends_on": [
-        "072"
-      ],
-      "batch_compatible": true
-    },
-    {
-      "id": "074",
-      "slug": "cashier_pos_tablet_mobile_workspace",
-      "title": "Cashier POS Tablet and Mobile Workspace",
-      "status": "completed",
-      "step_file": "agent_pack/steps/074_cashier_pos_tablet_mobile_workspace.md",
-      "report": "agent_pack/reports/074_cashier_pos_tablet_mobile_workspace_REPORT.md",
-      "depends_on": [
-        "073"
-      ],
-      "batch_compatible": true
-    },
-    {
-      "id": "075",
-      "slug": "checkout_split_payment_receipt_flow_ui",
-      "title": "Checkout, Split Payment, and Sale Receipt UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/075_checkout_split_payment_receipt_flow_ui.md",
-      "report": "agent_pack/reports/075_checkout_split_payment_receipt_flow_ui_REPORT.md",
-      "depends_on": [
-        "074"
-      ],
-      "batch_compatible": true
-    },
-    {
-      "id": "076",
-      "slug": "categories_and_price_tiers_ui",
-      "title": "Categories and Price Tiers UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/076_categories_and_price_tiers_ui.md",
-      "report": "agent_pack/reports/076_categories_and_price_tiers_ui_REPORT.md",
-      "depends_on": [
-        "075"
-      ],
-      "batch_compatible": true
-    },
-    {
-      "id": "077",
-      "slug": "products_book_fields_and_qr_labels_ui",
-      "title": "Products, Book Fields, and QR Labels UI",
+      "id": "049",
+      "slug": "visual_template_parity_and_rtl_audit",
+      "title": "Visual Template Parity and RTL Audit",
       "status": "pending",
-      "step_file": "agent_pack/steps/077_products_book_fields_and_qr_labels_ui.md",
-      "report": "agent_pack/reports/077_products_book_fields_and_qr_labels_ui_REPORT.md",
+      "step_file": "agent_pack/steps/049_visual_template_parity_and_rtl_audit.md",
+      "report": "agent_pack/reports/049_visual_template_parity_and_rtl_audit_REPORT.md",
       "depends_on": [
-        "076"
+        "048"
       ],
       "batch_compatible": true
     },
     {
-      "id": "078",
-      "slug": "inventory_ledger_and_adjustments_ui",
-      "title": "Inventory Ledger and Adjustments UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/078_inventory_ledger_and_adjustments_ui.md",
-      "report": "agent_pack/reports/078_inventory_ledger_and_adjustments_ui_REPORT.md",
+      "id": "050",
+      "slug": "live_backend_contract_and_pos_e2e_qa",
+      "title": "Live Backend Contract and POS End-to-End QA",
+      "status": "pending",
+      "step_file": "agent_pack/steps/050_live_backend_contract_and_pos_e2e_qa.md",
+      "report": "agent_pack/reports/050_live_backend_contract_and_pos_e2e_qa_REPORT.md",
       "depends_on": [
-        "077"
+        "049"
       ],
       "batch_compatible": true
     },
     {
-      "id": "079",
-      "slug": "customers_and_payment_methods_ui",
-      "title": "Customers and Payment Methods UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/079_customers_and_payment_methods_ui.md",
-      "report": "agent_pack/reports/079_customers_and_payment_methods_ui_REPORT.md",
+      "id": "051",
+      "slug": "responsive_dark_light_accessibility_regression",
+      "title": "Responsive Dark/Light Accessibility Regression",
+      "status": "pending",
+      "step_file": "agent_pack/steps/051_responsive_dark_light_accessibility_regression.md",
+      "report": "agent_pack/reports/051_responsive_dark_light_accessibility_regression_REPORT.md",
       "depends_on": [
-        "078"
+        "050"
       ],
       "batch_compatible": true
     },
     {
-      "id": "080",
-      "slug": "preorder_admin_and_creation_ui",
-      "title": "Preorder Admin and Creation UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/080_preorder_admin_and_creation_ui.md",
-      "report": "agent_pack/reports/080_preorder_admin_and_creation_ui_REPORT.md",
+      "id": "052",
+      "slug": "release_cleanup_and_handoff",
+      "title": "Release Cleanup and Handoff",
+      "status": "pending",
+      "step_file": "agent_pack/steps/052_release_cleanup_and_handoff.md",
+      "report": "agent_pack/reports/052_release_cleanup_and_handoff_REPORT.md",
       "depends_on": [
-        "079"
+        "051"
       ],
-      "batch_compatible": true
-    },
-    {
-      "id": "081",
-      "slug": "preorder_qr_pickup_dialog_ui",
-      "title": "Preorder QR Pickup Dialog UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/081_preorder_qr_pickup_dialog_ui.md",
-      "report": "agent_pack/reports/081_preorder_qr_pickup_dialog_ui_REPORT.md",
-      "depends_on": [
-        "080"
-      ],
-      "batch_compatible": true
-    },
-    {
-      "id": "082",
-      "slug": "cashier_shift_summary_and_close_ui",
-      "title": "Cashier Shift Summary and Close UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/082_cashier_shift_summary_and_close_ui.md",
-      "report": "agent_pack/reports/082_cashier_shift_summary_and_close_ui_REPORT.md",
-      "depends_on": [
-        "081"
-      ],
-      "batch_compatible": true
-    },
-    {
-      "id": "083",
-      "slug": "admin_shift_review_and_approval_ui",
-      "title": "Admin Shift Review and Approval UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/083_admin_shift_review_and_approval_ui.md",
-      "report": "agent_pack/reports/083_admin_shift_review_and_approval_ui_REPORT.md",
-      "depends_on": [
-        "082"
-      ],
-      "batch_compatible": true
-    },
-    {
-      "id": "084",
-      "slug": "reports_kpis_exports_and_charts_ui",
-      "title": "Reports, KPIs, Exports, and Charts UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/084_reports_kpis_exports_and_charts_ui.md",
-      "report": "agent_pack/reports/084_reports_kpis_exports_and_charts_ui_REPORT.md",
-      "depends_on": [
-        "083"
-      ],
-      "batch_compatible": true
-    },
-    {
-      "id": "085",
-      "slug": "users_and_account_management_ui",
-      "title": "Users and Account Management UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/085_users_and_account_management_ui.md",
-      "report": "agent_pack/reports/085_users_and_account_management_ui_REPORT.md",
-      "depends_on": [
-        "084"
-      ],
-      "batch_compatible": true
-    },
-    {
-      "id": "086",
-      "slug": "receipts_search_preview_and_reprint_ui",
-      "title": "Receipts Search, Preview, and Reprint UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/086_receipts_search_preview_and_reprint_ui.md",
-      "report": "agent_pack/reports/086_receipts_search_preview_and_reprint_ui_REPORT.md",
-      "depends_on": [
-        "085"
-      ],
-      "batch_compatible": true
-    },
-    {
-      "id": "087",
-      "slug": "audit_logs_and_details_ui",
-      "title": "Audit Logs and Details UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/087_audit_logs_and_details_ui.md",
-      "report": "agent_pack/reports/087_audit_logs_and_details_ui_REPORT.md",
-      "depends_on": [
-        "086"
-      ],
-      "batch_compatible": true
-    },
-    {
-      "id": "088",
-      "slug": "printer_settings_and_print_qa_ui",
-      "title": "Printer Settings and Print QA UI",
-      "status": "completed",
-      "step_file": "agent_pack/steps/088_printer_settings_and_print_qa_ui.md",
-      "report": "agent_pack/reports/088_printer_settings_and_print_qa_ui_REPORT.md",
-      "depends_on": [
-        "087"
-      ],
-      "batch_compatible": true
-    },
-    {
-      "id": "089",
-      "slug": "theme_translation_accessibility_responsive_audit",
-      "title": "Theme, Translation, Accessibility, and Responsive Audit",
-      "status": "completed",
-      "step_file": "agent_pack/steps/089_theme_translation_accessibility_responsive_audit.md",
-      "report": "agent_pack/reports/089_theme_translation_accessibility_responsive_audit_REPORT.md",
-      "depends_on": [
-        "088"
-      ],
-      "batch_compatible": true
-    },
-    {
-      "id": "090",
-      "slug": "frontend_visual_regression_cleanup_finalization",
-      "title": "Frontend Visual Regression, Cleanup, and Finalization",
-      "status": "completed",
-      "step_file": "agent_pack/steps/090_frontend_visual_regression_cleanup_finalization.md",
-      "report": "agent_pack/reports/090_frontend_visual_regression_cleanup_finalization_REPORT.md",
-      "depends_on": [
-        "089"
-      ],
-      "batch_compatible": true
+      "batch_compatible": false
     }
   ],
-  "docs_version": "frontend_exact_template_parity_a4_theme_responsive_i18n_2026_07_11",
+  "docs_version": "arabic_only_rtl_clean_frontend_rebuild_2026_07_11",
   "feature_matrix": "agent_pack/docs/FEATURE_MATRIX.md",
-  "rtl_compatibility_rule": "Arabic uses RTL; English uses LTR; technical values are direction-isolated. Use Arabic phrasing such as رمز QR.",
-  "ui_language_rule": "Arabic is complete and default; all visible strings are locale-driven. English may be enabled with full key and LTR parity.",
+  "rtl_compatibility_rule": "The runtime UI is Arabic only and fixed RTL. Technical values use local LTR isolation without changing the page direction.",
+  "ui_language_rule": "Arabic is the only runtime product language. ar.json is loaded. en.json is retained as unused future storage only. No language switch or LTR runtime mode is allowed.",
   "database_rule": "SQLite only. Do not introduce MongoDB, Mongoose, or a Mongo query layer.",
   "run_policy": {
     "allowed_step_counts": [
       1,
       2
     ],
-    "default_step_count": 1,
+    "default_step_count": 2,
     "maximum_steps_per_run": 2,
     "second_step_requires_first_verification": true
   },
-  "frontend_design_rule": "Mandatory visual source is TEMPLETE-PROJECT/hamza.printing.press-main/client/. Reproduce its complete compact MUI shell and patterns with A4 blue/navy, Arabic RTL/English LTR, light/dark, responsive parity, and no CodzHub/printing-press content.",
-  "updated_at": "2026-07-11T03:00:00+03:00",
+  "frontend_design_rule": "Use the clean A4 client baseline: fixed Arabic RTL, external form labels without notches, A4 blue/navy light/dark theme, 64px top bar, 282px/76px right sidebar, right mobile drawer, shared compact template-derived components, responsive POS, and no language switch.",
+  "updated_at": "2026-07-11T23:30:00+03:00",
   "active_phase": {
-    "name": "frontend_template_modernization",
-    "step_range": "061-090",
-    "next_step": "061"
+    "name": "final_arabic_rtl_frontend_qa_and_release",
+    "step_range": "049-052",
+    "next_step": "049"
   },
   "reference_template_path": "TEMPLETE-PROJECT/hamza.printing.press-main/client/",
   "implementation_client_path": "client/"

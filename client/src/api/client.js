@@ -1,43 +1,48 @@
-/**
- * A4 POS API Client Helper
- */
-const BASE_URL = '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
-async function request(path, options = {}) {
-  const token = localStorage.getItem('a4_token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-    ...(options.headers || {})
-  };
-
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers
-  });
-
-  const contentType = response.headers.get('content-type');
-  let data = null;
-  if (contentType && contentType.includes('application/json')) {
-    data = await response.json();
-  }
-
-  if (!response.ok) {
-    const errorMessage = data?.error || 'حدث خطأ في الاتصال بالخادم.';
-    const error = new Error(errorMessage);
-    error.status = response.status;
-    error.code = data?.code;
-    throw error;
-  }
-
-  return data;
+async function parseResponse(response) {
+  const type = response.headers.get('content-type') || '';
+  if (type.includes('application/json')) return response.json();
+  return response.text();
 }
 
-export const apiClient = {
+async function request(path, options = {}) {
+  const token = localStorage.getItem('a4_access_token');
+  const headers = new Headers(options.headers || {});
+  if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch {
+    throw new Error('تعذر الاتصال بالخادم. تأكد من تشغيل الباك إند ثم حاول مرة أخرى.');
+  }
+
+  const payload = await parseResponse(response);
+  if (!response.ok) {
+    const error = new Error(payload?.error || payload?.message || 'حدث خطأ غير متوقع.');
+    error.status = response.status;
+    error.code = payload?.code;
+    throw error;
+  }
+  return payload;
+}
+
+export const api = {
   get: (path, options) => request(path, { method: 'GET', ...options }),
   post: (path, body, options) => request(path, { method: 'POST', body: JSON.stringify(body), ...options }),
-  put: (path, body, options) => request(path, { method: 'PUT', body: JSON.stringify(body), ...options }),
   patch: (path, body, options) => request(path, { method: 'PATCH', body: JSON.stringify(body), ...options }),
-  delete: (path, options) => request(path, { method: 'DELETE', ...options })
+  download: async (path, filename) => {
+    const token = localStorage.getItem('a4_access_token');
+    const response = await fetch(`${API_BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!response.ok) throw new Error('تعذر تصدير الملف.');
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 };
-export default apiClient;

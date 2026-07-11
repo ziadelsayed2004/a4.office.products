@@ -1,48 +1,105 @@
-/* Google Fonts - Cairo for Arabic typography */
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap');
 
-/* Shared Design System Stylesheet Imports */
-@import './variables.css';
-@import './reset.css';
-@import './rtl.css';
-@import './layout.css';
-@import './forms.css';
-@import './tables.css';
-@import './drawers.css';
-@import './dialogs.css';
-@import './material-overrides.css';
-
-/* Custom Scrollbar — respects light/dark mode */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+:root {
+  font-family: Cairo, "Segoe UI", Tahoma, Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --sidebar-width: 282px;
+  --sidebar-collapsed: 76px;
+  --topbar-height: 64px;
+  --content-max: 1680px;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+* { box-sizing: border-box; }
+html, body, #root { min-width: 320px; min-height: 100%; margin: 0; }
+html { scroll-behavior: smooth; }
+body { overflow-x: hidden; }
+button, input, select, textarea { font: inherit; }
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; }
+
+.a4-page {
+  width: min(100%, var(--content-max));
+  margin-inline: auto;
+  display: grid;
+  gap: 18px;
+  min-width: 0;
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.4);
-  border-radius: 3px;
+.a4-page-section {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--a4-border);
+  border-radius: 10px;
+  background: var(--a4-paper);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.7);
+.a4-grid { display: grid; gap: 16px; min-width: 0; }
+.a4-grid--metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.a4-grid--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.a4-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.a4-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; align-items: end; }
+.a4-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+.a4-form-grid .full { grid-column: 1 / -1; }
+.a4-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+.a4-actions--end { justify-content: flex-end; }
+.a4-ltr { direction: ltr; text-align: left; unicode-bidi: isolate; }
+.a4-muted { color: var(--a4-muted); }
+.a4-number { font-variant-numeric: tabular-nums; }
+.a4-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.a4-section-title { margin: 0; font-size: 1rem; font-weight: 800; }
+.a4-section-subtitle { margin: 4px 0 0; color: var(--a4-muted); font-size: .78rem; }
+.a4-scroll-x { overflow-x: auto; min-width: 0; }
+.a4-sticky-actions { position: sticky; bottom: 0; z-index: 3; margin: 18px -20px -20px; padding: 14px 20px; border-top: 1px solid var(--a4-border); background: color-mix(in srgb, var(--a4-paper) 94%, transparent); backdrop-filter: blur(8px); }
+
+:root,
+[data-theme="light"] {
+  --a4-bg: #f5f7fb;
+  --a4-paper: #ffffff;
+  --a4-alt: #f8fafc;
+  --a4-text: #172033;
+  --a4-muted: #687386;
+  --a4-border: #dce3ec;
+  --a4-primary: #0f5fa6;
+  --a4-primary-soft: #e8f2fb;
+  --a4-shadow: 0 8px 24px rgba(12, 31, 54, .08);
+}
+[data-theme="dark"] {
+  --a4-bg: #0d1520;
+  --a4-paper: #14202e;
+  --a4-alt: #101b28;
+  --a4-text: #eef5ff;
+  --a4-muted: #9cacc0;
+  --a4-border: #2b3b4e;
+  --a4-primary: #70b4f5;
+  --a4-primary-soft: rgba(112,180,245,.13);
+  --a4-shadow: 0 14px 34px rgba(0, 0, 0, .22);
 }
 
-/* Firefox scrollbar */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+@media (max-width: 1180px) {
+  .a4-grid--metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .a4-grid--three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  :root { --topbar-height: 58px; }
+  .a4-page { gap: 13px; }
+  .a4-page-section { padding: 14px; border-radius: 8px; }
+  .a4-grid--metrics, .a4-grid--two, .a4-grid--three, .a4-form-grid { grid-template-columns: 1fr; }
+  .a4-filter-grid { grid-template-columns: 1fr; }
+  .a4-actions > .MuiButton-root { flex: 1 1 auto; }
+  .a4-sticky-actions { margin-inline: -14px; padding-inline: 14px; }
 }
 
-/* Selection highlight */
-::selection {
-  background-color: rgba(26, 115, 232, 0.25);
+@media print {
+  .no-print, .app-sidebar, .app-topbar { display: none !important; }
+  .app-main { margin: 0 !important; padding: 0 !important; }
+  body { background: white !important; color: black !important; }
 }
 
-/* Smooth transitions for theme switching */
-body {
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
+/* Arabic-only fixed-direction UI. Technical identifiers opt into .a4-ltr explicitly. */
+html, body, #root, .MuiPopover-root, .MuiDialog-root, .MuiDrawer-root { direction: rtl; }
+.MuiMenuItem-root, .MuiListItem-root { text-align: right; }
+.MuiOutlinedInput-root legend { display: none; }
+.MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline { top: 0; }
+input::placeholder, textarea::placeholder { text-align: right; }
+input[type="number"], input[type="tel"] { font-variant-numeric: tabular-nums; }

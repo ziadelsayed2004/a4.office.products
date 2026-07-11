@@ -1,102 +1,79 @@
-/* App Shell Layout & Navigation Grid */
-
-.app-shell {
-  display: flex;
-  min-height: 100vh;
-  width: 100%;
-  background-color: var(--color-bg);
-  color: var(--color-text);
+.app-shell { min-height: 100vh; background: var(--a4-bg); color: var(--a4-text); }
+.app-topbar {
+  position: fixed; inset-block-start: 0; inset-inline: 0 0; height: var(--topbar-height); z-index: 1201;
+  display: flex; align-items: center; gap: 10px; padding-inline: 14px 18px;
+  background: var(--a4-paper); border-bottom: 1px solid var(--a4-border);
 }
+.app-topbar__brand { width: calc(var(--sidebar-width) - 18px); display: flex; align-items: center; gap: 10px; min-width: 0; transition: width .2s ease; }
+.app-shell.is-collapsed .app-topbar__brand { width: calc(var(--sidebar-collapsed) - 18px); }
+.app-brand-logo { width: 42px; height: 42px; object-fit: contain; flex: 0 0 auto; }
+.app-brand-copy { min-width: 0; line-height: 1.25; }
+.app-brand-copy strong { display: block; font-size: .9rem; color: var(--a4-primary); white-space: nowrap; }
+.app-brand-copy span { display: block; font-size: .68rem; color: var(--a4-muted); white-space: nowrap; }
+.app-shell.is-collapsed .app-brand-copy { display: none; }
+.app-topbar__content { min-width: 0; flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.app-page-caption { min-width: 0; }
+.app-page-caption strong { display: block; font-size: .94rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-page-caption span { display: block; font-size: .68rem; color: var(--a4-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-topbar__actions { display: flex; align-items: center; gap: 6px; }
 
-.app-shell__container {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-  min-width: 0;
-  min-height: 100vh;
-  padding-top: var(--topbar-height);
-  transition: padding-inline-start 0.2s ease;
+.app-sidebar {
+  position: fixed; inset-block: var(--topbar-height) 0; inset-inline-start: 0; width: var(--sidebar-width); z-index: 1200;
+  display: flex; flex-direction: column; overflow: hidden; background: var(--a4-paper); border-inline-end: 1px solid var(--a4-border);
+  transition: width .2s ease, transform .2s ease;
 }
-
-/* When Sidebar is persistent, push content */
-.app-shell__container--with-sidebar {
-  padding-inline-start: var(--sidebar-width);
+.app-shell.is-collapsed .app-sidebar { width: var(--sidebar-collapsed); }
+.app-sidebar__scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 12px 8px 18px; scrollbar-width: thin; }
+.app-sidebar__section { margin-block: 4px 14px; }
+.app-sidebar__heading { padding: 6px 14px; color: var(--a4-muted); font-size: .65rem; font-weight: 800; letter-spacing: .02em; white-space: nowrap; }
+.app-shell.is-collapsed .app-sidebar__heading { height: 1px; padding: 0; margin: 7px 12px; overflow: hidden; background: var(--a4-border); color: transparent; }
+.app-nav-item {
+  width: 100%; min-height: 42px; display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin-block: 3px;
+  border: 0; border-radius: 999px; color: var(--a4-text); background: transparent; cursor: pointer; text-align: right;
+  transition: background .15s ease, color .15s ease, transform .15s ease;
 }
+.app-nav-item:hover { background: var(--a4-alt); }
+.app-nav-item.is-active { color: var(--a4-primary); background: var(--a4-primary-soft); font-weight: 800; }
+.app-nav-item svg { flex: 0 0 auto; font-size: 1.22rem; }
+.app-nav-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-shell.is-collapsed .app-nav-item { justify-content: center; padding-inline: 0; border-radius: 10px; }
+.app-shell.is-collapsed .app-nav-item span { display: none; }
+.app-sidebar__profile { border-top: 1px solid var(--a4-border); padding: 12px; }
+.app-profile-card { display: flex; align-items: center; gap: 10px; padding: 9px; border: 1px solid var(--a4-border); border-radius: 9px; background: var(--a4-alt); min-width: 0; }
+.app-profile-card__copy { min-width: 0; flex: 1; }
+.app-profile-card__copy strong, .app-profile-card__copy span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-profile-card__copy strong { font-size: .78rem; }
+.app-profile-card__copy span { color: var(--a4-muted); font-size: .65rem; }
+.app-shell.is-collapsed .app-sidebar__profile { padding-inline: 8px; }
+.app-shell.is-collapsed .app-profile-card { justify-content: center; padding: 7px; border: 0; background: transparent; }
+.app-shell.is-collapsed .app-profile-card__copy { display: none; }
 
-.app-shell__container--with-sidebar-collapsed {
-  padding-inline-start: var(--sidebar-collapsed-width);
+.app-main { min-height: 100vh; margin-inline-start: var(--sidebar-width); padding: calc(var(--topbar-height) + 22px) 22px 28px; transition: margin .2s ease; }
+.app-shell.is-collapsed .app-main { margin-inline-start: var(--sidebar-collapsed); }
+.app-mobile-overlay { display: none; }
+
+@media (max-width: 900px) {
+  .app-topbar { padding-inline: 9px 12px; }
+  .app-topbar__brand { width: auto !important; }
+  .app-brand-copy { display: block !important; }
+  .app-brand-copy span { display: none; }
+  .app-sidebar { width: min(86vw, 292px); transform: translateX(110%); box-shadow: -14px 0 38px rgba(0,0,0,.18); }
+  .app-shell.is-mobile-open .app-sidebar { transform: translateX(0); }
+  .app-shell.is-collapsed .app-sidebar { width: min(86vw, 292px); }
+  .app-shell.is-collapsed .app-sidebar__heading { height: auto; padding: 6px 14px; margin: 0; background: transparent; color: var(--a4-muted); }
+  .app-shell.is-collapsed .app-nav-item { justify-content: flex-start; padding-inline: 12px; border-radius: 999px; }
+  .app-shell.is-collapsed .app-nav-item span, .app-shell.is-collapsed .app-profile-card__copy { display: block; }
+  .app-shell.is-collapsed .app-profile-card { justify-content: flex-start; padding: 9px; border: 1px solid var(--a4-border); background: var(--a4-alt); }
+  .app-main, .app-shell.is-collapsed .app-main { margin-inline-start: 0; padding: calc(var(--topbar-height) + 14px) 12px 22px; }
+  .app-mobile-overlay { display: block; position: fixed; inset: var(--topbar-height) 0 0; z-index: 1199; background: rgba(5,15,28,.48); opacity: 0; pointer-events: none; transition: opacity .18s ease; }
+  .app-shell.is-mobile-open .app-mobile-overlay { opacity: 1; pointer-events: auto; }
+  .app-page-caption span { display: none; }
 }
-
-/* Sidebar */
-.sidebar {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: var(--sidebar-width);
-  height: 100vh;
-  background-color: var(--color-surface);
-  border-left: 1px solid var(--border-color);
-  z-index: 1200;
-  transition: width 0.2s ease, transform 0.2s ease;
-  overflow-y: auto;
+@media (max-width: 520px) {
+  .app-brand-logo { width: 36px; height: 36px; }
+  .app-brand-copy strong { font-size: .78rem; }
+  .app-topbar__actions .hide-mobile { display: none; }
 }
-
-.sidebar--collapsed {
-  width: var(--sidebar-collapsed-width);
-}
-
-/* Topbar */
-.topbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--topbar-height);
-  background-color: var(--color-surface);
-  border-bottom: 1px solid var(--border-color);
-  z-index: 1100;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--space-4);
-  transition: right 0.2s ease;
-}
-
-.topbar--with-sidebar {
-  right: var(--sidebar-width);
-}
-
-.topbar--with-sidebar-collapsed {
-  right: var(--sidebar-collapsed-width);
-}
-
-/* Main Content Area */
-.main-content {
-  flex-grow: 1;
-  padding: var(--space-6);
-  max-width: var(--content-max-width);
-  margin: 0 auto;
-  width: 100%;
-}
-
-@media (max-width: 768px) {
-
-  .app-shell__container--with-sidebar,
-  .app-shell__container--with-sidebar-collapsed {
-    padding-inline-start: 0;
-  }
-
-  .topbar--with-sidebar,
-  .topbar--with-sidebar-collapsed {
-    right: 0;
-  }
-
-  .sidebar {
-    transform: translateX(100%);
-  }
-
-  .sidebar--mobile-open {
-    transform: translateX(0);
-  }
-}
+.hide-desktop { display: none !important; }
+.sidebar-collapse-button { width: 30px; height: 30px; }
+@media (max-width: 900px) { .hide-desktop { display: inline-flex !important; } .sidebar-collapse-button { display: none !important; } }
