@@ -5,12 +5,19 @@ import { CacheProvider } from '@emotion/react';
 import createCache from '@emotion/cache';
 import { prefixer } from 'stylis';
 import CssBaseline from '@mui/material/CssBaseline';
+import { useLanguage } from '../i18n/config.js';
 import './ThemeConfig.css';
 
 // Create Emotion cache for RTL
 const cacheRtl = createCache({
   key: 'muirtl',
   stylisPlugins: [prefixer, rtlPlugin],
+  prepend: true,
+});
+
+// Create Emotion cache for LTR
+const cacheLtr = createCache({
+  key: 'muiltr',
   prepend: true,
 });
 
@@ -44,10 +51,12 @@ export const ThemeConfig = ({ children }) => {
     [mode]
   );
 
+  const { dir } = useLanguage();
+
   const theme = useMemo(
     () =>
       createTheme({
-        direction: 'rtl',
+        direction: dir,
         palette: {
           mode,
           ...(mode === 'light'
@@ -398,15 +407,15 @@ export const ThemeConfig = ({ children }) => {
           },
         },
       }),
-    [mode]
+    [mode, dir]
   );
 
   return (
-    <CacheProvider value={cacheRtl}>
+    <CacheProvider value={dir === 'rtl' ? cacheRtl : cacheLtr}>
       <ColorModeContext.Provider value={colorMode}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          <div dir="rtl" className="theme-root">
+          <div dir={dir} className="theme-root">
             {children}
           </div>
         </ThemeProvider>

@@ -13,7 +13,10 @@ const DEFAULT_SETTINGS = {
   qr_printer_height: '25',
   print_show_customer: 'true',
   print_show_price_tier: 'true',
-  print_show_qr: 'true'
+  print_show_qr: 'true',
+  qr_label_count: '1',
+  qr_label_margin: '2',
+  qr_label_spacing: '2'
 };
 
 /**

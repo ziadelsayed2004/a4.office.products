@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../app/AuthContext.jsx';
+import { useLanguage } from '../i18n/config.js';
+import PageHeader from '../components/navigation/PageHeader.jsx';
+import DataTable from '../components/data-display/DataTable.jsx';
+import StatusChip from '../components/data-display/StatusChip.jsx';
+import ConfirmDialog from '../components/feedback/ConfirmDialog.jsx';
+import FilterPanel from '../components/forms/FilterPanel.jsx';
 import {
   Box,
   Typography,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  CircularProgress,
   Alert,
   Dialog,
   DialogTitle,
@@ -19,7 +17,6 @@ import {
   DialogActions,
   TextField,
   Chip,
-  ButtonGroup,
   FormControl,
   InputLabel,
   Select,
@@ -30,7 +27,9 @@ import {
   Divider,
   RadioGroup,
   Radio,
-  FormLabel
+  FormLabel,
+  Card,
+  CardContent
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -42,6 +41,7 @@ import {
 
 export function Products() {
   const { token } = useAuth();
+  const { dir } = useLanguage();
   const [productsList, setProductsList] = useState([]);
   const [categoriesList, setCategoriesList] = useState([]);
   const [priceTiersList, setPriceTiersList] = useState([]);
@@ -103,18 +103,60 @@ export function Products() {
   const [dialogError, setDialogError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Status Toggle Confirmation States
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [selectedProductForToggle, setSelectedProductForToggle] = useState(null);
+
+  // Filters State
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterType, setFilterType] = useState('all'); // all, book, general
+  const [filterStock, setFilterStock] = useState('all'); // all, low, instock, outofstock
+  const [showInactive, setShowInactive] = useState(true);
+
   const loadProducts = async () => {
     if (!token) return;
+    setLoading(true);
+    setError('');
     try {
-      const res = await fetch('/api/products?activeOnly=false', {
+      let url = `/api/products?activeOnly=${showInactive ? 'false' : 'true'}`;
+      if (filterSearch.trim()) {
+        url += `&q=${encodeURIComponent(filterSearch.trim())}`;
+      }
+      if (filterCategory) {
+        url += `&categoryId=${filterCategory}`;
+      }
+      const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const payload = await res.json();
       if (res.status === 200) {
-        setProductsList(payload.data || []);
+        let results = payload.data || [];
+        
+        // Client-side filter for Book vs General
+        if (filterType === 'book') {
+          results = results.filter(p => p.is_book === 1 || p.notes?.includes('كتاب') || p.sku?.includes('AR'));
+        } else if (filterType === 'general') {
+          results = results.filter(p => p.is_book !== 1 && !p.notes?.includes('كتاب') && !p.sku?.includes('AR'));
+        }
+
+        // Client-side filter for Stock status
+        if (filterStock === 'low') {
+          results = results.filter(p => p.stock <= p.low_stock_threshold);
+        } else if (filterStock === 'instock') {
+          results = results.filter(p => p.stock > 0);
+        } else if (filterStock === 'outofstock') {
+          results = results.filter(p => p.stock <= 0);
+        }
+
+        setProductsList(results);
+      } else {
+        setError(payload.error || 'فشل تحميل قائمة المنتجات.');
       }
     } catch (err) {
-      console.error('Failed to load products:', err);
+      setError('خطأ في الاتصال بالخادم.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -162,7 +204,24 @@ export function Products() {
 
   useEffect(() => {
     initData();
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Trigger search on filter update
+  const handleApplyFilters = () => {
+    loadProducts();
+  };
+
+  const handleResetFilters = () => {
+    setFilterSearch('');
+    setFilterCategory('');
+    setFilterType('all');
+    setFilterStock('all');
+    setShowInactive(true);
+    // Reload products with empty states
+    setTimeout(() => {
+      loadProducts();
+    }, 50);
+  };
 
   const clearProductForm = () => {
     setProductFormName('');
@@ -411,8 +470,16 @@ export function Products() {
     }
   };
 
-  const handleToggleProductStatus = async (targetProd) => {
+  const handleToggleProductStatus = (targetProd) => {
+    setSelectedProductForToggle(targetProd);
+    setConfirmOpen(true);
+  };
+
+  const confirmToggleStatus = async () => {
+    if (!selectedProductForToggle) return;
+    const targetProd = selectedProductForToggle;
     const isCurrentlyActive = targetProd.is_active === 1;
+    setConfirmOpen(false);
     try {
       const res = await fetch(`/api/admin/products/${targetProd.id}`, {
         method: 'PATCH',
@@ -429,7 +496,7 @@ export function Products() {
         alert(payload.error || 'فشل تعديل حالة المنتج.');
       }
     } catch (err) {
-      alert('خطأ بالخادم.');
+      alert('خطأ في الاتصال بالخادم.');
     }
   };
 
@@ -514,142 +581,271 @@ export function Products() {
     }
   };
 
+  // Mobile card view layout
+  const renderMobileRecord = (p) => (
+    <Card variant="outlined" sx={{ borderRadius: 1 }}>
+      <CardContent sx={{ p: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+            {p.name}
+          </Typography>
+          <StatusChip status={p.is_active} />
+        </Box>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1, fontSize: '0.8rem' }}>
+          <strong>رمز SKU: </strong><code>{p.sku}</code> | <strong>الباركود: </strong>{p.barcode || '—'}
+        </Typography>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1, fontSize: '0.8rem' }}>
+          <strong>التصنيف: </strong>{p.category_name || '—'} | <strong>النوع: </strong>
+          {p.notes?.includes('كتاب') || p.sku?.includes('AR') || p.is_book === 1 ? 'كتاب تعليمي' : 'عام'}
+        </Typography>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2, fontSize: '0.8rem' }}>
+          <strong>تكلفة الشراء: </strong>{(p.purchase_cost / 100).toFixed(2)} ج.م | 
+          <strong>المخزون: </strong>
+          <Chip
+            label={p.stock}
+            color={p.stock <= p.low_stock_threshold ? 'error' : 'success'}
+            size="small"
+            sx={{ fontWeight: 'bold', height: 20, px: 0.5, mx: 0.5 }}
+          />
+          | <strong>الحجوزات: </strong>
+          <Chip label={p.open_preorders} size="small" variant="outlined" sx={{ height: 20, px: 0.5, mx: 0.5 }} />
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => handleOpenEditDialog(p)}
+            startIcon={<EditIcon />}
+            sx={{ fontFamily: 'Cairo' }}
+          >
+            تعديل
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => handleOpenQrDialog(p)}
+            startIcon={<QrIcon />}
+            sx={{ fontFamily: 'Cairo' }}
+          >
+            ملصق
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => handleOpenAdjustDialog(p)}
+            startIcon={<SettingsIcon />}
+            sx={{ fontFamily: 'Cairo' }}
+          >
+            تسوية
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            color={p.is_active === 1 ? 'error' : 'success'}
+            onClick={() => handleToggleProductStatus(p)}
+            startIcon={<PowerIcon />}
+            sx={{ fontFamily: 'Cairo' }}
+          >
+            {p.is_active === 1 ? 'تعطيل' : 'تفعيل'}
+          </Button>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <Box>
       {/* Content Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', fontFamily: 'Cairo' }}>
-          إدارة المنتجات (Catalog)
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpenAddDialog}
-          sx={{ fontFamily: 'Cairo' }}
-        >
-          إضافة منتج جديد
-        </Button>
-      </Box>
+      <PageHeader
+        titleKey="nav.products"
+        actions={
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenAddDialog}
+            sx={{ fontFamily: 'Cairo' }}
+          >
+            إضافة منتج جديد
+          </Button>
+        }
+      />
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3, fontFamily: 'Cairo', textAlign: 'right' }}>
+        <Alert severity="error" sx={{ mb: 3, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
           {error}
         </Alert>
       )}
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>الاسم</TableCell>
-                <TableCell>رمز SKU</TableCell>
-                <TableCell>الباركود</TableCell>
-                <TableCell>التصنيف</TableCell>
-                <TableCell>تكلفة الشراء</TableCell>
-                <TableCell>المخزون الفعلي</TableCell>
-                <TableCell>الحجوزات</TableCell>
-                <TableCell>النوع</TableCell>
-                <TableCell>الحالة</TableCell>
-                <TableCell>العمليات</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {productsList.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ color: 'text.secondary', py: 4, fontFamily: 'Cairo' }}>
-                    لا توجد منتجات مضافة في الكتالوج.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                productsList.map((p) => (
-                  <TableRow key={p.id} hover>
-                    <TableCell sx={{ fontWeight: 'bold' }}>{p.name}</TableCell>
-                    <TableCell><code>{p.sku}</code></TableCell>
-                    <TableCell>{p.barcode || '—'}</TableCell>
-                    <TableCell>{p.category_name || '—'}</TableCell>
-                    <TableCell>{(p.purchase_cost / 100).toFixed(2)} ج.م</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={p.stock}
-                        color={p.stock <= p.low_stock_threshold ? 'error' : 'success'}
-                        size="small"
-                        sx={{ fontWeight: 'bold' }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={p.open_preorders} size="small" variant="outlined" />
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={p.notes?.includes('كتاب') || p.sku?.includes('AR') ? 'كتاب تعليمي' : 'عام'}
-                        color={p.notes?.includes('كتاب') || p.sku?.includes('AR') ? 'primary' : 'default'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={p.is_active === 1 ? 'نشط' : 'معطل'}
-                        color={p.is_active === 1 ? 'success' : 'error'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          className="table-action-btn"
-                          onClick={() => handleOpenEditDialog(p)}
-                          startIcon={<EditIcon />}
-                          sx={{ fontFamily: 'Cairo' }}
-                        >
-                          <span className="btn-text">تعديل</span>
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          className="table-action-btn"
-                          onClick={() => handleOpenQrDialog(p)}
-                          startIcon={<QrIcon />}
-                          sx={{ fontFamily: 'Cairo' }}
-                        >
-                          <span className="btn-text">ملصق</span>
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          className="table-action-btn"
-                          onClick={() => handleOpenAdjustDialog(p)}
-                          startIcon={<SettingsIcon />}
-                          sx={{ fontFamily: 'Cairo' }}
-                        >
-                          <span className="btn-text">تسوية</span>
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          className="table-action-btn"
-                          color={p.is_active === 1 ? 'error' : 'success'}
-                          onClick={() => handleToggleProductStatus(p)}
-                          startIcon={<PowerIcon />}
-                          sx={{ fontFamily: 'Cairo' }}
-                        >
-                          <span className="btn-text">{p.is_active === 1 ? 'تعطيل' : 'تفعيل'}</span>
-                        </Button>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+      {/* Filter panel */}
+      <FilterPanel
+        onApply={handleApplyFilters}
+        onReset={handleResetFilters}
+        resultCount={productsList.length}
+      >
+        <TextField
+          fullWidth
+          size="small"
+          label="البحث بالاسم، SKU أو الباركود"
+          value={filterSearch}
+          onChange={(e) => setFilterSearch(e.target.value)}
+          sx={{
+            '& .MuiInputLabel-root': {
+              fontFamily: 'Cairo',
+              left: dir === 'rtl' ? 'auto' : 0,
+              right: dir === 'rtl' ? 24 : 'auto',
+              transformOrigin: dir === 'rtl' ? 'right' : 'left'
+            },
+            '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+          }}
+        />
+
+        <FormControl fullWidth size="small">
+          <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>تصنيف المنتج</InputLabel>
+          <Select
+            value={filterCategory}
+            label="تصنيف المنتج"
+            onChange={(e) => setFilterCategory(e.target.value)}
+          >
+            <MenuItem value="">الكل</MenuItem>
+            {categoriesList.map((c) => (
+              <MenuItem key={c.id} value={c.id.toString()}>
+                {c.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl fullWidth size="small">
+          <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>نوع المنتج</InputLabel>
+          <Select
+            value={filterType}
+            label="نوع المنتج"
+            onChange={(e) => setFilterType(e.target.value)}
+          >
+            <MenuItem value="all">الكل</MenuItem>
+            <MenuItem value="book">كتب خارجية ومستلزمات دراسية</MenuItem>
+            <MenuItem value="general">منتجات عامة</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl fullWidth size="small">
+          <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>حالة المخزون</InputLabel>
+          <Select
+            value={filterStock}
+            label="حالة المخزون"
+            onChange={(e) => setFilterStock(e.target.value)}
+          >
+            <MenuItem value="all">الكل</MenuItem>
+            <MenuItem value="low">مخزون منخفض</MenuItem>
+            <MenuItem value="instock">متوفر بالمخزن</MenuItem>
+            <MenuItem value="outofstock">نفذ المخزون</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+            />
+          }
+          label="عرض المنتجات المعطلة"
+          sx={{ '& .MuiFormControlLabel-label': { fontFamily: 'Cairo', fontSize: '0.85rem' } }}
+        />
+      </FilterPanel>
+
+      <DataTable
+        loading={loading}
+        columns={[
+          { id: 'name', label: 'الاسم' },
+          { id: 'sku', label: 'رمز SKU', render: (p) => <code>{p.sku}</code> },
+          { id: 'barcode', label: 'الباركود', render: (p) => p.barcode || '—' },
+          { id: 'category', label: 'التصنيف', render: (p) => p.category_name || '—' },
+          { id: 'purchase_cost', label: 'تكلفة الشراء', render: (p) => `${(p.purchase_cost / 100).toFixed(2)} ج.م` },
+          {
+            id: 'stock',
+            label: 'المخزون الفعلي',
+            render: (p) => (
+              <Chip
+                label={p.stock}
+                color={p.stock <= p.low_stock_threshold ? 'error' : 'success'}
+                size="small"
+                sx={{ fontWeight: 'bold' }}
+              />
+            )
+          },
+          { id: 'preorders', label: 'الحجوزات', render: (p) => <Chip label={p.open_preorders} size="small" variant="outlined" /> },
+          {
+            id: 'type',
+            label: 'النوع',
+            render: (p) => (
+              <Chip
+                label={p.notes?.includes('كتاب') || p.sku?.includes('AR') || p.is_book === 1 ? 'كتاب تعليمي' : 'عام'}
+                color={p.notes?.includes('كتاب') || p.sku?.includes('AR') || p.is_book === 1 ? 'primary' : 'default'}
+                size="small"
+              />
+            )
+          },
+          {
+            id: 'is_active',
+            label: 'الحالة',
+            render: (p) => <StatusChip status={p.is_active} />
+          },
+          {
+            id: 'actions',
+            label: 'العمليات',
+            render: (p) => (
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  className="table-action-btn"
+                  onClick={() => handleOpenEditDialog(p)}
+                  startIcon={<EditIcon />}
+                  sx={{ fontFamily: 'Cairo' }}
+                >
+                  <span className="btn-text">تعديل</span>
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  className="table-action-btn"
+                  onClick={() => handleOpenQrDialog(p)}
+                  startIcon={<QrIcon />}
+                  sx={{ fontFamily: 'Cairo' }}
+                >
+                  <span className="btn-text">ملصق</span>
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  className="table-action-btn"
+                  onClick={() => handleOpenAdjustDialog(p)}
+                  startIcon={<SettingsIcon />}
+                  sx={{ fontFamily: 'Cairo' }}
+                >
+                  <span className="btn-text">تسوية</span>
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  className="table-action-btn"
+                  color={p.is_active === 1 ? 'error' : 'success'}
+                  onClick={() => handleToggleProductStatus(p)}
+                  startIcon={<PowerIcon />}
+                  sx={{ fontFamily: 'Cairo' }}
+                >
+                  <span className="btn-text">{p.is_active === 1 ? 'تعطيل' : 'تفعيل'}</span>
+                </Button>
+              </Box>
+            )
+          }
+        ]}
+        rows={productsList}
+        mobileRenderer={renderMobileRecord}
+        emptyTitle="لا توجد منتجات مطابقة للبحث"
+        emptyDescription="تأكد من كتابة اسم منتج أو باركود صحيح أو ضبط فئات الفلتر الحالية."
+      />
 
       {/* Add / Edit Dialog Wrapper */}
       <Dialog
@@ -658,13 +854,13 @@ export function Products() {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: 'right' }}>
+        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
           {showAddDialog ? 'إضافة منتج جديد للكتالوج' : 'تعديل بيانات المنتج'}
         </DialogTitle>
         <form onSubmit={showAddDialog ? handleCreateProductSubmit : handleEditProductSubmit}>
           <DialogContent>
             {dialogError && (
-              <Alert severity="error" sx={{ mb: 2, fontFamily: 'Cairo', textAlign: 'right' }}>
+              <Alert severity="error" sx={{ mb: 2, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
                 {dialogError}
               </Alert>
             )}
@@ -679,7 +875,15 @@ export function Products() {
                   onChange={(e) => setProductFormName(e.target.value)}
                   disabled={submitting}
                   size="small"
-                  sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                  sx={{
+                    '& .MuiInputLabel-root': {
+                      fontFamily: 'Cairo',
+                      left: dir === 'rtl' ? 'auto' : 0,
+                      right: dir === 'rtl' ? 24 : 'auto',
+                      transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                    },
+                    '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -691,7 +895,15 @@ export function Products() {
                   onChange={(e) => setProductFormSku(e.target.value)}
                   disabled={submitting}
                   size="small"
-                  sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                  sx={{
+                    '& .MuiInputLabel-root': {
+                      fontFamily: 'Cairo',
+                      left: dir === 'rtl' ? 'auto' : 0,
+                      right: dir === 'rtl' ? 24 : 'auto',
+                      transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                    },
+                    '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -702,12 +914,20 @@ export function Products() {
                   onChange={(e) => setProductFormBarcode(e.target.value)}
                   disabled={submitting}
                   size="small"
-                  sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                  sx={{
+                    '& .MuiInputLabel-root': {
+                      fontFamily: 'Cairo',
+                      left: dir === 'rtl' ? 'auto' : 0,
+                      right: dir === 'rtl' ? 24 : 'auto',
+                      transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                    },
+                    '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth size="small">
-                  <InputLabel>تصنيف المنتج</InputLabel>
+                  <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>تصنيف المنتج</InputLabel>
                   <Select
                     value={productFormCategoryId}
                     label="تصنيف المنتج"
@@ -779,12 +999,20 @@ export function Products() {
                       onChange={(e) => setProductFormPreorderDepositPct(e.target.value)}
                       disabled={submitting}
                       size="small"
-                      sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                      sx={{
+                        '& .MuiInputLabel-root': {
+                          fontFamily: 'Cairo',
+                          left: dir === 'rtl' ? 'auto' : 0,
+                          right: dir === 'rtl' ? 24 : 'auto',
+                          transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                        },
+                        '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <FormControl fullWidth size="small">
-                      <InputLabel>طريقة التسليم الافتراضية</InputLabel>
+                      <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>طريقة التسليم الافتراضية</InputLabel>
                       <Select
                         value={productFormPickupMethod}
                         label="طريقة التسليم الافتراضية"
@@ -813,7 +1041,15 @@ export function Products() {
                   onChange={(e) => setProductFormLowStockThreshold(e.target.value)}
                   disabled={submitting}
                   size="small"
-                  sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                  sx={{
+                    '& .MuiInputLabel-root': {
+                      fontFamily: 'Cairo',
+                      left: dir === 'rtl' ? 'auto' : 0,
+                      right: dir === 'rtl' ? 24 : 'auto',
+                      transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                    },
+                    '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -824,7 +1060,15 @@ export function Products() {
                   onChange={(e) => setProductFormPurchaseCost(e.target.value)}
                   disabled={submitting}
                   size="small"
-                  sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                  sx={{
+                    '& .MuiInputLabel-root': {
+                      fontFamily: 'Cairo',
+                      left: dir === 'rtl' ? 'auto' : 0,
+                      right: dir === 'rtl' ? 24 : 'auto',
+                      transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                    },
+                    '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                  }}
                 />
               </Grid>
 
@@ -838,7 +1082,15 @@ export function Products() {
                   onChange={(e) => setProductFormNotes(e.target.value)}
                   disabled={submitting}
                   size="small"
-                  sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                  sx={{
+                    '& .MuiInputLabel-root': {
+                      fontFamily: 'Cairo',
+                      left: dir === 'rtl' ? 'auto' : 0,
+                      right: dir === 'rtl' ? 24 : 'auto',
+                      transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                    },
+                    '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                  }}
                 />
               </Grid>
 
@@ -859,7 +1111,15 @@ export function Products() {
                     onChange={(e) => handlePriceChange(tier.id, e.target.value)}
                     disabled={submitting}
                     size="small"
-                    sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                    sx={{
+                      '& .MuiInputLabel-root': {
+                        fontFamily: 'Cairo',
+                        left: dir === 'rtl' ? 'auto' : 0,
+                        right: dir === 'rtl' ? 24 : 'auto',
+                        transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                      },
+                      '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                    }}
                   />
                 </Grid>
               ))}
@@ -890,7 +1150,15 @@ export function Products() {
                       onChange={(e) => setBookFormType(e.target.value)}
                       disabled={submitting}
                       size="small"
-                      sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                      sx={{
+                        '& .MuiInputLabel-root': {
+                          fontFamily: 'Cairo',
+                          left: dir === 'rtl' ? 'auto' : 0,
+                          right: dir === 'rtl' ? 24 : 'auto',
+                          transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                        },
+                        '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
@@ -902,7 +1170,15 @@ export function Products() {
                       onChange={(e) => setBookFormSchoolGrade(e.target.value)}
                       disabled={submitting}
                       size="small"
-                      sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                      sx={{
+                        '& .MuiInputLabel-root': {
+                          fontFamily: 'Cairo',
+                          left: dir === 'rtl' ? 'auto' : 0,
+                          right: dir === 'rtl' ? 24 : 'auto',
+                          transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                        },
+                        '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
@@ -914,7 +1190,15 @@ export function Products() {
                       onChange={(e) => setBookFormSubject(e.target.value)}
                       disabled={submitting}
                       size="small"
-                      sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                      sx={{
+                        '& .MuiInputLabel-root': {
+                          fontFamily: 'Cairo',
+                          left: dir === 'rtl' ? 'auto' : 0,
+                          right: dir === 'rtl' ? 24 : 'auto',
+                          transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                        },
+                        '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
@@ -926,7 +1210,15 @@ export function Products() {
                       onChange={(e) => setBookFormTeacher(e.target.value)}
                       disabled={submitting}
                       size="small"
-                      sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                      sx={{
+                        '& .MuiInputLabel-root': {
+                          fontFamily: 'Cairo',
+                          left: dir === 'rtl' ? 'auto' : 0,
+                          right: dir === 'rtl' ? 24 : 'auto',
+                          transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                        },
+                        '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
@@ -938,7 +1230,15 @@ export function Products() {
                       onChange={(e) => setBookFormPublisher(e.target.value)}
                       disabled={submitting}
                       size="small"
-                      sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                      sx={{
+                        '& .MuiInputLabel-root': {
+                          fontFamily: 'Cairo',
+                          left: dir === 'rtl' ? 'auto' : 0,
+                          right: dir === 'rtl' ? 24 : 'auto',
+                          transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                        },
+                        '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
@@ -951,12 +1251,20 @@ export function Products() {
                       onChange={(e) => setBookFormReleaseYear(e.target.value)}
                       disabled={submitting}
                       size="small"
-                      sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                      sx={{
+                        '& .MuiInputLabel-root': {
+                          fontFamily: 'Cairo',
+                          left: dir === 'rtl' ? 'auto' : 0,
+                          right: dir === 'rtl' ? 24 : 'auto',
+                          transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                        },
+                        '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <FormControl fullWidth size="small">
-                      <InputLabel>الفصل الدراسي</InputLabel>
+                      <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>الفصل الدراسي</InputLabel>
                       <Select
                         value={bookFormTerm}
                         label="الفصل الدراسي"
@@ -971,7 +1279,7 @@ export function Products() {
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <FormControl fullWidth size="small">
-                      <InputLabel>تصنيف كتاب تعليمي</InputLabel>
+                      <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>تصنيف كتاب تعليمي</InputLabel>
                       <Select
                         value={bookFormEducationalClassification}
                         label="تصنيف كتاب تعليمي"
@@ -1000,11 +1308,11 @@ export function Products() {
 
       {/* Adjust Stock Dialog */}
       <Dialog open={showAdjustDialog} onClose={() => !submitting && setShowAdjustDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: 'right' }}>تسوية مخزون المنتج</DialogTitle>
+        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: dir === 'rtl' ? 'right' : 'left' }}>تسوية مخزون المنتج</DialogTitle>
         <form onSubmit={handleAdjustStockSubmit}>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {dialogError && (
-              <Alert severity="error" sx={{ mb: 1, fontFamily: 'Cairo', textAlign: 'right' }}>
+              <Alert severity="error" sx={{ mb: 1, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
                 {dialogError}
               </Alert>
             )}
@@ -1013,7 +1321,7 @@ export function Products() {
             </Typography>
 
             <FormControl component="fieldset">
-              <FormLabel component="legend" sx={{ fontFamily: 'Cairo', fontSize: '0.85rem' }}>نوع التسوية</FormLabel>
+              <FormLabel component="legend" sx={{ fontFamily: 'Cairo', fontSize: '0.85rem', textAlign: dir === 'rtl' ? 'right' : 'left' }}>نوع التسوية</FormLabel>
               <RadioGroup row value={adjustType} onChange={(e) => setAdjustType(e.target.value)}>
                 <FormControlLabel value="ADD" control={<Radio />} label="إضافة مخزون (+)" sx={{ '& .MuiFormControlLabel-label': { fontFamily: 'Cairo', fontSize: '0.85rem' } }} />
                 <FormControlLabel value="SUBTRACT" control={<Radio />} label="خصم مخزون (-)" sx={{ '& .MuiFormControlLabel-label': { fontFamily: 'Cairo', fontSize: '0.85rem' } }} />
@@ -1028,7 +1336,15 @@ export function Products() {
               onChange={(e) => setAdjustQty(e.target.value)}
               disabled={submitting}
               size="small"
-              sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  fontFamily: 'Cairo',
+                  left: dir === 'rtl' ? 'auto' : 0,
+                  right: dir === 'rtl' ? 24 : 'auto',
+                  transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                },
+                '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+              }}
             />
             <TextField
               fullWidth
@@ -1039,7 +1355,15 @@ export function Products() {
               onChange={(e) => setAdjustNotes(e.target.value)}
               disabled={submitting}
               size="small"
-              sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  fontFamily: 'Cairo',
+                  left: dir === 'rtl' ? 'auto' : 0,
+                  right: dir === 'rtl' ? 24 : 'auto',
+                  transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                },
+                '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+              }}
             />
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -1055,11 +1379,11 @@ export function Products() {
 
       {/* QR Code printing configuration dialog */}
       <Dialog open={showQrDialog} onClose={() => !submitting && setShowQrDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: 'right' }}>تحضير وطباعة ملصقات QR للتعريف</DialogTitle>
+        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: dir === 'rtl' ? 'right' : 'left' }}>تحضير وطباعة ملصقات QR للتعريف</DialogTitle>
         <form onSubmit={handleGenerateQrLabels}>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {dialogError && (
-              <Alert severity="error" sx={{ mb: 1, fontFamily: 'Cairo', textAlign: 'right' }}>
+              <Alert severity="error" sx={{ mb: 1, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
                 {dialogError}
               </Alert>
             )}
@@ -1075,11 +1399,19 @@ export function Products() {
               onChange={(e) => setQrPrintQuantity(e.target.value)}
               disabled={submitting}
               size="small"
-              sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  fontFamily: 'Cairo',
+                  left: dir === 'rtl' ? 'auto' : 0,
+                  right: dir === 'rtl' ? 24 : 'auto',
+                  transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                },
+                '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+              }}
             />
 
             <FormControl fullWidth size="small">
-              <InputLabel>مقاس ملصق الطباعة</InputLabel>
+              <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>مقاس ملصق الطباعة</InputLabel>
               <Select
                 value={qrPrintSize}
                 label="مقاس ملصق الطباعة"
@@ -1118,6 +1450,22 @@ export function Products() {
           </DialogActions>
         </form>
       </Dialog>
+
+      {/* Confirmation dialog for product status toggle */}
+      <ConfirmDialog
+        open={confirmOpen}
+        title="تغيير حالة المنتج"
+        description={
+          selectedProductForToggle?.is_active === 1
+            ? `هل أنت متأكد من رغبتك في تعطيل المنتج "${selectedProductForToggle?.name}"؟ سيختفي المنتج من قائمة الكاشير والبيع المباشر.`
+            : `هل أنت متأكد من رغبتك في تفعيل المنتج "${selectedProductForToggle?.name}"؟`
+        }
+        type="warning"
+        confirmText="تأكيد"
+        cancelText="إلغاء"
+        onConfirm={confirmToggleStatus}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </Box>
   );
 }

@@ -1,42 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../app/AuthContext.jsx';
+import { useLanguage } from '../i18n/config.js';
+import PageHeader from '../components/navigation/PageHeader.jsx';
+import DataTable from '../components/data-display/DataTable.jsx';
+import StatusChip from '../components/data-display/StatusChip.jsx';
+import EntityDrawer from '../components/drawers/EntityDrawer.jsx';
+import ConfirmDialog from '../components/feedback/ConfirmDialog.jsx';
 import {
   Box,
   Typography,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  CircularProgress,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Card,
+  CardContent,
   TextField,
-  Chip,
-  ButtonGroup,
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Alert,
+  CircularProgress,
+  Paper,
+  Chip
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, VpnKey as KeyIcon, PowerSettingsNew as PowerIcon } from '@mui/icons-material';
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  VpnKey as KeyIcon,
+  PowerSettingsNew as PowerIcon
+} from '@mui/icons-material';
 
 export function Users() {
   const { token, user } = useAuth();
+  const { dir } = useLanguage();
   const [usersList, setUsersList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Dialog States
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  // Drawer States
+  const [showAddDrawer, setShowAddDrawer] = useState(false);
+  const [showEditDrawer, setShowEditDrawer] = useState(false);
+  const [showPasswordDrawer, setShowPasswordDrawer] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
   // Form Inputs
@@ -49,6 +52,10 @@ export function Users() {
   
   const [dialogError, setDialogError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Confirm Toggle Status State
+  const [confirmToggleOpen, setConfirmToggleOpen] = useState(false);
+  const [toggleTargetUser, setToggleTargetUser] = useState(null);
 
   const loadUsers = async () => {
     if (!token) return;
@@ -73,7 +80,7 @@ export function Users() {
 
   useEffect(() => {
     loadUsers();
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const clearForm = () => {
     setUserFormName('');
@@ -85,24 +92,24 @@ export function Users() {
     setDialogError('');
   };
 
-  const handleOpenAddDialog = () => {
+  const handleOpenAddDrawer = () => {
     clearForm();
-    setShowAddDialog(true);
+    setShowAddDrawer(true);
   };
 
-  const handleOpenEditDialog = (u) => {
+  const handleOpenEditDrawer = (u) => {
     clearForm();
     setSelectedUser(u);
     setUserFormName(u.name);
     setUserFormPhone(u.phone || '');
     setUserFormRole(u.role);
-    setShowEditDialog(true);
+    setShowEditDrawer(true);
   };
 
-  const handleOpenPasswordDialog = (u) => {
+  const handleOpenPasswordDrawer = (u) => {
     clearForm();
     setSelectedUser(u);
-    setShowPasswordDialog(true);
+    setShowPasswordDrawer(true);
   };
 
   const handleCreateUserSubmit = async (e) => {
@@ -131,7 +138,7 @@ export function Users() {
       });
       const payload = await res.json();
       if (res.status === 201) {
-        setShowAddDialog(false);
+        setShowAddDrawer(false);
         loadUsers();
       } else {
         setDialogError(payload.error || 'فشلت عملية إنشاء المستخدم.');
@@ -167,7 +174,7 @@ export function Users() {
       });
       const payload = await res.json();
       if (res.status === 200) {
-        setShowEditDialog(false);
+        setShowEditDrawer(false);
         setSelectedUser(null);
         loadUsers();
       } else {
@@ -200,7 +207,7 @@ export function Users() {
       });
       const payload = await res.json();
       if (res.status === 200) {
-        setShowPasswordDialog(false);
+        setShowPasswordDrawer(false);
         loadUsers();
       } else {
         setDialogError(payload.error || 'فشل تغيير الباسورد.');
@@ -212,9 +219,11 @@ export function Users() {
     }
   };
 
-  const handleToggleUserStatus = async (targetUser) => {
-    const isCurrentlyActive = targetUser.is_active === 1;
-    const endpoint = `/api/admin/users/${targetUser.id}/${isCurrentlyActive ? 'disable' : 'enable'}`;
+  const handleToggleUserStatus = async () => {
+    if (!token || !toggleTargetUser) return;
+    setConfirmToggleOpen(false);
+    const isCurrentlyActive = toggleTargetUser.is_active === 1;
+    const endpoint = `/api/admin/users/${toggleTargetUser.id}/${isCurrentlyActive ? 'disable' : 'enable'}`;
     try {
       const res = await fetch(endpoint, {
         method: 'PATCH',
@@ -228,28 +237,74 @@ export function Users() {
       }
     } catch (err) {
       alert('خطأ في الاتصال بالخادم.');
+    } finally {
+      setToggleTargetUser(null);
     }
   };
+
+  // Mobile Render Card
+  const renderMobileUserCard = (u) => (
+    <Card variant="outlined" sx={{ borderRadius: 1 }}>
+      <CardContent sx={{ p: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>{u.name}</Typography>
+          <Chip
+            label={u.role === 'Admin' ? 'مسؤول' : 'كاشير'}
+            color={u.role === 'Admin' ? 'primary' : 'info'}
+            size="small"
+            sx={{ height: 18, fontSize: '0.65rem', fontWeight: 'bold', fontFamily: 'Cairo' }}
+          />
+        </Box>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
+          اسم المستخدم: {u.username}
+        </Typography>
+        {u.phone && (
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1, direction: 'ltr', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
+            الهاتف: {u.phone}
+          </Typography>
+        )}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+          <StatusChip status={u.is_active === 1 ? 1 : 2} label={u.is_active === 1 ? 'نشط' : 'معطل'} />
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button size="small" onClick={() => handleOpenEditDrawer(u)}>تعديل</Button>
+            <Button size="small" color="warning" onClick={() => handleOpenPasswordDrawer(u)}>كلمة المرور</Button>
+            {u.id !== user?.id && (
+              <Button
+                size="small"
+                color={u.is_active === 1 ? 'error' : 'success'}
+                onClick={() => {
+                  setToggleTargetUser(u);
+                  setConfirmToggleOpen(true);
+                }}
+              >
+                {u.is_active === 1 ? 'تعطيل' : 'تفعيل'}
+              </Button>
+            )}
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <Box>
       {/* Content Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', fontFamily: 'Cairo' }}>
-          إدارة المستخدمين
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpenAddDialog}
-          sx={{ fontFamily: 'Cairo' }}
-        >
-          إضافة مستخدم جديد
-        </Button>
-      </Box>
+      <PageHeader
+        titleKey="nav.users"
+        actions={
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenAddDrawer}
+            sx={{ fontFamily: 'Cairo' }}
+          >
+            إضافة مستخدم جديد
+          </Button>
+        }
+      />
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3, fontFamily: 'Cairo', textAlign: 'right' }}>
+        <Alert severity="error" sx={{ mb: 3, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
           {error}
         </Alert>
       )}
@@ -259,98 +314,90 @@ export function Users() {
           <CircularProgress />
         </Box>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>الاسم الكامل</TableCell>
-                <TableCell>اسم المستخدم</TableCell>
-                <TableCell>الصلاحية (الدور)</TableCell>
-                <TableCell>رقم الهاتف</TableCell>
-                <TableCell>الحالة</TableCell>
-                <TableCell>العمليات</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {usersList.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ color: 'text.secondary', py: 4, fontFamily: 'Cairo' }}>
-                    لا يوجد مستخدمين مضافين.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                usersList.map((u) => (
-                  <TableRow key={u.id} hover>
-                    <TableCell sx={{ fontWeight: 'bold' }}>{u.name}</TableCell>
-                    <TableCell>{u.username}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={u.role === 'Admin' ? 'مسؤول' : 'كاشير'}
-                        color={u.role === 'Admin' ? 'primary' : 'info'}
+        <Card variant="outlined" sx={{ borderRadius: 1 }}>
+          <CardContent sx={{ p: 0 }}>
+            <DataTable
+              columns={[
+                { id: 'name', label: 'الاسم الكامل', render: (u) => <strong>{u.name}</strong> },
+                { id: 'username', label: 'اسم المستخدم' },
+                {
+                  id: 'role',
+                  label: 'الصلاحية (الدور)',
+                  render: (u) => (
+                    <Chip
+                      label={u.role === 'Admin' ? 'مسؤول' : 'كاشير'}
+                      color={u.role === 'Admin' ? 'primary' : 'info'}
+                      size="small"
+                      sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}
+                    />
+                  )
+                },
+                { id: 'phone', label: 'رقم الهاتف', render: (u) => u.phone ? <code style={{ direction: 'ltr', display: 'inline-block' }}>{u.phone}</code> : '—' },
+                {
+                  id: 'is_active',
+                  label: 'الحالة',
+                  render: (u) => <StatusChip status={u.is_active === 1 ? 1 : 2} label={u.is_active === 1 ? 'نشط' : 'معطل'} />
+                },
+                {
+                  id: 'actions',
+                  label: 'العمليات',
+                  render: (u) => (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        variant="outlined"
                         size="small"
-                        sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}
-                      />
-                    </TableCell>
-                    <TableCell>{u.phone || '—'}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={u.is_active === 1 ? 'نشط' : 'معطل'}
-                        color={u.is_active === 1 ? 'success' : 'error'}
+                        onClick={() => handleOpenEditDrawer(u)}
+                        startIcon={<EditIcon />}
+                        sx={{ fontFamily: 'Cairo' }}
+                      >
+                        تعديل
+                      </Button>
+                      <Button
+                        variant="outlined"
                         size="small"
-                        sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          className="table-action-btn"
-                          onClick={() => handleOpenEditDialog(u)}
-                          startIcon={<EditIcon />}
-                          sx={{ fontFamily: 'Cairo' }}
-                        >
-                          <span className="btn-text">تعديل</span>
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          className="table-action-btn"
-                          onClick={() => handleOpenPasswordDialog(u)}
-                          startIcon={<KeyIcon />}
-                          sx={{ fontFamily: 'Cairo' }}
-                        >
-                          <span className="btn-text">الباسورد</span>
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          className="table-action-btn"
-                          color={u.is_active === 1 ? 'error' : 'success'}
-                          onClick={() => handleToggleUserStatus(u)}
-                          disabled={u.id === user?.id}
-                          startIcon={<PowerIcon />}
-                          sx={{ fontFamily: 'Cairo' }}
-                        >
-                          <span className="btn-text">{u.is_active === 1 ? 'تعطيل' : 'تفعيل'}</span>
-                        </Button>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                        onClick={() => handleOpenPasswordDrawer(u)}
+                        startIcon={<KeyIcon />}
+                        sx={{ fontFamily: 'Cairo' }}
+                      >
+                        الباسورد
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color={u.is_active === 1 ? 'error' : 'success'}
+                        onClick={() => {
+                          setToggleTargetUser(u);
+                          setConfirmToggleOpen(true);
+                        }}
+                        disabled={u.id === user?.id}
+                        startIcon={<PowerIcon />}
+                        sx={{ fontFamily: 'Cairo' }}
+                      >
+                        {u.is_active === 1 ? 'تعطيل' : 'تفعيل'}
+                      </Button>
+                    </Box>
+                  )
+                }
+              ]}
+              rows={usersList}
+              mobileRenderer={renderMobileUserCard}
+              emptyTitle="لا يوجد مستخدمين"
+              emptyDescription="سوف تظهر قائمة الحسابات المسجلة في النظام والتحكم بصلاحياتها هنا."
+            />
+          </CardContent>
+        </Card>
       )}
 
-      {/* Add Dialog */}
-      <Dialog open={showAddDialog} onClose={() => !submitting && setShowAddDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: 'right' }}>إضافة مستخدم جديد</DialogTitle>
+      {/* Add User Drawer */}
+      <EntityDrawer
+        open={showAddDrawer}
+        onClose={() => !submitting && setShowAddDrawer(false)}
+        title="إضافة مستخدم جديد"
+      >
         <form onSubmit={handleCreateUserSubmit}>
-          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             {dialogError && (
-              <Alert severity="error" sx={{ mb: 1, fontFamily: 'Cairo', textAlign: 'right' }}>
+              <Alert severity="error" sx={{ fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
                 {dialogError}
               </Alert>
             )}
@@ -362,7 +409,15 @@ export function Users() {
               onChange={(e) => setUserFormName(e.target.value)}
               disabled={submitting}
               size="small"
-              sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  fontFamily: 'Cairo',
+                  left: dir === 'rtl' ? 'auto' : 0,
+                  right: dir === 'rtl' ? 24 : 'auto',
+                  transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                },
+                '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+              }}
             />
             <TextField
               required
@@ -372,7 +427,15 @@ export function Users() {
               onChange={(e) => setUserFormUsername(e.target.value)}
               disabled={submitting}
               size="small"
-              sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  fontFamily: 'Cairo',
+                  left: dir === 'rtl' ? 'auto' : 0,
+                  right: dir === 'rtl' ? 24 : 'auto',
+                  transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                },
+                '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+              }}
             />
             <TextField
               required
@@ -383,7 +446,15 @@ export function Users() {
               onChange={(e) => setUserFormPassword(e.target.value)}
               disabled={submitting}
               size="small"
-              sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  fontFamily: 'Cairo',
+                  left: dir === 'rtl' ? 'auto' : 0,
+                  right: dir === 'rtl' ? 24 : 'auto',
+                  transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                },
+                '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+              }}
             />
             <TextField
               fullWidth
@@ -392,10 +463,18 @@ export function Users() {
               onChange={(e) => setUserFormPhone(e.target.value)}
               disabled={submitting}
               size="small"
-              sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  fontFamily: 'Cairo',
+                  left: dir === 'rtl' ? 'auto' : 0,
+                  right: dir === 'rtl' ? 24 : 'auto',
+                  transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                },
+                '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+              }}
             />
             <FormControl fullWidth size="small">
-              <InputLabel>الصلاحية (الدور)</InputLabel>
+              <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>الصلاحية (الدور)</InputLabel>
               <Select
                 value={userFormRole}
                 label="الصلاحية (الدور)"
@@ -406,25 +485,29 @@ export function Users() {
                 <MenuItem value="Admin">مسؤول (Admin)</MenuItem>
               </Select>
             </FormControl>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button onClick={() => setShowAddDialog(false)} disabled={submitting} sx={{ fontFamily: 'Cairo' }}>
-              إلغاء
-            </Button>
-            <Button type="submit" variant="contained" disabled={submitting} sx={{ fontFamily: 'Cairo' }}>
-              إنشاء المستخدم
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
 
-      {/* Edit Dialog */}
-      <Dialog open={showEditDialog} onClose={() => !submitting && setShowEditDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: 'right' }}>تعديل بيانات المستخدم</DialogTitle>
+            <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+              <Button onClick={() => setShowAddDrawer(false)} disabled={submitting} sx={{ fontFamily: 'Cairo', flex: 1 }}>
+                إلغاء
+              </Button>
+              <Button type="submit" variant="contained" disabled={submitting} sx={{ fontFamily: 'Cairo', flex: 2 }}>
+                إنشاء المستخدم
+              </Button>
+            </Box>
+          </Box>
+        </form>
+      </EntityDrawer>
+
+      {/* Edit User Drawer */}
+      <EntityDrawer
+        open={showEditDrawer}
+        onClose={() => !submitting && setShowEditDrawer(false)}
+        title="تعديل بيانات المستخدم"
+      >
         <form onSubmit={handleEditUserSubmit}>
-          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             {dialogError && (
-              <Alert severity="error" sx={{ mb: 1, fontFamily: 'Cairo', textAlign: 'right' }}>
+              <Alert severity="error" sx={{ fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
                 {dialogError}
               </Alert>
             )}
@@ -436,7 +519,15 @@ export function Users() {
               onChange={(e) => setUserFormName(e.target.value)}
               disabled={submitting}
               size="small"
-              sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  fontFamily: 'Cairo',
+                  left: dir === 'rtl' ? 'auto' : 0,
+                  right: dir === 'rtl' ? 24 : 'auto',
+                  transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                },
+                '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+              }}
             />
             <TextField
               fullWidth
@@ -445,10 +536,18 @@ export function Users() {
               onChange={(e) => setUserFormPhone(e.target.value)}
               disabled={submitting}
               size="small"
-              sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  fontFamily: 'Cairo',
+                  left: dir === 'rtl' ? 'auto' : 0,
+                  right: dir === 'rtl' ? 24 : 'auto',
+                  transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                },
+                '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+              }}
             />
             <FormControl fullWidth size="small">
-              <InputLabel>الصلاحية (الدور)</InputLabel>
+              <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>الصلاحية (الدور)</InputLabel>
               <Select
                 value={userFormRole}
                 label="الصلاحية (الدور)"
@@ -459,25 +558,29 @@ export function Users() {
                 <MenuItem value="Admin">مسؤول (Admin)</MenuItem>
               </Select>
             </FormControl>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button onClick={() => setShowEditDialog(false)} disabled={submitting} sx={{ fontFamily: 'Cairo' }}>
-              إلغاء
-            </Button>
-            <Button type="submit" variant="contained" disabled={submitting} sx={{ fontFamily: 'Cairo' }}>
-              حفظ التعديلات
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
 
-      {/* Password Dialog */}
-      <Dialog open={showPasswordDialog} onClose={() => !submitting && setShowPasswordDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: 'right' }}>تغيير كلمة المرور</DialogTitle>
+            <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+              <Button onClick={() => setShowEditDrawer(false)} disabled={submitting} sx={{ fontFamily: 'Cairo', flex: 1 }}>
+                إلغاء
+              </Button>
+              <Button type="submit" variant="contained" disabled={submitting} sx={{ fontFamily: 'Cairo', flex: 2 }}>
+                حفظ التعديلات
+              </Button>
+            </Box>
+          </Box>
+        </form>
+      </EntityDrawer>
+
+      {/* Password Reset Drawer */}
+      <EntityDrawer
+        open={showPasswordDrawer}
+        onClose={() => !submitting && setShowPasswordDrawer(false)}
+        title="تغيير كلمة المرور"
+      >
         <form onSubmit={handlePasswordSubmit}>
-          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             {dialogError && (
-              <Alert severity="error" sx={{ mb: 1, fontFamily: 'Cairo', textAlign: 'right' }}>
+              <Alert severity="error" sx={{ fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
                 {dialogError}
               </Alert>
             )}
@@ -490,19 +593,47 @@ export function Users() {
               onChange={(e) => setNewPasswordState(e.target.value)}
               disabled={submitting}
               size="small"
-              sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  fontFamily: 'Cairo',
+                  left: dir === 'rtl' ? 'auto' : 0,
+                  right: dir === 'rtl' ? 24 : 'auto',
+                  transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                },
+                '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+              }}
             />
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button onClick={() => setShowPasswordDialog(false)} disabled={submitting} sx={{ fontFamily: 'Cairo' }}>
-              إلغاء
-            </Button>
-            <Button type="submit" variant="contained" disabled={submitting} sx={{ fontFamily: 'Cairo' }}>
-              تغيير كلمة المرور
-            </Button>
-          </DialogActions>
+
+            <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+              <Button onClick={() => setShowPasswordDrawer(false)} disabled={submitting} sx={{ fontFamily: 'Cairo', flex: 1 }}>
+                إلغاء
+              </Button>
+              <Button type="submit" variant="contained" disabled={submitting} sx={{ fontFamily: 'Cairo', flex: 2 }}>
+                تغيير كلمة المرور
+              </Button>
+            </Box>
+          </Box>
         </form>
-      </Dialog>
+      </EntityDrawer>
+
+      {/* Toggle Account Status Confirm Dialog */}
+      <ConfirmDialog
+        open={confirmToggleOpen}
+        title={toggleTargetUser?.is_active === 1 ? 'تعطيل حساب مستخدم' : 'تفعيل حساب مستخدم'}
+        description={
+          toggleTargetUser?.is_active === 1
+            ? `هل أنت متأكد من رغبتك في تعطيل الحساب الخاص بـ (${toggleTargetUser?.name})؟ لن يتمكن من تسجيل الدخول للنظام بعد ذلك.`
+            : `هل أنت متأكد من رغبتك في إعادة تفعيل الحساب الخاص بـ (${toggleTargetUser?.name})؟ سيتمكن من تسجيل الدخول فوراً بالصلاحيات المحددة.`
+        }
+        type={toggleTargetUser?.is_active === 1 ? 'error' : 'success'}
+        confirmText="تأكيد"
+        cancelText="إلغاء"
+        onConfirm={handleToggleUserStatus}
+        onCancel={() => {
+          setConfirmToggleOpen(false);
+          setToggleTargetUser(null);
+        }}
+      />
     </Box>
   );
 }

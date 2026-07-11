@@ -1,30 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../app/AuthContext.jsx';
+import { useLanguage } from '../i18n/config.js';
+import PageHeader from '../components/navigation/PageHeader.jsx';
+import DataTable from '../components/data-display/DataTable.jsx';
+import StatusChip from '../components/data-display/StatusChip.jsx';
+import ConfirmDialog from '../components/feedback/ConfirmDialog.jsx';
 import {
   Box,
   Typography,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  CircularProgress,
   Alert,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
-  Chip,
-  ButtonGroup
+  Card,
+  CardContent
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, PowerSettingsNew as PowerIcon } from '@mui/icons-material';
 
 export function PriceTiers() {
   const { token, user } = useAuth();
+  const { t, dir } = useLanguage();
   const [priceTiersList, setPriceTiersList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -37,6 +35,10 @@ export function PriceTiers() {
   const [priceTierFormDesc, setPriceTierFormDesc] = useState('');
   const [dialogError, setDialogError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Status Toggle Confirmation States
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [selectedPriceTierForToggle, setSelectedPriceTierForToggle] = useState(null);
 
   const loadPriceTiers = async () => {
     if (!token) return;
@@ -62,7 +64,7 @@ export function PriceTiers() {
 
   useEffect(() => {
     loadPriceTiers();
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleOpenAddDialog = () => {
     setPriceTierFormName('');
@@ -144,8 +146,16 @@ export function PriceTiers() {
     }
   };
 
-  const handleTogglePriceTierStatus = async (targetTier) => {
+  const handleTogglePriceTierStatus = (targetTier) => {
+    setSelectedPriceTierForToggle(targetTier);
+    setConfirmOpen(true);
+  };
+
+  const confirmToggleStatus = async () => {
+    if (!selectedPriceTierForToggle) return;
+    const targetTier = selectedPriceTierForToggle;
     const isCurrentlyActive = targetTier.is_active === 1;
+    setConfirmOpen(false);
     try {
       const res = await fetch(`/api/admin/price-tiers/${targetTier.id}`, {
         method: 'PATCH',
@@ -166,106 +176,121 @@ export function PriceTiers() {
     }
   };
 
+  // Mobile layout representation
+  const renderMobileRecord = (tier) => (
+    <Card variant="outlined" sx={{ borderRadius: 1 }}>
+      <CardContent sx={{ p: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+            {tier.name}
+          </Typography>
+          <StatusChip status={tier.is_active} />
+        </Box>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2, fontSize: '0.8rem' }}>
+          {tier.description || '—'}
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => handleOpenEditDialog(tier)}
+            startIcon={<EditIcon />}
+            sx={{ fontFamily: 'Cairo' }}
+          >
+            تعديل
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            color={tier.is_active === 1 ? 'error' : 'success'}
+            onClick={() => handleTogglePriceTierStatus(tier)}
+            startIcon={<PowerIcon />}
+            sx={{ fontFamily: 'Cairo' }}
+          >
+            {tier.is_active === 1 ? 'تعطيل' : 'تفعيل'}
+          </Button>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <Box>
       {/* Content Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', fontFamily: 'Cairo' }}>
-          إدارة فئات الأسعار
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpenAddDialog}
-          sx={{ fontFamily: 'Cairo' }}
-        >
-          إضافة فئة سعر جديدة
-        </Button>
-      </Box>
+      <PageHeader
+        titleKey="nav.priceTiers"
+        actions={
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenAddDialog}
+            sx={{ fontFamily: 'Cairo' }}
+          >
+            إضافة فئة سعر جديدة
+          </Button>
+        }
+      />
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3, fontFamily: 'Cairo', textAlign: 'right' }}>
+        <Alert severity="error" sx={{ mb: 3, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
           {error}
         </Alert>
       )}
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>الرقم التعريفي</TableCell>
-                <TableCell>اسم فئة السعر</TableCell>
-                <TableCell>الوصف</TableCell>
-                <TableCell>الحالة</TableCell>
-                <TableCell>العمليات</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {priceTiersList.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ color: 'text.secondary', py: 4, fontFamily: 'Cairo' }}>
-                    لا توجد فئات أسعار حالية.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                priceTiersList.map((tier) => (
-                  <TableRow key={tier.id} hover>
-                    <TableCell>{tier.id}</TableCell>
-                    <TableCell>{tier.name}</TableCell>
-                    <TableCell>{tier.description || '—'}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={tier.is_active === 1 ? 'نشط' : 'معطل'}
-                        color={tier.is_active === 1 ? 'success' : 'error'}
-                        size="small"
-                        sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          className="table-action-btn"
-                          onClick={() => handleOpenEditDialog(tier)}
-                          startIcon={<EditIcon />}
-                          sx={{ fontFamily: 'Cairo' }}
-                        >
-                          <span className="btn-text">تعديل</span>
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          className="table-action-btn"
-                          color={tier.is_active === 1 ? 'error' : 'success'}
-                          onClick={() => handleTogglePriceTierStatus(tier)}
-                          startIcon={<PowerIcon />}
-                          sx={{ fontFamily: 'Cairo' }}
-                        >
-                          <span className="btn-text">{tier.is_active === 1 ? 'تعطيل' : 'تفعيل'}</span>
-                        </Button>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+      <DataTable
+        loading={loading}
+        columns={[
+          { id: 'id', label: 'الرقم التعريفي' },
+          { id: 'name', label: 'اسم فئة السعر' },
+          { id: 'description', label: 'الوصف' },
+          {
+            id: 'is_active',
+            label: 'الحالة',
+            render: (tier) => <StatusChip status={tier.is_active} />
+          },
+          {
+            id: 'actions',
+            label: 'العمليات',
+            render: (tier) => (
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  className="table-action-btn"
+                  onClick={() => handleOpenEditDialog(tier)}
+                  startIcon={<EditIcon />}
+                  sx={{ fontFamily: 'Cairo' }}
+                >
+                  <span className="btn-text">تعديل</span>
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  className="table-action-btn"
+                  color={tier.is_active === 1 ? 'error' : 'success'}
+                  onClick={() => handleTogglePriceTierStatus(tier)}
+                  startIcon={<PowerIcon />}
+                  sx={{ fontFamily: 'Cairo' }}
+                >
+                  <span className="btn-text">{tier.is_active === 1 ? 'تعطيل' : 'تفعيل'}</span>
+                </Button>
+              </Box>
+            )
+          }
+        ]}
+        rows={priceTiersList}
+        mobileRenderer={renderMobileRecord}
+        emptyTitle="لا توجد فئات أسعار حالية"
+        emptyDescription="قم بإضافة فئة أسعار جديدة لبدء إدارة تسعير منتجات الكتالوج."
+      />
 
       {/* Add Dialog */}
       <Dialog open={showAddDialog} onClose={() => !submitting && setShowAddDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: 'right' }}>إضافة فئة سعر جديدة</DialogTitle>
+        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: dir === 'rtl' ? 'right' : 'left' }}>إضافة فئة سعر جديدة</DialogTitle>
         <form onSubmit={handleCreatePriceTierSubmit}>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {dialogError && (
-              <Alert severity="error" sx={{ mb: 1, fontFamily: 'Cairo', textAlign: 'right' }}>
+              <Alert severity="error" sx={{ mb: 1, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
                 {dialogError}
               </Alert>
             )}
@@ -277,7 +302,15 @@ export function PriceTiers() {
               onChange={(e) => setPriceTierFormName(e.target.value)}
               disabled={submitting}
               size="small"
-              sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  fontFamily: 'Cairo',
+                  left: dir === 'rtl' ? 'auto' : 0,
+                  right: dir === 'rtl' ? 24 : 'auto',
+                  transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                },
+                '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+              }}
             />
             <TextField
               fullWidth
@@ -288,7 +321,15 @@ export function PriceTiers() {
               size="small"
               multiline
               rows={2}
-              sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  fontFamily: 'Cairo',
+                  left: dir === 'rtl' ? 'auto' : 0,
+                  right: dir === 'rtl' ? 24 : 'auto',
+                  transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                },
+                '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+              }}
             />
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -304,11 +345,11 @@ export function PriceTiers() {
 
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onClose={() => !submitting && setShowEditDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: 'right' }}>تعديل فئة السعر</DialogTitle>
+        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: dir === 'rtl' ? 'right' : 'left' }}>تعديل فئة السعر</DialogTitle>
         <form onSubmit={handleEditPriceTierSubmit}>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {dialogError && (
-              <Alert severity="error" sx={{ mb: 1, fontFamily: 'Cairo', textAlign: 'right' }}>
+              <Alert severity="error" sx={{ mb: 1, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
                 {dialogError}
               </Alert>
             )}
@@ -320,7 +361,15 @@ export function PriceTiers() {
               onChange={(e) => setPriceTierFormName(e.target.value)}
               disabled={submitting}
               size="small"
-              sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  fontFamily: 'Cairo',
+                  left: dir === 'rtl' ? 'auto' : 0,
+                  right: dir === 'rtl' ? 24 : 'auto',
+                  transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                },
+                '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+              }}
             />
             <TextField
               fullWidth
@@ -331,7 +380,15 @@ export function PriceTiers() {
               size="small"
               multiline
               rows={2}
-              sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  fontFamily: 'Cairo',
+                  left: dir === 'rtl' ? 'auto' : 0,
+                  right: dir === 'rtl' ? 24 : 'auto',
+                  transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                },
+                '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+              }}
             />
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -344,6 +401,22 @@ export function PriceTiers() {
           </DialogActions>
         </form>
       </Dialog>
+
+      {/* Confirmation dialog for deactivating/activating price tiers */}
+      <ConfirmDialog
+        open={confirmOpen}
+        title="تغيير حالة فئة السعر"
+        description={
+          selectedPriceTierForToggle?.is_active === 1
+            ? `هل أنت متأكد من رغبتك في تعطيل فئة السعر "${selectedPriceTierForToggle?.name}"؟ سيؤثر هذا على تسعير المنتجات المرتبطة.`
+            : `هل أنت متأكد من رغبتك في تفعيل فئة السعر "${selectedPriceTierForToggle?.name}"؟`
+        }
+        type="warning"
+        confirmText="تأكيد"
+        cancelText="إلغاء"
+        onConfirm={confirmToggleStatus}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </Box>
   );
 }

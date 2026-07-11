@@ -1,25 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../app/AuthContext.jsx';
+import PageHeader from '../components/navigation/PageHeader.jsx';
+import DataTable from '../components/data-display/DataTable.jsx';
+import StatusChip from '../components/data-display/StatusChip.jsx';
+import ConfirmDialog from '../components/feedback/ConfirmDialog.jsx';
 import {
   Box,
   Typography,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  CircularProgress,
   Alert,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  Chip,
-  ButtonGroup
+  TextField
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, PowerSettingsNew as PowerIcon } from '@mui/icons-material';
 
@@ -36,6 +30,8 @@ export function Categories() {
   const [categoryFormName, setCategoryFormName] = useState('');
   const [dialogError, setDialogError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [selectedCategoryForToggle, setSelectedCategoryForToggle] = useState(null);
 
   const loadCategories = async () => {
     if (!token) return;
@@ -141,8 +137,16 @@ export function Categories() {
     }
   };
 
-  const handleToggleCategoryStatus = async (targetCat) => {
+  const handleToggleCategoryStatus = (targetCat) => {
+    setSelectedCategoryForToggle(targetCat);
+    setConfirmOpen(true);
+  };
+
+  const confirmToggleStatus = async () => {
+    if (!selectedCategoryForToggle) return;
+    const targetCat = selectedCategoryForToggle;
     const isCurrentlyActive = targetCat.is_active === 1;
+    setConfirmOpen(false);
     try {
       const res = await fetch(`/api/admin/categories/${targetCat.id}`, {
         method: 'PATCH',
@@ -166,19 +170,19 @@ export function Categories() {
   return (
     <Box>
       {/* Content Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', fontFamily: 'Cairo' }}>
-          إدارة التصنيفات
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpenAddDialog}
-          sx={{ fontFamily: 'Cairo' }}
-        >
-          إضافة تصنيف جديد
-        </Button>
-      </Box>
+      <PageHeader
+        titleKey="nav.categories"
+        actions={
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenAddDialog}
+            sx={{ fontFamily: 'Cairo' }}
+          >
+            إضافة تصنيف جديد
+          </Button>
+        }
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 3, fontFamily: 'Cairo', textAlign: 'right' }}>
@@ -186,73 +190,45 @@ export function Categories() {
         </Alert>
       )}
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>الرقم التعريفي</TableCell>
-                <TableCell>اسم التصنيف</TableCell>
-                <TableCell>الحالة</TableCell>
-                <TableCell>العمليات</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {categoriesList.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} align="center" sx={{ color: 'text.secondary', py: 4, fontFamily: 'Cairo' }}>
-                    لا توجد تصنيفات حالية.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                categoriesList.map((cat) => (
-                  <TableRow key={cat.id} hover>
-                    <TableCell>{cat.id}</TableCell>
-                    <TableCell>{cat.name}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={cat.is_active === 1 ? 'نشط' : 'معطل'}
-                        color={cat.is_active === 1 ? 'success' : 'error'}
-                        size="small"
-                        sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          className="table-action-btn"
-                          onClick={() => handleOpenEditDialog(cat)}
-                          startIcon={<EditIcon />}
-                          sx={{ fontFamily: 'Cairo' }}
-                        >
-                          <span className="btn-text">تعديل</span>
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          className="table-action-btn"
-                          color={cat.is_active === 1 ? 'error' : 'success'}
-                          onClick={() => handleToggleCategoryStatus(cat)}
-                          startIcon={<PowerIcon />}
-                          sx={{ fontFamily: 'Cairo' }}
-                        >
-                          <span className="btn-text">{cat.is_active === 1 ? 'تعطيل' : 'تفعيل'}</span>
-                        </Button>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+      <DataTable
+        columns={[
+          { id: 'id', label: 'الرقم التعريفي' },
+          { id: 'name', label: 'اسم التصنيف' },
+          {
+            id: 'is_active',
+            label: 'الحالة',
+            render: (cat) => <StatusChip status={cat.is_active} />
+          }
+        ]}
+        rows={categoriesList}
+        loading={loading}
+        emptyTitle="لا توجد تصنيفات حالية"
+        rowActions={(cat) => (
+          <>
+            <Button
+              variant="outlined"
+              size="small"
+              className="table-action-btn"
+              onClick={() => handleOpenEditDialog(cat)}
+              startIcon={<EditIcon />}
+              sx={{ fontFamily: 'Cairo' }}
+            >
+              <span className="btn-text">تعديل</span>
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              className="table-action-btn"
+              color={cat.is_active === 1 ? 'error' : 'success'}
+              onClick={() => handleToggleCategoryStatus(cat)}
+              startIcon={<PowerIcon />}
+              sx={{ fontFamily: 'Cairo' }}
+            >
+              <span className="btn-text">{cat.is_active === 1 ? 'تعطيل' : 'تفعيل'}</span>
+            </Button>
+          </>
+        )}
+      />
 
       {/* Add Dialog */}
       <Dialog open={showAddDialog} onClose={() => !submitting && setShowAddDialog(false)} maxWidth="xs" fullWidth>
@@ -317,6 +293,17 @@ export function Categories() {
           </DialogActions>
         </form>
       </Dialog>
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={confirmToggleStatus}
+        title={selectedCategoryForToggle?.is_active === 1 ? 'تعطيل التصنيف' : 'تفعيل التصنيف'}
+        message={selectedCategoryForToggle?.is_active === 1 ? `هل أنت متأكد من تعطيل التصنيف "${selectedCategoryForToggle?.name}"؟` : `هل أنت متأكد من تفعيل التصنيف "${selectedCategoryForToggle?.name}"؟`}
+        confirmText={selectedCategoryForToggle?.is_active === 1 ? 'تعطيل' : 'تفعيل'}
+        severity={selectedCategoryForToggle?.is_active === 1 ? 'error' : 'success'}
+      />
     </Box>
   );
 }

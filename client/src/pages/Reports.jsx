@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../app/AuthContext.jsx';
+import { useLanguage } from '../i18n/config.js';
+import PageHeader from '../components/navigation/PageHeader.jsx';
+import DataTable from '../components/data-display/DataTable.jsx';
 import {
   Box,
   Typography,
@@ -12,12 +15,6 @@ import {
   Select,
   MenuItem,
   TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Paper,
   CircularProgress,
   Alert,
@@ -29,6 +26,7 @@ import { Download as DownloadIcon, FilterList as FilterIcon, Clear as ClearIcon 
 
 export function Reports() {
   const { token } = useAuth();
+  const { dir } = useLanguage();
   
   const [usersList, setUsersList] = useState([]);
   const [categoriesList, setCategoriesList] = useState([]);
@@ -145,12 +143,12 @@ export function Reports() {
       loadUsers();
       loadCategories();
     }
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setReportData(null);
     loadReport();
-  }, [reportSubTab]);
+  }, [reportSubTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTabChange = (e, val) => {
     setReportSubTab(val);
@@ -169,23 +167,269 @@ export function Reports() {
     });
   };
 
+  // Mobile Card Renderers
+  const renderMobileOrderCard = (o) => (
+    <Card variant="outlined" sx={{ borderRadius: 1 }}>
+      <CardContent sx={{ p: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>{o.invoice_number}</Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>{o.created_at}</Typography>
+        </Box>
+        <Typography variant="body2" sx={{ mb: 1, fontSize: '0.85rem' }}>
+          الكاشير: {o.cashier_name}
+        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+            الصافي: {(o.total / 100).toFixed(2)} ج.م
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+            {o.payments.map((p, idx) => (
+              <Chip key={idx} label={p.method} size="small" variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
+            ))}
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+
+  const renderMobilePreorderCard = (pr) => (
+    <Card variant="outlined" sx={{ borderRadius: 1 }}>
+      <CardContent sx={{ p: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>{pr.preorder_number}</Typography>
+          <Chip
+            label={
+              pr.status === 'DEPOSIT_PAID_WAITING_STOCK' ? 'بانتظار المخزون' :
+              pr.status === 'READY_FOR_PICKUP' ? 'جاهز للاستلام' :
+              pr.status === 'PICKED_UP' ? 'تم التسليم' : 'ملغي'
+            }
+            color={
+              pr.status === 'DEPOSIT_PAID_WAITING_STOCK' ? 'warning' :
+              pr.status === 'READY_FOR_PICKUP' ? 'info' :
+              pr.status === 'PICKED_UP' ? 'success' : 'error'
+            }
+            size="small"
+            sx={{ height: 18, fontSize: '0.65rem', fontWeight: 'bold', fontFamily: 'Cairo' }}
+          />
+        </Box>
+        <Typography variant="body2" sx={{ mb: 0.5, fontSize: '0.85rem' }}>
+          العميل: {pr.customer_name} | {pr.customer_phone}
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+          التاريخ: {pr.created_at}
+        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+          <span>العربون: {(pr.deposit_paid / 100).toFixed(2)} ج.م</span>
+          <strong style={{ color: '#ff9500' }}>المتبقي: {(pr.remaining_amount / 100).toFixed(2)} ج.م</strong>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+
+  const renderMobileProductCard = (p) => {
+    const available = p.current_stock - p.reserved_stock;
+    return (
+      <Card variant="outlined" sx={{ borderRadius: 1 }}>
+        <CardContent sx={{ p: 2 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 0.5 }}>{p.name}</Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+            SKU: {p.sku} | التصنيف: {p.category_name}
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+            <span>المخزون الفعلي: {p.current_stock}</span>
+            <span>المحجوز: {p.reserved_stock}</span>
+            <strong style={{ color: available <= 0 ? '#ff3b30' : '#34c759' }}>المتاح: {available}</strong>
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderMobileShiftCard = (s) => {
+    const actual = s.actual_closing_cash !== null ? (s.actual_closing_cash / 100).toFixed(2) : '—';
+    const varianceVal =
+      s.actual_closing_cash !== null && s.expected_closing_cash !== null
+        ? (s.actual_closing_cash - s.expected_closing_cash) / 100
+        : null;
+    return (
+      <Card variant="outlined" sx={{ borderRadius: 1 }}>
+        <CardContent sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>الوردية #{s.id}</Typography>
+            <Chip
+              label={
+                s.status === 'OPEN' ? 'مفتوحة' :
+                s.status === 'CLOSE_REQUESTED' ? 'بانتظار المراجعة' : 'مغلقة'
+              }
+              color={
+                s.status === 'OPEN' ? 'success' :
+                s.status === 'CLOSE_REQUESTED' ? 'warning' : 'info'
+              }
+              size="small"
+              sx={{ height: 18, fontSize: '0.65rem', fontWeight: 'bold', fontFamily: 'Cairo' }}
+            />
+          </Box>
+          <Typography variant="body2" sx={{ mb: 1, fontSize: '0.85rem' }}>
+            الكاشير: {s.cashier_name}
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+            <span>الفعلي: {actual !== '—' ? `${actual} ج.م` : '—'}</span>
+            <strong style={{ color: varianceVal === null ? 'inherit' : varianceVal < 0 ? '#ff3b30' : '#34c759' }}>
+              الفارق: {varianceVal !== null ? `${varianceVal.toFixed(2)} ج.م` : '—'}
+            </strong>
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Custom Chart Renderers
+  const renderSalesChart = () => {
+    if (!reportData || !reportData.orders || reportData.orders.length === 0) return null;
+    const paymentTotals = {};
+    reportData.orders.forEach(o => {
+      o.payments.forEach(p => {
+        paymentTotals[p.method] = (paymentTotals[p.method] || 0) + p.amount;
+      });
+    });
+    const maxPaymentVal = Math.max(...Object.values(paymentTotals), 0) || 1;
+
+    return (
+      <Card variant="outlined" sx={{ mb: 3, borderRadius: 1 }}>
+        <CardContent>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2, fontFamily: 'Cairo' }}>
+            توزيع الإيرادات المحصلة حسب طريقة الدفع
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {Object.entries(paymentTotals).map(([method, val]) => {
+              const pct = (val / maxPaymentVal) * 100;
+              return (
+                <Box key={method} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                    <span style={{ fontWeight: 'bold' }}>
+                      {method === 'Cash' ? 'نقدي (Cash)' :
+                       method === 'Card' ? 'بطاقة ائتمان (Card)' :
+                       method === 'InstaPay' ? 'إنستا باي (InstaPay)' :
+                       method === 'Wallet' ? 'محفظة إلكترونية (Wallet)' :
+                       method === 'Transfer' ? 'تحويل بنكي (Transfer)' : method}
+                    </span>
+                    <strong>{(val / 100).toFixed(2)} ج.م</strong>
+                  </Box>
+                  <Box sx={{ height: 10, width: '100%', bgcolor: 'action.hover', borderRadius: 5, overflow: 'hidden' }}>
+                    <Box sx={{ height: '100%', width: `${pct}%`, bgcolor: 'primary.main', borderRadius: 5 }} />
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderPreordersChart = () => {
+    if (!reportData || !reportData.preorders || reportData.preorders.length === 0) return null;
+    const statusCounts = {
+      DEPOSIT_PAID_WAITING_STOCK: 0,
+      READY_FOR_PICKUP: 0,
+      PICKED_UP: 0,
+      CANCELLED: 0
+    };
+    reportData.preorders.forEach(pr => {
+      if (statusCounts[pr.status] !== undefined) statusCounts[pr.status]++;
+    });
+    const totalPreorders = reportData.preorders.length || 1;
+
+    return (
+      <Card variant="outlined" sx={{ mb: 3, borderRadius: 1 }}>
+        <CardContent>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2, fontFamily: 'Cairo' }}>
+            نسب توزيع حالات الحجوزات النشطة
+          </Typography>
+          <Box sx={{ height: 24, width: '100%', display: 'flex', borderRadius: 1.5, overflow: 'hidden', my: 2 }}>
+            {Object.entries(statusCounts).map(([status, count]) => {
+              const pct = (count / totalPreorders) * 100;
+              if (count === 0) return null;
+              const color = 
+                status === 'DEPOSIT_PAID_WAITING_STOCK' ? 'warning.main' :
+                status === 'READY_FOR_PICKUP' ? 'info.main' :
+                status === 'PICKED_UP' ? 'success.main' : 'error.main';
+              return (
+                <Box key={status} sx={{ height: '100%', width: `${pct}%`, bgcolor: color }} />
+              );
+            })}
+          </Box>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            {[
+              { label: 'بانتظار المخزون', color: 'warning.main', count: statusCounts.DEPOSIT_PAID_WAITING_STOCK },
+              { label: 'جاهز للاستلام', color: 'info.main', count: statusCounts.READY_FOR_PICKUP },
+              { label: 'تم الاستلام', color: 'success.main', count: statusCounts.PICKED_UP },
+              { label: 'ملغي ومسترد', color: 'error.main', count: statusCounts.CANCELLED }
+            ].map((item, idx) => (
+              <Grid item xs={6} sm={3} key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: item.color }} />
+                <Typography variant="caption" sx={{ fontFamily: 'Cairo' }}>
+                  {item.label} ({item.count})
+                </Typography>
+              </Grid>
+            ))}
+          </Grid>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderInventoryChart = () => {
+    if (!reportData || !reportData.products || reportData.products.length === 0) return null;
+    const lowestProducts = [...reportData.products]
+      .sort((a, b) => a.current_stock - b.current_stock)
+      .slice(0, 5);
+    const maxStock = Math.max(...lowestProducts.map(p => p.current_stock), 0) || 1;
+
+    return (
+      <Card variant="outlined" sx={{ mb: 3, borderRadius: 1 }}>
+        <CardContent>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2, fontFamily: 'Cairo' }}>
+            الـ 5 أصناف الأكثر حرجاً بالمخازن (الأقل كمية)
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {lowestProducts.map((p) => {
+              const pct = (p.current_stock / maxStock) * 100;
+              return (
+                <Box key={p.id} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                    <span style={{ fontWeight: 'bold' }}>{p.name}</span>
+                    <strong>{p.current_stock} قطعة</strong>
+                  </Box>
+                  <Box sx={{ height: 10, width: '100%', bgcolor: 'action.hover', borderRadius: 5, overflow: 'hidden' }}>
+                    <Box sx={{ height: '100%', width: `${pct}%`, bgcolor: p.current_stock <= p.low_stock_threshold ? 'error.main' : 'warning.main', borderRadius: 5 }} />
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <Box>
-      {/* Content Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', fontFamily: 'Cairo' }}>
-          التقارير التفصيلية والتصدير
-        </Typography>
-        <Button
-          variant="contained"
-          color="secondary"
-          startIcon={<DownloadIcon />}
-          onClick={handleExportReport}
-          sx={{ fontFamily: 'Cairo' }}
-        >
-          تصدير التقرير الحالي (CSV)
-        </Button>
-      </Box>
+      {/* Page Header */}
+      <PageHeader
+        titleKey="nav.reports"
+        actions={
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<DownloadIcon />}
+            onClick={handleExportReport}
+            sx={{ fontFamily: 'Cairo' }}
+          >
+            تصدير التقرير الحالي (CSV)
+          </Button>
+        }
+      />
 
       {/* Sub Tabs Selection */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
@@ -198,7 +442,7 @@ export function Reports() {
       </Box>
 
       {/* Filters Form */}
-      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+      <Paper variant="outlined" sx={{ p: 3, mb: 3, borderRadius: 1 }}>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -218,6 +462,14 @@ export function Reports() {
                     InputLabelProps={{ shrink: true }}
                     value={reportFilters.startDate}
                     onChange={(e) => setReportFilters((prev) => ({ ...prev, startDate: e.target.value }))}
+                    sx={{
+                      '& .MuiInputLabel-root': {
+                        fontFamily: 'Cairo',
+                        left: dir === 'rtl' ? 'auto' : 0,
+                        right: dir === 'rtl' ? 24 : 'auto',
+                        transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                      }
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={3}>
@@ -229,6 +481,14 @@ export function Reports() {
                     InputLabelProps={{ shrink: true }}
                     value={reportFilters.endDate}
                     onChange={(e) => setReportFilters((prev) => ({ ...prev, endDate: e.target.value }))}
+                    sx={{
+                      '& .MuiInputLabel-root': {
+                        fontFamily: 'Cairo',
+                        left: dir === 'rtl' ? 'auto' : 0,
+                        right: dir === 'rtl' ? 24 : 'auto',
+                        transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                      }
+                    }}
                   />
                 </Grid>
               </>
@@ -238,7 +498,7 @@ export function Reports() {
             {['sales', 'preorders', 'shifts'].includes(reportSubTab) && (
               <Grid item xs={12} sm={3}>
                 <FormControl fullWidth size="small">
-                  <InputLabel>الكاشير / المستخدم</InputLabel>
+                  <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>الكاشير / المستخدم</InputLabel>
                   <Select
                     value={reportFilters.cashierId}
                     label="الكاشير / المستخدم"
@@ -259,7 +519,7 @@ export function Reports() {
             {['sales', 'inventory'].includes(reportSubTab) && (
               <Grid item xs={12} sm={3}>
                 <FormControl fullWidth size="small">
-                  <InputLabel>التصنيف</InputLabel>
+                  <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>التصنيف</InputLabel>
                   <Select
                     value={reportFilters.categoryId}
                     label="التصنيف"
@@ -287,6 +547,15 @@ export function Reports() {
                   placeholder="رقم الوردية..."
                   value={reportFilters.shiftId}
                   onChange={(e) => setReportFilters((prev) => ({ ...prev, shiftId: e.target.value }))}
+                  sx={{
+                    '& .MuiInputLabel-root': {
+                      fontFamily: 'Cairo',
+                      left: dir === 'rtl' ? 'auto' : 0,
+                      right: dir === 'rtl' ? 24 : 'auto',
+                      transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                    },
+                    '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                  }}
                 />
               </Grid>
             )}
@@ -295,7 +564,7 @@ export function Reports() {
             {reportSubTab === 'preorders' && (
               <Grid item xs={12} sm={3}>
                 <FormControl fullWidth size="small">
-                  <InputLabel>حالة الحجز</InputLabel>
+                  <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>حالة الحجز</InputLabel>
                   <Select
                     value={reportFilters.status}
                     label="حالة الحجز"
@@ -315,7 +584,7 @@ export function Reports() {
             {reportSubTab === 'inventory' && (
               <Grid item xs={12} sm={3}>
                 <FormControl fullWidth size="small">
-                  <InputLabel>حالة المخزون</InputLabel>
+                  <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>حالة المخزون</InputLabel>
                   <Select
                     value={reportFilters.stockStatus}
                     label="حالة المخزون"
@@ -339,6 +608,15 @@ export function Reports() {
                   placeholder="بحث بالاسم أو الكود..."
                   value={reportFilters.search}
                   onChange={(e) => setReportFilters((prev) => ({ ...prev, search: e.target.value }))}
+                  sx={{
+                    '& .MuiInputLabel-root': {
+                      fontFamily: 'Cairo',
+                      left: dir === 'rtl' ? 'auto' : 0,
+                      right: dir === 'rtl' ? 24 : 'auto',
+                      transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                    },
+                    '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                  }}
                 />
               </Grid>
             )}
@@ -369,7 +647,7 @@ export function Reports() {
       </Paper>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3, fontFamily: 'Cairo', textAlign: 'right' }}>
+        <Alert severity="error" sx={{ mb: 3, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
           {error}
         </Alert>
       )}
@@ -385,7 +663,7 @@ export function Reports() {
             {reportSubTab === 'sales' && (
               <>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>إجمالي المبيعات (قبل الخصم)</Typography>
                       <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 'bold', mt: 1 }}>
@@ -395,7 +673,7 @@ export function Reports() {
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>إجمالي الخصومات</Typography>
                       <Typography variant="h6" sx={{ color: 'error.main', fontWeight: 'bold', mt: 1 }}>
@@ -405,7 +683,7 @@ export function Reports() {
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>صافي المبيعات المحصلة</Typography>
                       <Typography variant="h6" sx={{ color: 'success.main', fontWeight: 'bold', mt: 1 }}>
@@ -415,7 +693,7 @@ export function Reports() {
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>عدد الفواتير</Typography>
                       <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 1 }}>
@@ -430,7 +708,7 @@ export function Reports() {
             {reportSubTab === 'preorders' && (
               <>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>إجمالي مبالغ الحجوزات</Typography>
                       <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 'bold', mt: 1 }}>
@@ -440,7 +718,7 @@ export function Reports() {
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>إجمالي العربين المستلمة</Typography>
                       <Typography variant="h6" sx={{ color: 'success.main', fontWeight: 'bold', mt: 1 }}>
@@ -450,7 +728,7 @@ export function Reports() {
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>إجمالي المتبقي للتحصيل</Typography>
                       <Typography variant="h6" sx={{ color: 'warning.main', fontWeight: 'bold', mt: 1 }}>
@@ -460,7 +738,7 @@ export function Reports() {
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>عدد الحجوزات الكلي</Typography>
                       <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 1 }}>
@@ -475,7 +753,7 @@ export function Reports() {
             {reportSubTab === 'inventory' && (
               <>
                 <Grid item xs={12} sm={6} md={4}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>إجمالي عدد المنتجات النشطة</Typography>
                       <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 'bold', mt: 1 }}>
@@ -485,7 +763,7 @@ export function Reports() {
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={4}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>عدد الأصناف منخفضة المخزون</Typography>
                       <Typography variant="h6" sx={{ color: 'error.main', fontWeight: 'bold', mt: 1 }}>
@@ -495,7 +773,7 @@ export function Reports() {
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={4}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>منتجات نفذ مخزونها</Typography>
                       <Typography variant="h6" sx={{ color: 'warning.main', fontWeight: 'bold', mt: 1 }}>
@@ -510,7 +788,7 @@ export function Reports() {
             {reportSubTab === 'shifts' && (
               <>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>إجمالي عدد الورديات</Typography>
                       <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 'bold', mt: 1 }}>
@@ -520,7 +798,7 @@ export function Reports() {
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>الورديات المفتوحة حالياً</Typography>
                       <Typography variant="h6" sx={{ color: 'success.main', fontWeight: 'bold', mt: 1 }}>
@@ -530,7 +808,7 @@ export function Reports() {
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>ورديات بانتظار المراجعة</Typography>
                       <Typography variant="h6" sx={{ color: 'warning.main', fontWeight: 'bold', mt: 1 }}>
@@ -540,7 +818,7 @@ export function Reports() {
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined">
+                  <Card variant="outlined" sx={{ borderRadius: 1 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo' }}>الورديات المغلقة والمراجعة</Typography>
                       <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 1 }}>
@@ -553,235 +831,174 @@ export function Reports() {
             )}
           </Grid>
 
+          {/* Visual Progress/Comparison Charts */}
+          {reportSubTab === 'sales' && renderSalesChart()}
+          {reportSubTab === 'preorders' && renderPreordersChart()}
+          {reportSubTab === 'inventory' && renderInventoryChart()}
+
           {/* Data Tables */}
-          <TableContainer component={Paper}>
-            {reportSubTab === 'sales' && (
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>رقم الفاتورة</TableCell>
-                    <TableCell>تاريخ العملية</TableCell>
-                    <TableCell>الكاشير</TableCell>
-                    <TableCell>الإجمالي</TableCell>
-                    <TableCell>الخصم</TableCell>
-                    <TableCell>الصافي</TableCell>
-                    <TableCell>طرق الدفع والتفاصيل</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {reportData.orders.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ color: 'text.secondary', py: 4, fontFamily: 'Cairo' }}>
-                        لا توجد عمليات بيع مطابقة للفلاتر المحددة.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    reportData.orders.map((o) => (
-                      <TableRow key={o.id} hover>
-                        <TableCell sx={{ fontWeight: 'bold' }}>{o.invoice_number}</TableCell>
-                        <TableCell>{o.created_at}</TableCell>
-                        <TableCell>{o.cashier_name}</TableCell>
-                        <TableCell>{(o.subtotal / 100).toFixed(2)} ج.م</TableCell>
-                        <TableCell sx={{ color: 'error.main' }}>{(o.discount / 100).toFixed(2)} - ج.م</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                          {(o.total / 100).toFixed(2)} ج.م
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                            {o.payments.map((p, idx) => (
-                              <Chip
-                                key={idx}
-                                label={`${p.method}: ${(p.amount / 100).toFixed(2)} ج.م`}
-                                size="small"
-                                variant="outlined"
-                              />
-                            ))}
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            )}
-
-            {reportSubTab === 'preorders' && (
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>رقم الحجز</TableCell>
-                    <TableCell>العميل</TableCell>
-                    <TableCell>الهاتف</TableCell>
-                    <TableCell>الحالة</TableCell>
-                    <TableCell>الإجمالي</TableCell>
-                    <TableCell>المدفوع مقدم</TableCell>
-                    <TableCell>المتبقي</TableCell>
-                    <TableCell>تاريخ الحجز</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {reportData.preorders.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} align="center" sx={{ color: 'text.secondary', py: 4, fontFamily: 'Cairo' }}>
-                        لا توجد حجوزات مطابقة للفلاتر المحددة.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    reportData.preorders.map((pr) => (
-                      <TableRow key={pr.id} hover>
-                        <TableCell sx={{ fontWeight: 'bold' }}>{pr.preorder_number}</TableCell>
-                        <TableCell>{pr.customer_name}</TableCell>
-                        <TableCell><code>{pr.customer_phone}</code></TableCell>
-                        <TableCell>
-                          <Chip
-                            label={
-                              pr.status === 'DEPOSIT_PAID_WAITING_STOCK' ? 'بانتظار المخزون' :
-                              pr.status === 'READY_FOR_PICKUP' ? 'جاهز للاستلام' :
-                              pr.status === 'PICKED_UP' ? 'تم التسليم' : 'ملغي'
-                            }
-                            color={
-                              pr.status === 'DEPOSIT_PAID_WAITING_STOCK' ? 'warning' :
-                              pr.status === 'READY_FOR_PICKUP' ? 'info' :
-                              pr.status === 'PICKED_UP' ? 'success' : 'error'
-                            }
-                            size="small"
-                            sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}
-                          />
-                        </TableCell>
-                        <TableCell>{(pr.total_amount / 100).toFixed(2)} ج.م</TableCell>
-                        <TableCell sx={{ color: 'success.main' }}>{(pr.deposit_paid / 100).toFixed(2)} ج.م</TableCell>
-                        <TableCell sx={{ color: 'warning.main', fontWeight: 'bold' }}>
-                          {(pr.remaining_amount / 100).toFixed(2)} ج.م
-                        </TableCell>
-                        <TableCell>{pr.created_at}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            )}
-
-            {reportSubTab === 'inventory' && (
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>اسم الصنف</TableCell>
-                    <TableCell>رمز SKU</TableCell>
-                    <TableCell>الباركود</TableCell>
-                    <TableCell>التصنيف</TableCell>
-                    <TableCell>المخزون الفعلي</TableCell>
-                    <TableCell>المحجوز للحجوزات</TableCell>
-                    <TableCell>المخزون المتاح للبيع</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {reportData.products.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ color: 'text.secondary', py: 4, fontFamily: 'Cairo' }}>
-                        لا توجد أصناف مطابقة للفلاتر المحددة.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    reportData.products.map((p) => {
-                      const available = p.current_stock - p.reserved_stock;
-                      return (
-                        <TableRow key={p.id} hover>
-                          <TableCell sx={{ fontWeight: 'bold' }}>{p.name}</TableCell>
-                          <TableCell><code>{p.sku}</code></TableCell>
-                          <TableCell>{p.barcode || '—'}</TableCell>
-                          <TableCell>{p.category_name}</TableCell>
-                          <TableCell
-                            sx={{
-                              fontWeight: 'bold',
-                              color: p.current_stock === 0 ? 'error.main' : p.current_stock <= p.low_stock_threshold ? 'warning.main' : 'text.primary'
-                            }}
-                          >
-                            {p.current_stock} قطعة
-                          </TableCell>
-                          <TableCell sx={{ color: 'info.main' }}>{p.reserved_stock} قطعة</TableCell>
-                          <TableCell
-                            sx={{
-                              fontWeight: 'bold',
-                              color: available <= 0 ? 'error.main' : 'success.main'
-                            }}
-                          >
-                            {available} قطعة
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            )}
-
-            {reportSubTab === 'shifts' && (
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>رقم الوردية</TableCell>
-                    <TableCell>الكاشير</TableCell>
-                    <TableCell>الحالة</TableCell>
-                    <TableCell>العهدة الافتتاحية</TableCell>
-                    <TableCell>العهدة الفعلية</TableCell>
-                    <TableCell>العجز والزيادة</TableCell>
-                    <TableCell>تاريخ الفتح</TableCell>
-                    <TableCell>تاريخ الإغلاق</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {reportData.shifts.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} align="center" sx={{ color: 'text.secondary', py: 4, fontFamily: 'Cairo' }}>
-                        لا توجد ورديات مطابقة للفلاتر المحددة.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    reportData.shifts.map((s) => {
-                      const actual = s.actual_closing_cash !== null ? (s.actual_closing_cash / 100).toFixed(2) : '-';
-                      const varianceVal =
-                        s.actual_closing_cash !== null && s.expected_closing_cash !== null
-                          ? (s.actual_closing_cash - s.expected_closing_cash) / 100
-                          : null;
-
-                      return (
-                        <TableRow key={s.id} hover>
-                          <TableCell sx={{ fontWeight: 'bold' }}>#{s.id}</TableCell>
-                          <TableCell>{s.cashier_name}</TableCell>
-                          <TableCell>
+          <Card variant="outlined" sx={{ borderRadius: 1 }}>
+            <CardContent sx={{ p: 0 }}>
+              {reportSubTab === 'sales' && (
+                <DataTable
+                  columns={[
+                    { id: 'invoice_number', label: 'رقم الفاتورة', render: (o) => <strong>{o.invoice_number}</strong> },
+                    { id: 'created_at', label: 'تاريخ العملية' },
+                    { id: 'cashier_name', label: 'الكاشير' },
+                    { id: 'subtotal', label: 'الإجمالي', render: (o) => `${(o.subtotal / 100).toFixed(2)} ج.م` },
+                    { id: 'discount', label: 'الخصم', render: (o) => <span style={{ color: '#ff3b30' }}>-{(o.discount / 100).toFixed(2)} ج.م</span> },
+                    { id: 'total', label: 'الصافي', render: (o) => <strong style={{ color: '#34c759' }}>{(o.total / 100).toFixed(2)} ج.م</strong> },
+                    {
+                      id: 'payments',
+                      label: 'طرق الدفع والتفاصيل',
+                      render: (o) => (
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                          {o.payments.map((p, idx) => (
                             <Chip
-                              label={
-                                s.status === 'OPEN' ? 'مفتوحة' :
-                                s.status === 'CLOSE_REQUESTED' ? 'بانتظار المراجعة' : 'مغلقة'
-                              }
-                              color={
-                                s.status === 'OPEN' ? 'success' :
-                                s.status === 'CLOSE_REQUESTED' ? 'warning' : 'info'
-                              }
+                              key={idx}
+                              label={`${p.method === 'Cash' ? 'نقدي' : p.method === 'Card' ? 'بطاقة' : p.method}: ${(p.amount / 100).toFixed(2)} ج.م`}
                               size="small"
-                              sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}
+                              variant="outlined"
+                              sx={{ fontSize: '0.7rem' }}
                             />
-                          </TableCell>
-                          <TableCell>{(s.opening_cash / 100).toFixed(2)} ج.م</TableCell>
-                          <TableCell>{actual !== '-' ? `${actual} ج.م` : '-'}</TableCell>
-                          <TableCell
-                            sx={{
-                              fontWeight: 'bold',
-                              color: varianceVal === null ? 'text.primary' : varianceVal < 0 ? 'error.main' : varianceVal > 0 ? 'success.main' : 'text.primary'
-                            }}
-                          >
-                            {varianceVal !== null ? `${varianceVal.toFixed(2)} ج.م` : '-'}
-                          </TableCell>
-                          <TableCell>{s.opened_at}</TableCell>
-                          <TableCell>{s.closed_at || '-'}</TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            )}
-          </TableContainer>
+                          ))}
+                        </Box>
+                      )
+                    }
+                  ]}
+                  rows={reportData.orders || []}
+                  mobileRenderer={renderMobileOrderCard}
+                  emptyTitle="لا توجد مبيعات مطابقة"
+                  emptyDescription="سوف تظهر فواتير البيع المستوفية لشروط التصفية هنا."
+                />
+              )}
+
+              {reportSubTab === 'preorders' && (
+                <DataTable
+                  columns={[
+                    { id: 'preorder_number', label: 'رقم الحجز', render: (pr) => <strong>{pr.preorder_number}</strong> },
+                    { id: 'customer_name', label: 'العميل' },
+                    { id: 'customer_phone', label: 'الهاتف', render: (pr) => <code style={{ direction: 'ltr', display: 'inline-block' }}>{pr.customer_phone}</code> },
+                    {
+                      id: 'status',
+                      label: 'الحالة',
+                      render: (pr) => (
+                        <Chip
+                          label={
+                            pr.status === 'DEPOSIT_PAID_WAITING_STOCK' ? 'بانتظار المخزون' :
+                            pr.status === 'READY_FOR_PICKUP' ? 'جاهز للاستلام' :
+                            pr.status === 'PICKED_UP' ? 'تم التسليم' : 'ملغي'
+                          }
+                          color={
+                            pr.status === 'DEPOSIT_PAID_WAITING_STOCK' ? 'warning' :
+                            pr.status === 'READY_FOR_PICKUP' ? 'info' :
+                            pr.status === 'PICKED_UP' ? 'success' : 'error'
+                          }
+                          size="small"
+                          sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}
+                        />
+                      )
+                    },
+                    { id: 'total_amount', label: 'الإجمالي', render: (pr) => `${(pr.total_amount / 100).toFixed(2)} ج.م` },
+                    { id: 'deposit_paid', label: 'المدفوع مقدم', render: (pr) => <span style={{ color: '#34c759' }}>{(pr.deposit_paid / 100).toFixed(2)} ج.م</span> },
+                    { id: 'remaining_amount', label: 'المتبقي للتحصيل', render: (pr) => <strong style={{ color: '#ff9500' }}>{(pr.remaining_amount / 100).toFixed(2)} ج.م</strong> },
+                    { id: 'created_at', label: 'تاريخ الحجز' }
+                  ]}
+                  rows={reportData.preorders || []}
+                  mobileRenderer={renderMobilePreorderCard}
+                  emptyTitle="لا توجد حجوزات مطابقة"
+                  emptyDescription="سوف تظهر ملفات الحجز المستوفية لشروط التصفية هنا."
+                />
+              )}
+
+              {reportSubTab === 'inventory' && (
+                <DataTable
+                  columns={[
+                    { id: 'name', label: 'اسم الصنف', render: (p) => <strong>{p.name}</strong> },
+                    { id: 'sku', label: 'رمز SKU', render: (p) => <code>{p.sku}</code> },
+                    { id: 'barcode', label: 'الباركود', render: (p) => p.barcode || '—' },
+                    { id: 'category_name', label: 'التصنيف' },
+                    {
+                      id: 'current_stock',
+                      label: 'المخزون الفعلي',
+                      render: (p) => (
+                        <span style={{ fontWeight: 'bold', color: p.current_stock === 0 ? '#ff3b30' : p.current_stock <= p.low_stock_threshold ? '#ff9500' : 'inherit' }}>
+                          {p.current_stock} قطعة
+                        </span>
+                      )
+                    },
+                    { id: 'reserved_stock', label: 'المحجوز', render: (p) => `${p.reserved_stock} قطعة` },
+                    {
+                      id: 'available',
+                      label: 'المتاح للبيع',
+                      render: (p) => {
+                        const available = p.current_stock - p.reserved_stock;
+                        return (
+                          <strong style={{ color: available <= 0 ? '#ff3b30' : '#34c759' }}>
+                            {available} قطعة
+                          </strong>
+                        );
+                      }
+                    }
+                  ]}
+                  rows={reportData.products || []}
+                  mobileRenderer={renderMobileProductCard}
+                  emptyTitle="لا توجد أصناف مطابقة"
+                  emptyDescription="سوف تظهر مستويات مخازن الأصناف هنا بالتفصيل."
+                />
+              )}
+
+              {reportSubTab === 'shifts' && (
+                <DataTable
+                  columns={[
+                    { id: 'id', label: 'رقم الوردية', render: (s) => <strong>#{s.id}</strong> },
+                    { id: 'cashier_name', label: 'الكاشير' },
+                    {
+                      id: 'status',
+                      label: 'الحالة',
+                      render: (s) => (
+                        <Chip
+                          label={
+                            s.status === 'OPEN' ? 'مفتوحة' :
+                            s.status === 'CLOSE_REQUESTED' ? 'بانتظار المراجعة' : 'مغلقة'
+                          }
+                          color={
+                            s.status === 'OPEN' ? 'success' :
+                            s.status === 'CLOSE_REQUESTED' ? 'warning' : 'info'
+                          }
+                          size="small"
+                          sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}
+                        />
+                      )
+                    },
+                    { id: 'opening_cash', label: 'العهدة الافتتاحية', render: (s) => `${(s.opening_cash / 100).toFixed(2)} ج.م` },
+                    { id: 'actual_closing_cash', label: 'العهدة الفعلية', render: (s) => s.actual_closing_cash !== null ? `${(s.actual_closing_cash / 100).toFixed(2)} ج.م` : '—' },
+                    {
+                      id: 'difference',
+                      label: 'العجز والزيادة',
+                      render: (s) => {
+                        const varianceVal =
+                          s.actual_closing_cash !== null && s.expected_closing_cash !== null
+                            ? (s.actual_closing_cash - s.expected_closing_cash) / 100
+                            : null;
+                        return (
+                          <span style={{ fontWeight: 'bold', color: varianceVal === null ? 'inherit' : varianceVal < 0 ? '#ff3b30' : varianceVal > 0 ? '#34c759' : 'inherit' }}>
+                            {varianceVal !== null ? `${varianceVal.toFixed(2)} ج.م` : '—'}
+                          </span>
+                        );
+                      }
+                    },
+                    { id: 'opened_at', label: 'تاريخ الفتح' },
+                    { id: 'closed_at', label: 'تاريخ الإغلاق', render: (s) => s.closed_at || '—' }
+                  ]}
+                  rows={reportData.shifts || []}
+                  mobileRenderer={renderMobileShiftCard}
+                  emptyTitle="لا توجد ورديات مطابقة"
+                  emptyDescription="سوف تظهر سجلات الورديات المطلوبة هنا."
+                />
+              )}
+            </CardContent>
+          </Card>
         </Box>
       )}
     </Box>

@@ -7,10 +7,9 @@ body {
   background-color: var(--bg-main);
   color: var(--text-dark);
   font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  direction: rtl;
-  text-align: right;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
 }
 
 #root {
@@ -20,7 +19,7 @@ body {
   margin: 0;
   padding: 0;
   border-inline: none !important;
-  direction: rtl;
+  overflow-x: hidden;
 }
 
 /* Authentication Layout */
@@ -290,7 +289,7 @@ body {
 }
 
 .badge-primary {
-  background-color: rgba(137, 44, 220, 0.15);
+  background-color: rgba(15, 95, 166, 0.15);
   color: var(--primary);
 }
 

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../app/AuthContext.jsx';
+import { useLanguage } from '../i18n/config.js';
+import PageHeader from '../components/navigation/PageHeader.jsx';
 import ReceiptDetails from '../components/ReceiptDetails.jsx';
 import {
   Box,
@@ -15,7 +17,6 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
-  Divider,
   Paper,
   Table,
   TableBody,
@@ -29,6 +30,7 @@ import { Search as SearchIcon, Print as PrintIcon, AssignmentReturn as ReturnIco
 
 export function Receipts() {
   const { token } = useAuth();
+  const { dir } = useLanguage();
   
   // Search state
   const [receiptSearchCode, setReceiptSearchCode] = useState('');
@@ -174,12 +176,15 @@ export function Receipts() {
 
   return (
     <Box sx={{ width: '100%' }}>
+      {/* Page Header */}
+      <PageHeader titleKey="nav.receipts" />
+
       <Grid container spacing={3}>
         {/* Left Side: Search & Actions */}
         <Grid item xs={12} md={7}>
-          <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 'bold', fontFamily: 'Cairo', borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}>
+          <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 1 }}>
+            <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontFamily: 'Cairo', borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}>
                 البحث عن إيصال واستعراضه
               </Typography>
 
@@ -191,7 +196,12 @@ export function Receipts() {
                     placeholder="أدخل رقم الإيصال (مثال: REC-20260710-0001)..."
                     value={receiptSearchCode}
                     onChange={(e) => setReceiptSearchCode(e.target.value)}
-                    sx={{ '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                    sx={{
+                      '& .MuiOutlinedInput-input': {
+                        fontFamily: 'Cairo',
+                        textAlign: dir === 'rtl' ? 'right' : 'left'
+                      }
+                    }}
                   />
                   <Button
                     type="submit"
@@ -206,20 +216,24 @@ export function Receipts() {
               </form>
 
               {searchError && (
-                <Alert severity="error" sx={{ fontFamily: 'Cairo', textAlign: 'right' }}>
+                <Alert severity="error" sx={{ fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
                   {searchError}
                 </Alert>
               )}
 
-              {receiptDetails ? (
-                <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {searchLoading ? (
+                <Box sx={{ display: 'flex', flex: 1, justifyContent: 'center', alignItems: 'center', p: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : receiptDetails ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {/* General Info */}
-                  <Paper sx={{ p: 2, bgcolor: 'action.hover' }} variant="outlined">
+                  <Paper sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1 }} variant="outlined">
                     <Grid container spacing={2} sx={{ fontSize: '0.85rem' }}>
-                      <Grid item xs={6}>
-                        رقم الإيصال: <strong>{receiptDetails.receipt_number}</strong>
+                      <Grid item xs={12} sm={6}>
+                        رقم الإيصال: <strong><bdi>{receiptDetails.receipt_number}</bdi></strong>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid item xs={12} sm={6}>
                         نوع الحركة:{' '}
                         <strong>
                           {receiptDetails.reference_type === 'order_sale'
@@ -229,26 +243,26 @@ export function Receipts() {
                             : 'استلام حجز نهائي'}
                         </strong>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid item xs={12} sm={6}>
                         طبع بواسطة:{' '}
                         <strong>
                           {receiptDetails.printed_by_name} ({receiptDetails.printed_by_username})
                         </strong>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid item xs={12} sm={6} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         مرات الطباعة:{' '}
-                        <Chip label={`${receiptDetails.print_count} مرات`} size="small" color="info" sx={{ fontWeight: 'bold' }} />
+                        <Chip label={`${receiptDetails.print_count} مرات`} size="small" color="info" sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }} />
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid item xs={12} sm={6}>
                         تاريخ الإنشاء:{' '}
                         <strong>
-                          {new Date(receiptDetails.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo' })}
+                          <bdi>{new Date(receiptDetails.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo' })}</bdi>
                         </strong>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid item xs={12} sm={6}>
                         آخر طباعة:{' '}
                         <strong>
-                          {new Date(receiptDetails.last_printed_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo' })}
+                          <bdi>{new Date(receiptDetails.last_printed_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo' })}</bdi>
                         </strong>
                       </Grid>
                     </Grid>
@@ -259,36 +273,36 @@ export function Receipts() {
                     <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, fontFamily: 'Cairo' }}>
                       تفاصيل الأصناف المباعة
                     </Typography>
-                    <TableContainer component={Paper} variant="outlined">
+                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1 }}>
                       <Table size="small">
                         <TableHead>
                           <TableRow>
-                            <TableCell>اسم الصنف</TableCell>
-                            <TableCell>رمز SKU</TableCell>
-                            <TableCell>سعر الوحدة</TableCell>
-                            <TableCell>الكمية</TableCell>
-                            <TableCell>المرتجع</TableCell>
-                            <TableCell>الإجمالي</TableCell>
+                            <TableCell sx={{ fontFamily: 'Cairo' }}>اسم الصنف</TableCell>
+                            <TableCell sx={{ fontFamily: 'Cairo' }}>رمز SKU</TableCell>
+                            <TableCell sx={{ fontFamily: 'Cairo' }}>سعر الوحدة</TableCell>
+                            <TableCell sx={{ fontFamily: 'Cairo' }}>الكمية</TableCell>
+                            <TableCell sx={{ fontFamily: 'Cairo' }}>المرتجع</TableCell>
+                            <TableCell sx={{ fontFamily: 'Cairo' }}>الإجمالي</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
                           {receiptDetails.items.map((item, idx) => (
                             <TableRow key={idx}>
-                              <TableCell sx={{ fontWeight: 'bold' }}>
+                              <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}>
                                 {item.product_name}
                                 {item.is_book === 1 && (
-                                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontFamily: 'Cairo' }}>
                                     ({item.school_grade} / {item.subject})
                                   </Typography>
                                 )}
                               </TableCell>
                               <TableCell><code>{item.product_sku}</code></TableCell>
-                              <TableCell>{(item.unit_price / 100).toFixed(2)} ج.م</TableCell>
+                              <TableCell><bdi>{(item.unit_price / 100).toFixed(2)} ج.م</bdi></TableCell>
                               <TableCell>{item.quantity}</TableCell>
                               <TableCell sx={{ color: item.returned_qty > 0 ? 'warning.main' : 'inherit', fontWeight: item.returned_qty > 0 ? 'bold' : 'normal' }}>
                                 {item.returned_qty || 0}
                               </TableCell>
-                              <TableCell>{(item.total_price / 100).toFixed(2)} ج.م</TableCell>
+                              <TableCell><bdi>{(item.total_price / 100).toFixed(2)} ج.م</bdi></TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -301,12 +315,12 @@ export function Receipts() {
                     <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, fontFamily: 'Cairo' }}>
                       تفاصيل المدفوعات
                     </Typography>
-                    <TableContainer component={Paper} variant="outlined">
+                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1 }}>
                       <Table size="small">
                         <TableHead>
                           <TableRow>
-                            <TableCell>طريقة الدفع</TableCell>
-                            <TableCell>المبلغ المدفوع</TableCell>
+                            <TableCell sx={{ fontFamily: 'Cairo' }}>طريقة الدفع</TableCell>
+                            <TableCell sx={{ fontFamily: 'Cairo' }}>المبلغ المدفوع</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -323,7 +337,7 @@ export function Receipts() {
                                   ? 'محفظة'
                                   : 'تحويل بنكي'}
                               </TableCell>
-                              <TableCell>{(p.amount / 100).toFixed(2)} ج.م</TableCell>
+                              <TableCell><bdi>{(p.amount / 100).toFixed(2)} ج.م</bdi></TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -333,18 +347,18 @@ export function Receipts() {
 
                   {/* Return Section */}
                   {receiptDetails.reference_type === 'order_sale' && (
-                    <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2, bgcolor: 'action.hover' }}>
+                    <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2.5, bgcolor: 'action.hover' }}>
                       <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2, color: 'warning.main', fontFamily: 'Cairo' }}>
                         تسجيل مرتجع لهذه الفاتورة
                       </Typography>
 
                       {returnError && (
-                        <Alert severity="error" sx={{ mb: 2, fontFamily: 'Cairo', textAlign: 'right' }}>
+                        <Alert severity="error" sx={{ mb: 2, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
                           {returnError}
                         </Alert>
                       )}
                       {returnSuccess && (
-                        <Alert severity="success" sx={{ mb: 2, fontFamily: 'Cairo', textAlign: 'right' }}>
+                        <Alert severity="success" sx={{ mb: 2, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
                           {returnSuccess}
                         </Alert>
                       )}
@@ -361,15 +375,15 @@ export function Receipts() {
                                   justifyContent: 'space-between',
                                   alignItems: 'center',
                                   bgcolor: 'background.paper',
-                                  p: 1,
-                                  borderRadius: 0.5,
+                                  p: 1.5,
+                                  borderRadius: 1,
                                   border: '1px solid',
                                   borderColor: 'divider',
-                                  fontSize: '0.8rem'
+                                  fontSize: '0.85rem'
                                 }}
                               >
-                                <span style={{ flex: 1 }}>{item.product_name}</span>
-                                <span style={{ width: '160px', color: 'text.secondary', fontFamily: 'Cairo' }}>
+                                <span style={{ flex: 1, fontFamily: 'Cairo', fontWeight: 'bold' }}>{item.product_name}</span>
+                                <span style={{ width: '160px', color: 'text.secondary', fontFamily: 'Cairo', fontSize: '0.8rem' }}>
                                   الكل: {item.quantity} | المسترجع: {item.returned_qty || 0}
                                 </span>
                                 <TextField
@@ -398,12 +412,23 @@ export function Receipts() {
                                 value={returnNotes}
                                 onChange={(e) => setReturnNotes(e.target.value)}
                                 size="small"
-                                sx={{ '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                                sx={{
+                                  '& .MuiInputLabel-root': {
+                                    fontFamily: 'Cairo',
+                                    left: dir === 'rtl' ? 'auto' : 0,
+                                    right: dir === 'rtl' ? 24 : 'auto',
+                                    transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                                  },
+                                  '& .MuiOutlinedInput-input': {
+                                    fontFamily: 'Cairo',
+                                    textAlign: dir === 'rtl' ? 'right' : 'left'
+                                  }
+                                }}
                               />
                             </Grid>
                             <Grid item xs={12} sm={4}>
                               <FormControl fullWidth size="small">
-                                <InputLabel>طريقة الاسترداد</InputLabel>
+                                <InputLabel sx={{ fontFamily: 'Cairo', transformOrigin: dir === 'rtl' ? 'right' : 'left', right: dir === 'rtl' ? 24 : 'auto' }}>طريقة الاسترداد</InputLabel>
                                 <Select
                                   value={returnRefundMethod}
                                   label="طريقة الاسترداد"
@@ -446,15 +471,16 @@ export function Receipts() {
 
         {/* Right Side: Thermal Print Preview */}
         <Grid item xs={12} md={5}>
-          <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 'bold', fontFamily: 'Cairo', borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}>
+          <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 1 }}>
+            <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontFamily: 'Cairo', borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}>
                 معاينة الإيصال الحراري
               </Typography>
 
               {receiptDetails ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
                   <Box
+                    className="print-area"
                     sx={{
                       bgcolor: '#fff',
                       color: '#000',
@@ -471,7 +497,7 @@ export function Receipts() {
 
                   <form onSubmit={handleReprintReceipt} style={{ marginTop: 'auto' }}>
                     {reprintError && (
-                      <Alert severity="error" sx={{ mb: 2, fontFamily: 'Cairo', textAlign: 'right' }}>
+                      <Alert severity="error" sx={{ mb: 2, fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
                         {reprintError}
                       </Alert>
                     )}
@@ -484,7 +510,19 @@ export function Receipts() {
                       value={reprintReason}
                       onChange={(e) => setReprintReason(e.target.value)}
                       size="small"
-                      sx={{ mb: 2, '& .MuiInputLabel-root': { fontFamily: 'Cairo' }, '& .MuiOutlinedInput-input': { fontFamily: 'Cairo' } }}
+                      sx={{
+                        mb: 2,
+                        '& .MuiInputLabel-root': {
+                          fontFamily: 'Cairo',
+                          left: dir === 'rtl' ? 'auto' : 0,
+                          right: dir === 'rtl' ? 24 : 'auto',
+                          transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                        },
+                        '& .MuiOutlinedInput-input': {
+                          fontFamily: 'Cairo',
+                          textAlign: dir === 'rtl' ? 'right' : 'left'
+                        }
+                      }}
                     />
 
                     <Button

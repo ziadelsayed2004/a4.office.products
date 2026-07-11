@@ -10,7 +10,8 @@ import {
   ListItemText,
   Button,
   Paper,
-  Divider
+  Divider,
+  ListSubheader
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -29,8 +30,13 @@ import {
   ShoppingCart as ShoppingCartIcon,
   Receipt as ReceiptIcon,
   Calculate as CalculateIcon,
-  ExitToApp as ExitToAppIcon
+  ExitToApp as ExitToAppIcon,
+  DarkMode as DarkModeIcon,
+  LightMode as LightModeIcon,
+  Translate as TranslateIcon
 } from '@mui/icons-material';
+import { useColorMode } from '../theme/ThemeConfig.jsx';
+import { useLanguage } from '../i18n/config.js';
 import '../styles/Sidebar.css';
 import logoImg from '../assets/logo.png';
 
@@ -38,39 +44,100 @@ export default function Sidebar({ onClose }) {
   const { user, currentShift, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { mode, toggleColorMode } = useColorMode();
+  const { t, locale, changeLanguage } = useLanguage();
 
   if (!user) return null;
 
   const currentPath = location.pathname;
 
-  const adminMenu = [
-    { text: 'لوحة الإحصائيات', path: '/', icon: <DashboardIcon /> },
-    { text: 'إدارة المستخدمين', path: '/users', icon: <PeopleIcon /> },
-    { text: 'إدارة التصنيفات', path: '/categories', icon: <CategoryIcon /> },
-    { text: 'إدارة فئات الأسعار', path: '/price-tiers', icon: <RequestQuoteIcon /> },
-    { text: 'إدارة المنتجات', path: '/products', icon: <InventoryIcon /> },
-    { text: 'دفتر المخزون', path: '/inventory', icon: <HistoryIcon /> },
-    { text: 'طرق الدفع', path: '/payments', icon: <PaymentIcon /> },
-    { text: 'العملاء', path: '/customers', icon: <PersonIcon /> },
-    { text: 'مراجعة الورديات', path: '/shifts', icon: <AccessTimeIcon /> },
-    { text: 'إدارة الحجوزات', path: '/preorders', icon: <BookmarkBorderIcon /> },
-    { text: 'سجل العمليات', path: '/logs', icon: <ReceiptLongIcon /> },
-    { text: 'التقارير التفصيلية', path: '/reports', icon: <AssessmentIcon /> },
-    { text: 'إعدادات الطابعات', path: '/printer-settings', icon: <PrintIcon /> }
+  const adminSections = [
+    {
+      titleKey: 'nav.mainSection',
+      items: [
+        { textKey: 'nav.dashboard', path: '/', icon: <DashboardIcon /> },
+        { textKey: 'nav.logs', path: '/logs', icon: <ReceiptLongIcon /> }
+      ]
+    },
+    {
+      titleKey: 'nav.posSection',
+      items: [
+        { textKey: 'nav.pos', path: '/pos', icon: <ShoppingCartIcon /> },
+        { textKey: 'nav.receipts', path: '/receipts', icon: <ReceiptIcon /> }
+      ]
+    },
+    {
+      titleKey: 'nav.catalogSection',
+      items: [
+        { textKey: 'nav.products', path: '/products', icon: <InventoryIcon /> },
+        { textKey: 'nav.categories', path: '/categories', icon: <CategoryIcon /> },
+        { textKey: 'nav.priceTiers', path: '/price-tiers', icon: <RequestQuoteIcon /> },
+        { textKey: 'nav.inventory', path: '/inventory', icon: <HistoryIcon /> }
+      ]
+    },
+    {
+      titleKey: 'nav.preorderSection',
+      items: [
+        { textKey: 'nav.preorders', path: '/preorders', icon: <BookmarkBorderIcon /> },
+        { textKey: 'nav.customers', path: '/customers', icon: <PersonIcon /> }
+      ]
+    },
+    {
+      titleKey: 'nav.financeSection',
+      items: [
+        { textKey: 'nav.payments', path: '/payments', icon: <PaymentIcon /> }
+      ]
+    },
+    {
+      titleKey: 'nav.shiftSection',
+      items: [
+        { textKey: 'nav.shiftSummary', path: '/shift-summary', icon: <CalculateIcon /> },
+        { textKey: 'nav.shifts', path: '/shifts', icon: <AccessTimeIcon /> }
+      ]
+    },
+    {
+      titleKey: 'nav.adminSection',
+      items: [
+        { textKey: 'nav.reports', path: '/reports', icon: <AssessmentIcon /> },
+        { textKey: 'nav.users', path: '/users', icon: <PeopleIcon /> }
+      ]
+    },
+    {
+      titleKey: 'nav.settingsSection',
+      items: [
+        { textKey: 'nav.printerSettings', path: '/printer-settings', icon: <PrintIcon /> }
+      ]
+    }
   ];
 
-  const cashierMenu = [
-    { text: 'نقطة البيع (POS)', path: '/pos', icon: <ShoppingCartIcon /> },
-    { text: 'دفتر الإيصالات', path: '/receipts', icon: <ReceiptIcon /> },
-    { text: 'ملخص الوردية الحالية', path: '/shift-summary', icon: <CalculateIcon /> }
+  const cashierSections = [
+    {
+      titleKey: 'nav.posSection',
+      items: [
+        { textKey: 'nav.pos', path: '/pos', icon: <ShoppingCartIcon /> },
+        { textKey: 'nav.receipts', path: '/receipts', icon: <ReceiptIcon /> }
+      ]
+    },
+    {
+      titleKey: 'nav.preorderSection',
+      items: [
+        { textKey: 'nav.preorders', path: '/preorders', icon: <BookmarkBorderIcon /> }
+      ]
+    },
+    {
+      titleKey: 'nav.shiftSection',
+      items: [
+        { textKey: 'nav.shiftSummary', path: '/shift-summary', icon: <CalculateIcon /> }
+      ]
+    }
   ];
 
-  const menuItems = user.role === 'Admin' ? adminMenu : cashierMenu;
+  const menuSections = user.role === 'Admin' ? adminSections : cashierSections;
 
   return (
     <Box
       sx={{
-        width: 280,
+        width: 270,
         backgroundColor: 'background.paper',
         borderLeft: '1px solid',
         borderColor: 'divider',
@@ -85,9 +152,17 @@ export default function Sidebar({ onClose }) {
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
         <Box component="img" src={logoImg} alt="A4 Logo" sx={{ height: 60, mb: 1, objectFit: 'contain' }} />
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', fontFamily: 'Cairo' }}>منصة</Typography>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', fontFamily: 'Cairo', dir: 'ltr' }}>A4</Typography>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', fontFamily: 'Cairo' }}>المكتبية</Typography>
+          {locale === 'ar' ? (
+            <>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', fontFamily: 'Cairo' }}>منصة</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', fontFamily: 'Cairo', dir: 'ltr' }}>A4</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', fontFamily: 'Cairo' }}>المكتبية</Typography>
+            </>
+          ) : (
+            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', fontFamily: 'Cairo' }}>
+              A4 Platform
+            </Typography>
+          )}
         </Box>
       </Box>
 
@@ -97,7 +172,7 @@ export default function Sidebar({ onClose }) {
           p: 2,
           mb: 3,
           backgroundColor: 'background.default',
-          textAlign: 'right'
+          textAlign: locale === 'ar' ? 'right' : 'left'
         }}
         variant="outlined"
       >
@@ -105,81 +180,152 @@ export default function Sidebar({ onClose }) {
           {user.full_name}
         </Typography>
         <Typography variant="caption" sx={{ color: 'primary.main', mt: 0.5, display: 'block' }}>
-          {user.role === 'Admin' ? 'مدير النظام' : 'كاشير مبيعات'}
+          {user.role === 'Admin' ? t('auth.admin') : t('auth.cashier')}
         </Typography>
       </Paper>
 
       {/* Navigation List */}
       <Box sx={{ flexGrow: 1, overflowY: 'auto', mb: 2 }}>
-        <List component="nav" disablePadding>
-          {menuItems.map((item) => {
-            const isSelected = currentPath === item.path;
-            return (
-              <ListItemButton
-                key={item.path}
-                selected={isSelected}
-                onClick={() => {
-                  navigate(item.path);
-                  if (onClose) onClose();
-                }}
+        {menuSections.map((section) => (
+          <List
+            key={section.titleKey}
+            disablePadding
+            subheader={
+              <ListSubheader
                 sx={{
-                  mb: 0.5,
-                  '&.Mui-selected': {
-                    backgroundColor: (theme) => theme.palette.mode === 'light' ? 'rgba(137, 44, 220, 0.08)' : 'rgba(183, 98, 255, 0.12)',
-                    color: 'primary.main',
-                    '& .MuiListItemIcon-root': {
-                      color: 'primary.main'
-                    }
-                  }
+                  backgroundColor: 'transparent',
+                  fontFamily: 'Cairo',
+                  fontWeight: 'bold',
+                  fontSize: '0.725rem',
+                  lineHeight: '28px',
+                  color: 'text.secondary',
+                  textAlign: locale === 'ar' ? 'right' : 'left',
+                  px: 1
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 40, color: isSelected ? 'primary.main' : 'text.secondary' }}>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.text}
-                  primaryTypographyProps={{
-                    fontSize: '0.85rem',
-                    fontWeight: isSelected ? 700 : 500,
-                    fontFamily: 'Cairo'
+                {t(section.titleKey)}
+              </ListSubheader>
+            }
+            sx={{ mb: 1.5 }}
+          >
+            {section.items.map((item) => {
+              const isSelected = currentPath === item.path;
+              return (
+                <ListItemButton
+                  key={item.path}
+                  selected={isSelected}
+                  onClick={() => {
+                    navigate(item.path);
+                    if (onClose) onClose();
                   }}
-                />
-              </ListItemButton>
-            );
-          })}
-        </List>
+                  sx={{
+                    mb: 0.5,
+                    py: 0.75,
+                    borderRadius: 1,
+                    '&.Mui-selected': {
+                      backgroundColor: (theme) => theme.palette.mode === 'light' ? 'rgba(15, 95, 166, 0.10)' : 'rgba(96, 165, 250, 0.14)',
+                      color: 'primary.main',
+                      '& .MuiListItemIcon-root': {
+                        color: 'primary.main'
+                      },
+                      '&:hover': {
+                        backgroundColor: (theme) => theme.palette.mode === 'light' ? 'rgba(15, 95, 166, 0.15)' : 'rgba(96, 165, 250, 0.20)',
+                      }
+                    }
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 36, color: isSelected ? 'primary.main' : 'text.secondary' }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={t(item.textKey)}
+                    primaryTypographyProps={{
+                      fontSize: '0.825rem',
+                      fontWeight: isSelected ? 700 : 500,
+                      fontFamily: 'Cairo'
+                    }}
+                  />
+                </ListItemButton>
+              );
+            })}
+          </List>
+        ))}
       </Box>
 
       <Divider sx={{ mb: 2 }} />
 
       {/* Shift status indicator */}
       <Box sx={{ mb: 2 }}>
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5, textAlign: 'right' }}>
-          حالة الوردية الحالية:
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5, textAlign: locale === 'ar' ? 'right' : 'left' }}>
+          {t('shift.statusLabel')}
         </Typography>
         {currentShift && currentShift.status === 'OPEN' ? (
           <Box className="shift-status-active">
             <span className="dot dot-active"></span>
             <Typography variant="caption" sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>
-              مفتوحة (عهدة: {(currentShift.opening_cash / 100).toFixed(2)} ج.م)
+              {t('shift.open', { amount: (currentShift.opening_cash / 100).toFixed(2) })}
             </Typography>
           </Box>
         ) : currentShift && currentShift.status === 'CLOSE_REQUESTED' ? (
           <Box className="shift-status-waiting">
             <span className="dot dot-waiting"></span>
             <Typography variant="caption" sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>
-              بانتظار موافقة الإغلاق
+              {t('shift.pendingClose')}
             </Typography>
           </Box>
         ) : (
           <Box className="shift-status-inactive">
             <span className="dot dot-inactive"></span>
             <Typography variant="caption" sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>
-              لا توجد وردية نشطة
+              {t('shift.closed')}
             </Typography>
           </Box>
         )}
       </Box>
+
+      {/* Language Toggle button */}
+      <Button
+        variant="outlined"
+        fullWidth
+        onClick={() => changeLanguage(locale === 'ar' ? 'en' : 'ar')}
+        startIcon={<TranslateIcon />}
+        sx={{
+          mb: 1,
+          py: 1,
+          fontFamily: 'Cairo',
+          fontWeight: 'bold',
+          borderColor: 'divider',
+          color: 'text.primary',
+          '&:hover': {
+            borderColor: 'primary.main',
+            backgroundColor: mode === 'dark' ? 'rgba(59, 130, 246, 0.08)' : 'rgba(15, 95, 166, 0.04)'
+          }
+        }}
+      >
+        {locale === 'ar' ? 'English (EN)' : 'العربية (AR)'}
+      </Button>
+
+      {/* Theme Toggle button */}
+      <Button
+        variant="outlined"
+        fullWidth
+        onClick={toggleColorMode}
+        startIcon={mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+        sx={{
+          mb: 1,
+          py: 1,
+          fontFamily: 'Cairo',
+          fontWeight: 'bold',
+          borderColor: 'divider',
+          color: 'text.primary',
+          '&:hover': {
+            borderColor: 'primary.main',
+            backgroundColor: mode === 'dark' ? 'rgba(59, 130, 246, 0.08)' : 'rgba(15, 95, 166, 0.04)'
+          }
+        }}
+      >
+        {mode === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}
+      </Button>
 
       {/* Logout button */}
       <Button
@@ -198,7 +344,7 @@ export default function Sidebar({ onClose }) {
           fontWeight: 'bold'
         }}
       >
-        تسجيل الخروج
+        {t('nav.logout')}
       </Button>
     </Box>
   );

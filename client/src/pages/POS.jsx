@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../app/AuthContext.jsx';
-import ReceiptDetails from '../components/ReceiptDetails.jsx';
+import { useLanguage } from '../i18n/config.js';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -10,11 +11,9 @@ import {
   CardContent,
   TextField,
   FormControl,
-  InputLabel,
   Select,
   MenuItem,
   Alert,
-  CircularProgress,
   Divider,
   Paper,
   Table,
@@ -29,25 +28,30 @@ import {
   DialogContent,
   DialogActions,
   FormControlLabel,
-  Checkbox
+  Checkbox,
+  Tabs,
+  Tab,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   QrCodeScanner as ScanIcon,
   Search as SearchIcon,
-  ShoppingCart as CartIcon,
   Delete as DeleteIcon,
-  Add as AddIcon,
-  Remove as RemoveIcon,
   Payment as PaymentIcon,
   Print as PrintIcon,
   CheckCircle as CheckIcon
 } from '@mui/icons-material';
 
 export function POS() {
-  const { token, currentShift, setCurrentShift, loadCurrentShift } = useAuth();
+  const { token, user, currentShift, setCurrentShift, loadCurrentShift } = useAuth();
+  const { dir } = useLanguage();
+  const [activeMobileTab, setActiveMobileTab] = useState(0);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const navigate = useNavigate();
   
   // Catalog lists
-  const [productsList, setProductsList] = useState([]);
   const [paymentMethodsList, setPaymentMethodsList] = useState([]);
 
   // Opening Shift state
@@ -80,28 +84,21 @@ export function POS() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
   const [checkoutSuccessData, setCheckoutSuccessData] = useState(null);
-  const [receiptDetails, setReceiptDetails] = useState(null);
 
   // Preorder pickup state
   const [showPreorderPickupModal, setShowPreorderPickupModal] = useState(false);
   const [scannedPreorder, setScannedPreorder] = useState(null);
-  const [preorderPickupLoading, setPreorderPickupLoading] = useState(false);
   const [preorderPickupError, setPreorderPickupError] = useState('');
   const [isPreorderPickupCheckout, setIsPreorderPickupCheckout] = useState(false);
 
-  // Load baseline POS lists
-  const loadProducts = async () => {
-    if (!token) return;
-    try {
-      const res = await fetch('/api/products?activeOnly=true', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const payload = await res.json();
-      if (res.status === 200) setProductsList(payload.data || []);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  // Manual preorder lookup state
+  const [showManualPickupLookup, setShowManualPickupLookup] = useState(false);
+  const [pickupSearchQuery, setPickupSearchQuery] = useState('');
+  const [pickupSearchResults, setPickupSearchResults] = useState([]);
+  const [pickupSearchLoading, setPickupSearchLoading] = useState(false);
+  const [pickupSearchError, setPickupSearchError] = useState('');
+
+
 
   const loadPaymentMethods = async () => {
     if (!token) return;
@@ -118,10 +115,9 @@ export function POS() {
 
   useEffect(() => {
     if (token) {
-      loadProducts();
       loadPaymentMethods();
     }
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Derived totals
   const posSubtotal = posCart.reduce((sum, item) => sum + item.selectedPrice * item.quantity, 0);
@@ -178,7 +174,6 @@ export function POS() {
     setPosScanError('');
     setPreorderPickupError('');
     setScannedPreorder(null);
-    setPreorderPickupLoading(true);
     try {
       const res = await fetch('/api/pos/preorders/scan', {
         method: 'POST',
@@ -197,8 +192,59 @@ export function POS() {
       }
     } catch (err) {
       setPosScanError('حدث خطأ بالاتصال بالخادم.');
+    }
+  };
+
+  const handlePreorderSearch = async (query) => {
+    setPickupSearchQuery(query);
+    if (!query.trim()) {
+      setPickupSearchResults([]);
+      return;
+    }
+    setPickupSearchLoading(true);
+    setPickupSearchError('');
+    try {
+      const res = await fetch(`/api/admin/preorders?q=${encodeURIComponent(query)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const payload = await res.json();
+      if (res.status === 200) {
+        setPickupSearchResults(payload.data || []);
+      } else {
+        setPickupSearchError(payload.error || 'فشل البحث عن الحجوزات.');
+      }
+    } catch (err) {
+      setPickupSearchError('حدث خطأ بالاتصال بالخادم.');
     } finally {
-      setPreorderPickupLoading(false);
+      setPickupSearchLoading(false);
+    }
+  };
+
+  const handleTokenLookup = async (tokenCode) => {
+    if (!tokenCode.trim()) return;
+    setPickupSearchLoading(true);
+    setPickupSearchError('');
+    try {
+      const res = await fetch('/api/pos/preorders/scan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ token: tokenCode.trim() })
+      });
+      const payload = await res.json();
+      if (res.status === 200) {
+        setScannedPreorder(payload.data);
+        setShowManualPickupLookup(false);
+        setShowPreorderPickupModal(true);
+      } else {
+        setPickupSearchError(payload.error || 'رمز الاستلام غير صحيح أو منتهي.');
+      }
+    } catch (err) {
+      setPickupSearchError('حدث خطأ بالاتصال بالخادم.');
+    } finally {
+      setPickupSearchLoading(false);
     }
   };
 
@@ -484,7 +530,6 @@ export function POS() {
         setPosPreorderDeposit('0');
         setIsPreorderPickupCheckout(false);
         setScannedPreorder(null);
-        loadProducts();
       } else {
         setCheckoutError(payload.error || 'فشلت عملية إتمام الطلب.');
       }
@@ -560,10 +605,36 @@ export function POS() {
   }
 
   return (
-    <Box sx={{ width: '100%', height: 'calc(100vh - 120px)' }}>
-      <Grid container spacing={3} sx={{ height: '100%' }}>
+    <Box sx={{ width: '100%', height: { xs: 'auto', md: 'calc(100vh - 120px)' }, pb: { xs: 8, md: 0 }, position: 'relative' }}>
+      {/* Mobile/Tablet Tab bar toggle */}
+      <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 2 }}>
+        <Tabs
+          value={activeMobileTab}
+          onChange={(e, val) => setActiveMobileTab(val)}
+          variant="fullWidth"
+          sx={{ borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab label="البحث والمسح" sx={{ fontFamily: 'Cairo', fontWeight: 'bold' }} />
+          <Tab
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <span>السلة</span>
+                <Chip
+                  label={posCart.reduce((sum, item) => sum + item.quantity, 0)}
+                  size="small"
+                  color="primary"
+                  sx={{ height: 20, fontSize: '0.75rem', fontWeight: 'bold' }}
+                />
+              </Box>
+            }
+            sx={{ fontFamily: 'Cairo', fontWeight: 'bold' }}
+          />
+        </Tabs>
+      </Box>
+
+      <Grid container spacing={3} sx={{ height: { xs: 'auto', md: '100%' } }}>
         {/* Left Side: Scan & Fuzzy search */}
-        <Grid item xs={12} md={3} sx={{ height: '100%' }}>
+        <Grid item xs={12} md={3} sx={{ height: { xs: 'auto', md: '100%' }, display: { xs: activeMobileTab === 0 ? 'block' : 'none', md: 'block' } }}>
           <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, overflowY: 'auto' }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold', borderBottom: '1px solid', borderColor: 'divider', pb: 1, fontFamily: 'Cairo' }}>
@@ -652,13 +723,31 @@ export function POS() {
                   </Typography>
                 )}
               </Box>
+
+              {/* Manual Preorder Pickup Action */}
+              <Box sx={{ mt: 'auto', pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  color="secondary"
+                  onClick={() => {
+                    setPickupSearchQuery('');
+                    setPickupSearchResults([]);
+                    setPickupSearchError('');
+                    setShowManualPickupLookup(true);
+                  }}
+                  sx={{ fontFamily: 'Cairo', fontWeight: 'bold' }}
+                >
+                  استلام حجز مسبق (Pickup)
+                </Button>
+              </Box>
             </CardContent>
           </Card>
         </Grid>
 
         {/* Center: Cart Grid List */}
-        <Grid item xs={12} md={6} sx={{ height: '100%' }}>
-          <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Grid item xs={12} md={6} sx={{ height: { xs: 'auto', md: '100%' }, display: { xs: activeMobileTab === 1 ? 'block' : 'none', md: 'block' } }}>
+          <Card variant="outlined" sx={{ height: { xs: 'auto', md: '100%' }, display: 'flex', flexDirection: 'column' }}>
             <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, overflowY: 'auto' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}>
@@ -767,8 +856,8 @@ export function POS() {
         </Grid>
 
         {/* Right Side: Totals and Preorder checkout settings */}
-        <Grid item xs={12} md={3} sx={{ height: '100%' }}>
-          <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Grid item xs={12} md={3} sx={{ height: { xs: 'auto', md: '100%' }, display: { xs: activeMobileTab === 1 ? 'block' : 'none', md: 'block' } }}>
+          <Card variant="outlined" sx={{ height: { xs: 'auto', md: '100%' }, display: 'flex', flexDirection: 'column' }}>
             <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, overflowY: 'auto' }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold', borderBottom: '1px solid', borderColor: 'divider', pb: 1, fontFamily: 'Cairo' }}>
                 ملخص الحساب والدفع
@@ -875,12 +964,51 @@ export function POS() {
         </Grid>
       </Grid>
 
+      {/* Sticky mobile action bar when cart has items and search is active */}
+      {posCart.length > 0 && activeMobileTab === 0 && (
+        <Paper
+          elevation={10}
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            p: 2,
+            zIndex: 1000,
+            display: { xs: 'flex', md: 'none' },
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            backgroundColor: 'background.paper'
+          }}
+        >
+          <Box sx={{ textAlign: dir === 'rtl' ? 'right' : 'left' }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'Cairo', display: 'block' }}>
+              إجمالي السلة الصافي ({posCart.reduce((sum, item) => sum + item.quantity, 0)} قطعة):
+            </Typography>
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'success.main', fontFamily: 'Cairo' }}>
+              {(posTotal / 100).toFixed(2)} ج.م
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            size="medium"
+            onClick={() => setActiveMobileTab(1)}
+            sx={{ fontFamily: 'Cairo', fontWeight: 'bold', px: 3, height: 44 }}
+          >
+            عرض السلة والدفع
+          </Button>
+        </Paper>
+      )}
+
       {/* Payment Split & Checkout Result Dialog */}
       <Dialog
         open={showPaymentModal}
         onClose={() => !checkoutLoading && !checkoutSuccessData && setShowPaymentModal(false)}
         maxWidth="xs"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: 'right' }}>
           {checkoutSuccessData
@@ -940,7 +1068,7 @@ export function POS() {
                 onClick={() => {
                   setShowPaymentModal(false);
                   // Redirect to receipts search tab and print
-                  window.location.hash = `/receipts?code=${checkoutSuccessData.receipt_number}`;
+                  navigate(`/receipts?code=${checkoutSuccessData.receipt_number}`);
                   setCheckoutSuccessData(null);
                 }}
                 sx={{ fontFamily: 'Cairo' }}
@@ -1026,13 +1154,14 @@ export function POS() {
         onClose={() => setShowPreorderPickupModal(false)}
         maxWidth="xs"
         fullWidth
+        fullScreen={isMobile}
       >
-        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: 'right' }}>
+        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
           استلام الحجز المسبق رقم {scannedPreorder?.preorder.preorder_number}
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {preorderPickupError && (
-            <Alert severity="error" sx={{ fontFamily: 'Cairo', textAlign: 'right' }}>
+            <Alert severity="error" sx={{ fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
               {preorderPickupError}
             </Alert>
           )}
@@ -1041,19 +1170,41 @@ export function POS() {
             <>
               <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <div>اسم العميل: <strong>{scannedPreorder.preorder.customer_name}</strong></div>
-                <div>هاتف العميل: <strong>{scannedPreorder.preorder.customer_phone}</strong></div>
+                <div>هاتف العميل LTR: <strong style={{ direction: 'ltr', display: 'inline-block' }}>{scannedPreorder.preorder.customer_phone}</strong></div>
                 <div>طريقة التسليم: <strong>{scannedPreorder.preorder.pickup_method === 'walk_in' ? 'استلام من المعرض' : 'توصيل منزلي'}</strong></div>
                 <div>تاريخ الحجز: <strong>{new Date(scannedPreorder.preorder.created_at).toLocaleDateString('ar-EG')}</strong></div>
               </Paper>
 
-              <Typography variant="caption" sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}>الأصناف المحجوزة:</Typography>
+              <Typography variant="caption" sx={{ fontWeight: 'bold', fontFamily: 'Cairo' }}>الأصناف المحجوزة والمخزون الحالي:</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {scannedPreorder.items.map((item, idx) => (
-                  <Box key={idx} sx={{ display: 'flex', justifyContent: 'space-between', bgcolor: 'background.paper', p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 0.5, fontSize: '0.8rem' }}>
-                    <span>{item.product_name} x {item.quantity}</span>
-                    <span>{(item.total_price / 100).toFixed(2)} ج.م</span>
-                  </Box>
-                ))}
+                {scannedPreorder.items.map((item, idx) => {
+                  const isStockInsufficient = (item.stock || 0) < item.quantity;
+                  return (
+                    <Box key={idx} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, bgcolor: 'background.paper', p: 1, border: '1px solid', borderColor: isStockInsufficient ? 'error.main' : 'divider', borderRadius: 0.5, fontSize: '0.8rem' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 'bold' }}>{item.product_name}</span>
+                        <span>{(item.total_price / 100).toFixed(2)} ج.م</span>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'text.secondary' }}>
+                        <span>الكمية المطلوبة: {item.quantity}</span>
+                        <span>
+                          المخزون الحالي:{' '}
+                          <Chip
+                            label={item.stock || 0}
+                            color={isStockInsufficient ? 'error' : 'success'}
+                            size="small"
+                            sx={{ height: 18, fontSize: '0.7rem', fontWeight: 'bold' }}
+                          />
+                        </span>
+                      </Box>
+                      {isStockInsufficient && (
+                        <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 'bold', fontFamily: 'Cairo', display: 'block', mt: 0.5 }}>
+                          ⚠️ عجز بالمخزون! لا يمكن تسليم هذا الصنف حالياً.
+                        </Typography>
+                      )}
+                    </Box>
+                  );
+                })}
               </Box>
 
               <Divider sx={{ my: 1 }} />
@@ -1093,10 +1244,143 @@ export function POS() {
           ) : scannedPreorder?.preorder.status === 'CANCELLED' ? (
             <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 'bold', fontFamily: 'Cairo' }}>هذا الحجز ملغي.</Typography>
           ) : (
-            <Button variant="contained" onClick={startPreorderPickupCheckout} sx={{ fontFamily: 'Cairo' }}>
-              الذهاب للدفع واستلام الحجز
+            <Button
+              variant="contained"
+              onClick={startPreorderPickupCheckout}
+              disabled={scannedPreorder?.items?.some(item => (item.stock || 0) < item.quantity)}
+              sx={{ fontFamily: 'Cairo' }}
+            >
+              {scannedPreorder?.items?.some(item => (item.stock || 0) < item.quantity) ? 'غير متاح (عجز مخزون)' : 'الذهاب للدفع واستلام الحجز'}
             </Button>
           )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Manual Preorder Search / Pickup Dialog */}
+      <Dialog
+        open={showManualPickupLookup}
+        onClose={() => setShowManualPickupLookup(false)}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle sx={{ fontFamily: 'Cairo', fontWeight: 'bold', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
+          بحث واستلام حجز مسبق
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          {pickupSearchError && (
+            <Alert severity="error" sx={{ fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }}>
+              {pickupSearchError}
+            </Alert>
+          )}
+
+          {user?.role === 'Admin' ? (
+            <>
+              <TextField
+                fullWidth
+                size="small"
+                label="بحث بالاسم، الهاتف، أو رقم الحجز"
+                placeholder="اكتب وابدأ البحث..."
+                value={pickupSearchQuery}
+                onChange={(e) => handlePreorderSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                }}
+                sx={{
+                  '& .MuiInputLabel-root': {
+                    fontFamily: 'Cairo',
+                    left: dir === 'rtl' ? 'auto' : 0,
+                    right: dir === 'rtl' ? 24 : 'auto',
+                    transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                  },
+                  '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                }}
+              />
+              
+              <Box sx={{ mt: 1, maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {pickupSearchLoading ? (
+                  <Typography variant="body2" sx={{ textAlign: 'center', py: 2, color: 'text.secondary', fontFamily: 'Cairo' }}>جاري البحث...</Typography>
+                ) : pickupSearchResults.length === 0 ? (
+                  <Typography variant="body2" sx={{ textAlign: 'center', py: 2, color: 'text.secondary', fontFamily: 'Cairo' }}>
+                    {pickupSearchQuery ? 'لا توجد نتائج مطابقة.' : 'اكتب للبحث عن الحجوزات النشطة.'}
+                  </Typography>
+                ) : (
+                  pickupSearchResults.map((order) => (
+                    <Paper
+                      key={order.id}
+                      onClick={async () => {
+                        setShowManualPickupLookup(false);
+                        await handleScanPreorder(order.qr_pickup_token);
+                      }}
+                      variant="outlined"
+                      sx={{ p: 2, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>رقم: {order.preorder_number}</Typography>
+                        <Chip
+                          label={
+                            order.status === 'DEPOSIT_PAID_WAITING_STOCK' ? 'بانتظار المخزون' :
+                            order.status === 'READY_FOR_PICKUP' ? 'جاهز للاستلام' :
+                            order.status === 'PICKED_UP' ? 'تم التسليم' :
+                            order.status === 'CANCELLED' ? 'ملغي' : 'منتهي'
+                          }
+                          color={
+                            order.status === 'DEPOSIT_PAID_WAITING_STOCK' ? 'info' :
+                            order.status === 'READY_FOR_PICKUP' ? 'warning' :
+                            order.status === 'PICKED_UP' ? 'success' : 'error'
+                          }
+                          size="small"
+                          sx={{ fontFamily: 'Cairo', fontWeight: 'bold' }}
+                        />
+                      </Box>
+                      <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
+                        العميل: {order.customer_name} | هاتف: <code style={{ direction: 'ltr', display: 'inline-block' }}>{order.customer_phone}</code>
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: 'warning.main', fontSize: '0.8rem', mt: 0.5, fontWeight: 'bold' }}>
+                        المتبقي للتحصيل: {(order.remaining_amount / 100).toFixed(2)} ج.م
+                      </Typography>
+                    </Paper>
+                  ))
+                )}
+              </Box>
+            </>
+          ) : (
+            <>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1, fontFamily: 'Cairo' }}>
+                أدخل رمز الاستلام الخاص بالعميل (مثال: pre_abc123) لتحميل تفاصيل الحجز:
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                label="رمز الاستلام (Token)"
+                value={pickupSearchQuery}
+                onChange={(e) => setPickupSearchQuery(e.target.value)}
+                sx={{
+                  '& .MuiInputLabel-root': {
+                    fontFamily: 'Cairo',
+                    left: dir === 'rtl' ? 'auto' : 0,
+                    right: dir === 'rtl' ? 24 : 'auto',
+                    transformOrigin: dir === 'rtl' ? 'right' : 'left'
+                  },
+                  '& .MuiOutlinedInput-input': { fontFamily: 'Cairo', textAlign: dir === 'rtl' ? 'right' : 'left' }
+                }}
+              />
+              <Button
+                fullWidth
+                variant="contained"
+                disabled={pickupSearchLoading || !pickupSearchQuery.trim()}
+                onClick={() => handleTokenLookup(pickupSearchQuery)}
+                sx={{ mt: 2, fontFamily: 'Cairo' }}
+              >
+                {pickupSearchLoading ? 'جاري البحث بالرمز...' : 'تحميل الحجز والتحقق'}
+              </Button>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setShowManualPickupLookup(false)} sx={{ fontFamily: 'Cairo' }}>
+            إغلاق
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

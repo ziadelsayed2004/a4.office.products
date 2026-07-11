@@ -407,7 +407,8 @@ export async function scanPreorderToken(token, cashierId) {
 
   // 4. Fetch preorder items
   const items = await db.all(
-    `SELECT pi.*, p.name AS product_name, p.sku AS product_sku
+    `SELECT pi.*, p.name AS product_name, p.sku AS product_sku,
+            COALESCE((SELECT after_quantity FROM inventory_ledger WHERE product_id = p.id ORDER BY id DESC LIMIT 1), 0) AS stock
      FROM preorder_items pi
      JOIN products p ON pi.product_id = p.id
      WHERE pi.preorder_id = ?;`,

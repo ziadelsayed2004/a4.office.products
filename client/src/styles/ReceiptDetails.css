@@ -135,3 +135,25 @@
   margin-top: 4px;
   font-weight: bold;
 }
+
+@media print {
+  /* Hide every element on the page */
+  body * {
+    visibility: hidden !important;
+  }
+  /* Show only the print area and its contents */
+  .print-area, .print-area * {
+    visibility: visible !important;
+  }
+  /* Position the print area at the absolute top-left */
+  .print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+  }
+}

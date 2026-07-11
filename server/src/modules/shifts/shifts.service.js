@@ -124,6 +124,11 @@ export async function getCurrentShiftSummary(userId) {
 
   const expectedClosingCash = shift.opening_cash + cashPayments + payIns - payOuts;
 
+  const movementsList = await db.all(
+    "SELECT * FROM cash_movements WHERE shift_id = ? ORDER BY id DESC;",
+    [shiftId]
+  );
+
   return {
     shift,
     sales: {
@@ -132,6 +137,7 @@ export async function getCurrentShiftSummary(userId) {
     },
     payments: paymentStats,
     cashMovements: cashMovementStats,
+    cashMovementsList: movementsList,
     expectedClosingCash
   };
 }

@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
 import { Outlet, Navigate, useLocation, Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar.jsx';
-import { Box, Typography, AppBar, Toolbar, IconButton, Drawer } from '@mui/material';
-import { Menu as MenuIcon } from '@mui/icons-material';
+import Breadcrumbs from '../components/navigation/Breadcrumbs.jsx';
+import { Box, Typography, AppBar, Toolbar, IconButton, Drawer, Tooltip } from '@mui/material';
+import { Menu as MenuIcon, DarkMode as DarkModeIcon, LightMode as LightModeIcon } from '@mui/icons-material';
 import { useAuth } from '../app/AuthContext.jsx';
+import { useColorMode } from '../theme/ThemeConfig.jsx';
+import { useLanguage } from '../i18n/config.js';
 
 export function MainLayout() {
   const { user } = useAuth();
+  const { t, dir } = useLanguage();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { mode, toggleColorMode } = useColorMode();
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -18,38 +23,39 @@ export function MainLayout() {
     setMobileOpen(!mobileOpen);
   };
 
-  // Map route paths to page titles in Arabic
+  // Map route paths to page titles in Arabic/English
   const PAGE_TITLES = {
-    '/': 'لوحة الإحصائيات',
-    '/users': 'إدارة المستخدمين',
-    '/categories': 'إدارة التصنيفات',
-    '/price-tiers': 'إدارة فئات الأسعار',
-    '/products': 'إدارة المنتجات',
-    '/inventory': 'دفتر المخزون',
-    '/payments': 'طرق الدفع',
-    '/customers': 'العملاء',
-    '/shifts': 'مراجعة الورديات',
-    '/preorders': 'إدارة الحجوزات',
-    '/logs': 'سجل العمليات',
-    '/reports': 'التقارير التفصيلية',
-    '/printer-settings': 'إعدادات الطابعات',
-    '/pos': 'نقطة البيع (POS)',
-    '/receipts': 'دفتر الإيصالات',
-    '/shift-summary': 'ملخص الوردية الحالية'
+    '/': t('nav.dashboard'),
+    '/users': t('nav.users'),
+    '/categories': t('nav.categories'),
+    '/price-tiers': t('nav.priceTiers'),
+    '/products': t('nav.products'),
+    '/inventory': t('nav.inventory'),
+    '/payments': t('nav.payments'),
+    '/customers': t('nav.customers'),
+    '/shifts': t('nav.shifts'),
+    '/preorders': t('nav.preorders'),
+    '/logs': t('nav.logs'),
+    '/reports': t('nav.reports'),
+    '/printer-settings': t('nav.printerSettings'),
+    '/pos': t('nav.pos'),
+    '/receipts': t('nav.receipts'),
+    '/shift-summary': t('nav.shiftSummary')
   };
 
   const title = PAGE_TITLES[location.pathname] || '';
-  const drawerWidth = 280;
+  const drawerWidth = 270;
 
   return (
-    <Box dir="rtl" sx={{ display: 'flex', minHeight: '100vh', width: '100vw', backgroundColor: 'background.default' }}>
+    <Box dir={dir} sx={{ display: 'flex', minHeight: '100vh', width: '100vw', backgroundColor: 'background.default' }}>
       {/* AppBar for mobile top bar */}
       <AppBar
         position="fixed"
         elevation={1}
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
-          mr: { md: `${drawerWidth}px` },
+          mr: dir === 'rtl' ? { md: `${drawerWidth}px` } : 0,
+          ml: dir === 'ltr' ? { md: `${drawerWidth}px` } : 0,
           display: { md: 'none' }, // Show only on mobile
           backgroundColor: 'background.paper',
           color: 'text.primary',
@@ -64,14 +70,18 @@ export function MainLayout() {
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ ml: 2 }}
+            sx={{ ml: dir === 'rtl' ? 2 : 0, mr: dir === 'ltr' ? 2 : 0 }}
           >
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ fontFamily: 'Cairo', fontWeight: 'bold' }}>
             {title}
           </Typography>
-          <Box sx={{ width: 40 }} /> {/* Spacer to center the title on mobile if needed */}
+          <Tooltip title={mode === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}>
+            <IconButton onClick={toggleColorMode} color="inherit">
+              {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+            </IconButton>
+          </Tooltip>
         </Toolbar>
       </AppBar>
 
@@ -95,7 +105,7 @@ export function MainLayout() {
           display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
         }}
-        anchor="right" // Opens from the right in RTL layouts
+        anchor={dir === 'rtl' ? 'right' : 'left'}
       >
         <Sidebar onClose={handleDrawerToggle} />
       </Drawer>
@@ -103,9 +113,9 @@ export function MainLayout() {
       {/* Main content workspace */}
       <Box
         component="main"
-        dir="rtl"
+        dir={dir}
         sx={{
-          textAlign: 'right',
+          textAlign: dir === 'rtl' ? 'right' : 'left',
           flexGrow: 1,
           p: 3,
           width: { md: `calc(100% - ${drawerWidth}px)` },
@@ -116,13 +126,7 @@ export function MainLayout() {
         }}
       >
         {/* Breadcrumbs Navigation */}
-        <Box sx={{ display: 'flex', gap: 1, fontSize: '0.8rem', color: 'text.secondary', mb: 2, alignItems: 'center', fontFamily: 'Cairo' }}>
-          <Link to="/" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s', fontWeight: 500 }} onMouseEnter={(e) => e.target.style.color = '#0f5fa6'} onMouseLeave={(e) => e.target.style.color = 'inherit'}>الرئيسية</Link>
-          <span>&gt;</span>
-          <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 'bold', fontSize: '0.8rem', fontFamily: 'Cairo' }}>
-            {title}
-          </Typography>
-        </Box>
+        <Breadcrumbs />
 
         {/* Dynamic route view */}
         <Box sx={{ flexGrow: 1 }}>
