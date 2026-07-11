@@ -9,22 +9,23 @@ function isMuiTextField(child) {
 }
 
 /**
- * Shared A4 form field.
+ * Shared A4 field wrapper.
  *
- * TextField children receive a real MUI outlined label so the label animates
- * into an RTL-safe notch. Non-TextField controls (switch groups, custom
- * widgets, etc.) keep a compact external label.
+ * MUI TextField children use the native outlined label/notch animation.
+ * Custom controls keep an external label. MUI v9 slotProps are used so no
+ * implementation props leak to native DOM elements.
  */
 export function Field({ label, required = false, hint, error, children, className = '' }) {
   const generatedId = useId().replace(/:/g, '');
   const fieldClassName = `field${className ? ` ${className}` : ''}`;
 
   if (isMuiTextField(children)) {
-    const childInputLabelProps = children.props.InputLabelProps || {};
+    const existingSlots = children.props.slotProps || {};
+    const inputLabelSlot = existingSlots.inputLabel || {};
     const mustStayShrunk = Boolean(
       children.props.select
       || ALWAYS_SHRINK_TYPES.has(children.props.type)
-      || childInputLabelProps.shrink,
+      || inputLabelSlot.shrink,
     );
 
     const control = cloneElement(children, {
@@ -36,9 +37,12 @@ export function Field({ label, required = false, hint, error, children, classNam
       fullWidth: children.props.fullWidth ?? true,
       size: children.props.size || 'small',
       variant: children.props.variant || 'outlined',
-      InputLabelProps: {
-        ...childInputLabelProps,
-        ...(mustStayShrunk ? { shrink: true } : {}),
+      slotProps: {
+        ...existingSlots,
+        inputLabel: {
+          ...inputLabelSlot,
+          ...(mustStayShrunk ? { shrink: true } : {}),
+        },
       },
     });
 

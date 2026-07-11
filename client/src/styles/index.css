@@ -201,3 +201,150 @@ input[type="tel"] {
     transition: none !important;
   }
 }
+
+/* Final Arabic RTL interaction contract (MUI v9). */
+.MuiButton-root,
+.MuiIconButton-root,
+.MuiTab-root,
+.MuiMenuItem-root {
+  font-family: Cairo, "Segoe UI", Tahoma, Arial, sans-serif;
+}
+
+.MuiButton-root {
+  direction: rtl;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.MuiButton-root .MuiButton-startIcon,
+.MuiButton-root .MuiButton-endIcon {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.MuiButton-root .MuiButton-startIcon > :nth-of-type(1),
+.MuiButton-root .MuiButton-endIcon > :nth-of-type(1) {
+  font-size: 1.12rem;
+}
+
+.MuiDialogActions-root {
+  direction: rtl;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.MuiOutlinedInput-root {
+  direction: rtl;
+  overflow: visible;
+}
+
+.MuiOutlinedInput-notchedOutline {
+  direction: rtl;
+  text-align: right;
+}
+
+.MuiOutlinedInput-notchedOutline > legend {
+  direction: rtl;
+  text-align: right;
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+  transition: max-width 180ms cubic-bezier(.4, 0, .2, 1);
+}
+
+
+.MuiOutlinedInput-notchedOutline > legend > span {
+  display: inline-block;
+  padding-inline: 5px;
+  white-space: nowrap;
+}
+
+.MuiInputLabel-root {
+  pointer-events: none;
+  direction: rtl;
+  text-align: right;
+  transform-origin: top right;
+}
+
+.MuiInputBase-input,
+.MuiSelect-select,
+textarea.MuiInputBase-input {
+  min-width: 0;
+}
+
+.MuiInputAdornment-root {
+  flex-shrink: 0;
+}
+
+.MuiInputAdornment-positionStart {
+  margin-inline-start: 0;
+  margin-inline-end: 8px;
+}
+
+.MuiInputAdornment-positionEnd {
+  margin-inline-start: 8px;
+  margin-inline-end: 0;
+}
+
+.MuiSelect-select {
+  padding-inline-start: 14px;
+  padding-inline-end: 42px;
+}
+
+.MuiSelect-icon {
+  inset-inline-start: 10px;
+  inset-inline-end: auto;
+}
+
+.MuiFormHelperText-root {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Technical values remain readable without changing the surrounding RTL layout. */
+.a4-ltr,
+.a4-ltr input,
+input[dir="ltr"],
+textarea[dir="ltr"] {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: plaintext;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (hover: hover) {
+  .MuiButton-root:not(.Mui-disabled):hover,
+  .MuiIconButton-root:not(.Mui-disabled):hover {
+    transform: translateY(-1px);
+  }
+}
+
+@media (max-width: 600px) {
+  .MuiDialogActions-root {
+    flex-wrap: wrap;
+  }
+
+  .MuiDialogActions-root .MuiButton-root {
+    flex: 1 1 140px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+
+  .MuiButton-root,
+  .MuiIconButton-root,
+  .MuiInputLabel-root,
+  .MuiOutlinedInput-root,
+  .MuiOutlinedInput-notchedOutline,
+  .MuiOutlinedInput-notchedOutline > legend {
+    transition: none !important;
+  }
+}

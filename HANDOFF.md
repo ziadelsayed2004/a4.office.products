@@ -1,30 +1,31 @@
-# A4 Office Products — Current Handoff
+# A4 Office Products — Handoff
 
-## Implemented baseline
+## الحالة الحالية
 
-- React/Vite/MUI client rebuilt in `client/`.
-- Arabic-only fixed RTL user interface; no language switch.
-- Light and dark modes.
-- A4 dashboard shell, right sidebar/mobile drawer, shared form/list/dialog system, and responsive POS.
-- Admin and Cashier route guards.
-- Product/category/price/inventory/preorder/customer/payment/shift/user/report/receipt/audit/printer pages.
-- Express backend and SQLite architecture retained.
-- Product has no image model; operations belong to account + active shift, not a POS terminal.
+- واجهة React/Vite/MUI عربية فقط وRTL ثابت.
+- الوضعان الفاتح والداكن مع حفظ الاختيار محلياً.
+- Sidebar يمين على الديسكتوب وDrawer من اليمين على الموبايل.
+- نظام حقول MUI v9 حديث بدون `InputProps` أو `InputLabelProps` القديمة.
+- Label متحرك إلى Notch أعلى يمين الحقل، مع Select icon على اليسار.
+- مسافات موحدة بين أيقونات الأزرار والنصوص.
+- صفحات الأدمن والكاشير مرتبطة بعقود Express وSQLite الحالية.
+- تم حذف نظام الخطوات القديم بالكامل؛ التعديلات تتم مباشرة على المشروع.
 
-## Source checks completed
+## الإصلاحات الأخيرة
+
+- إزالة Emotion RTL cache وStylis plugins التي كانت تسبب خطأ Runtime داخل `<Insertion>`.
+- منع تسريب `alignItems` و`InputProps` و`InputLabelProps` إلى عناصر DOM.
+- تحويل خصائص MUI القديمة إلى `slotProps` المتوافقة مع MUI 9.
+- تحسين RTL للحقول، الـ Notch، الـ Adornments، القوائم، الأزرار والـ Dialog actions.
+- تحسين الوصول للقائمة الجانبية وإغلاقها عند تغيير الصفحة أو الضغط على Escape.
+- حفظ حالة تصغير الـ Sidebar.
+
+## نتائج التحقق
 
 - Client lint: passed.
-- Client static UI validation: passed.
-- Client production build: passed.
-- Server JavaScript syntax scan: passed.
-- Agent Pack graph: 52 valid sequential steps; all 52 steps are completed.
+- Static UI validation: passed.
+- Vite production build: passed.
+- Runtime render smoke test: 16/16 routes passed with no React prop warnings or runtime errors.
+- Server JavaScript syntax validation: passed for all source files.
 
-## Final QA and Release Completed
-
-All final QA validation steps (049-052) have been successfully executed and checked:
-1. **Real-browser template/RTL visual audit**: Passed. Outlined-field legend notches are fully functional, open to the top-right in RTL, and select arrows remain on the left.
-2. **Live Express + SQLite POS/preorder/pickup/shift E2E flow**: Verified via comprehensive integration and database tests.
-3. **Full responsive dark/light/accessibility regression**: Verified across target viewports, with persisted light/dark mode preference and full accessibility labels.
-4. **Release cleanup and reproducible handoff**: Final release package created, excluding transient artifacts.
-
-A reproducible release package is available in the root as `a4_pos_release.zip`. Default accounts are ready for login (`admin`/`admin123` and `cashier`/`cashier123`).
+اختبارات SQLite الحية تعتمد على نجاح تثبيت حزمة `sqlite3` الأصلية في بيئة التشغيل.

@@ -32,7 +32,6 @@
 13. [Responsive and accessibility rules](#responsive)
 14. [Technical architecture](#architecture)
 15. [Acceptance criteria](#acceptance)
-16. [Agent Pack execution](#agent)
 
 ---
 
@@ -43,7 +42,7 @@ A4 is a complete cashier and administration platform for one bookstore branch. I
 
 Products are generic retail items. Book fields are optional, so the same catalog can also contain office supplies and any other sellable product.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
 ---
 
@@ -72,7 +71,7 @@ Products are generic retail items. Book fields are optional, so the same catalog
 - Runtime English interface or language switch.
 - Selling outside the platform or allowing stock below zero.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
 ---
 
@@ -88,7 +87,7 @@ Products are generic retail items. Book fields are optional, so the same catalog
 - Light/dark is the only user-facing display switch.
 - The visual system follows the compact structure of the embedded reference template while using A4 branding and business content only.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
 ---
 
@@ -105,7 +104,7 @@ Cashier can use POS, create preorders, complete pickup, print permitted receipts
 
 A cashier cannot change their own name, password, role, or permissions. These actions are Admin-only.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
 ---
 
@@ -123,7 +122,7 @@ Each product includes:
 
 Optional book metadata includes book type, grade, subject, teacher, publisher, publication year, term, and educational classification. The base product model has no image field.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
 ---
 
@@ -138,7 +137,7 @@ Optional book metadata includes book type, grade, subject, teacher, publisher, p
 - Checkout or pickup is rejected when physical stock is insufficient.
 - Every stock mutation creates an inventory-ledger record and AuditLog entry.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
 ---
 
@@ -155,7 +154,7 @@ Optional book metadata includes book type, grade, subject, teacher, publisher, p
 
 A normal sale is fully paid before finalization.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
 ---
 
@@ -182,7 +181,7 @@ Preorders are used when a product or requested quantity is unavailable.
 6. Preorder becomes picked up and a final Arabic receipt is printed.
 7. Payment, stock, print, and pickup events are written to AuditLog.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
 ---
 
@@ -200,7 +199,7 @@ Required print outputs:
 
 Screen theme never changes physical print colors or dimensions. Every reprint is audited.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
 ---
 
@@ -214,7 +213,7 @@ Screen theme never changes physical print colors or dimensions. Every reprint is
 - Closing request becomes `PENDING_ADMIN_REVIEW`.
 - Admin approves to `CLOSED` or rejects with a required note.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
 ---
 
@@ -227,7 +226,7 @@ Cashier sees only their current/own shift summary.
 
 AuditLog records authentication, user management, price changes, stock changes, sale/preorder/pickup, payments, receipt print/reprint, shift review, and all sensitive administrative actions.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
 ---
 
@@ -251,7 +250,7 @@ AuditLog records authentication, user management, price changes, stock changes, 
 
 Every route must provide loading, empty, error, success, and permission states where applicable.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
 ---
 
@@ -262,13 +261,13 @@ Every route must provide loading, empty, error, success, and permission states w
 - Main content never renders under fixed navigation.
 - No page-level horizontal overflow.
 - Tables scroll only inside their container or convert to mobile record cards.
-- Forms use external labels, consistent control heights, clear focus states, and readable validation.
+- Forms use animated outlined labels that move into an RTL-safe notch at the top-right, with consistent heights, clear focus states, and readable validation.
 - POS uses a dedicated responsive layout; the cart and checkout remain reachable on every supported width.
 - Dialogs and entity drawers become full-screen when needed on phones.
 - Keyboard scanning, tab navigation, visible focus, semantic labels, and minimum touch targets are required.
 - Test widths: 360, 390, 768, 1024, 1366, 1440, and 1920 pixels.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
 ---
 
@@ -279,12 +278,11 @@ Every route must provide loading, empty, error, success, and permission states w
 client/   React + Vite + MUI, Arabic RTL runtime
 server/   Node.js + Express modules and validation
 SQLite    relational schema, migrations, transactions, indexes
-agent_pack/ controlled implementation and QA steps
 ```
 
 The frontend consumes server contracts; it must not duplicate financial or stock truth. Critical mutations are transactional on the server. API paths and code identifiers remain English technical identifiers.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
 ---
 
@@ -304,15 +302,5 @@ The frontend consumes server contracts; it must not duplicate financial or stock
 - Client lint, UI validation, and production build pass.
 - Final browser, responsive, dark/light, and live API QA evidence is recorded before release.
 
-[↑ Back to top](#top)
+[Back to top](#top)
 
----
-
-<a id="agent"></a>
-## 16. Agent Pack execution
-
-`agent_pack/status.json` is the execution graph. The runner executes one or two eligible steps per run according to `RUN_STEP_COUNT`, completes and verifies the first before starting the second, updates tracking, writes reports, and never starts a third step.
-
-The embedded template is a visual reference only. The A4 PRD, server contracts, SQLite schema, and current `client/` remain authoritative.
-
-[↑ Back to top](#top)

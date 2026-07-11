@@ -99,7 +99,7 @@ export default function Receipts() {
               onChange={(event) => setCode(event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && loadReceipt()}
               placeholder="اكتب رقم الإيصال أو امسح الرمز"
-              inputProps={{ dir: 'ltr' }}
+              slotProps={{ htmlInput: { dir: 'ltr' } }}
             />
           </Field>
           <Button variant="contained" startIcon={<SearchRounded />} onClick={() => loadReceipt()} disabled={loading}>بحث</Button>

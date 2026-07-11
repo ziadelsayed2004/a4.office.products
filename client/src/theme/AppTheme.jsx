@@ -1,23 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { CacheProvider } from '@emotion/react';
-import createCache from '@emotion/cache';
-import { prefixer } from 'stylis';
-import rtlPlugin from 'stylis-plugin-rtl';
 import { alpha, createTheme, CssBaseline, ThemeProvider } from '@mui/material';
-
-// Safely extract the plugin function across different ESM/CommonJS wrapper formats
-const rtlPluginFunc = (rtlPlugin && rtlPlugin.default) ? (rtlPlugin.default.default || rtlPlugin.default) : rtlPlugin;
-
-const rtlCache = createCache({
-  key: 'artl',
-  stylisPlugins: [prefixer, rtlPluginFunc],
-  prepend: true,
-});
 
 const ModeContext = createContext(null);
 export const useAppTheme = () => useContext(ModeContext);
 
-const tokens = {
+const fontFamily = 'Cairo, "Segoe UI", Tahoma, Arial, sans-serif';
+
+const palettes = {
   light: {
     bg: '#f5f7fb',
     paper: '#ffffff',
@@ -25,10 +14,10 @@ const tokens = {
     alt: '#f8fafc',
     text: '#172033',
     muted: '#687386',
-    border: '#dce3ec',
+    border: '#d8e0ea',
     strong: '#8795a8',
     primary: '#0f5fa6',
-    primaryDark: '#073d73',
+    primaryDark: '#08477f',
     primarySoft: '#e8f2fb',
     navy: '#072846',
   },
@@ -42,14 +31,20 @@ const tokens = {
     border: '#2b3b4e',
     strong: '#6d8197',
     primary: '#70b4f5',
-    primaryDark: '#3d8bd1',
-    primarySoft: 'rgba(112,180,245,.13)',
+    primaryDark: '#4a9de6',
+    primarySoft: 'rgba(112, 180, 245, .13)',
     navy: '#d8eaff',
   },
 };
 
+function getInitialMode() {
+  const saved = localStorage.getItem('a4_color_mode');
+  if (saved === 'light' || saved === 'dark') return saved;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
 export function AppTheme({ children }) {
-  const [mode, setMode] = useState(() => localStorage.getItem('a4_color_mode') || 'light');
+  const [mode, setMode] = useState(getInitialMode);
 
   useEffect(() => {
     localStorage.setItem('a4_color_mode', mode);
@@ -57,14 +52,18 @@ export function AppTheme({ children }) {
     document.documentElement.dir = 'rtl';
     document.documentElement.dataset.theme = mode;
     document.documentElement.style.colorScheme = mode;
+    document.body.dir = 'rtl';
   }, [mode]);
 
   const value = useMemo(
-    () => ({ mode, toggleMode: () => setMode((current) => current === 'light' ? 'dark' : 'light') }),
+    () => ({
+      mode,
+      toggleMode: () => setMode((current) => (current === 'light' ? 'dark' : 'light')),
+    }),
     [mode],
   );
 
-  const c = tokens[mode];
+  const c = palettes[mode];
   const theme = useMemo(() => createTheme({
     direction: 'rtl',
     palette: {
@@ -78,14 +77,18 @@ export function AppTheme({ children }) {
       warning: { main: '#c87900' },
       error: { main: '#d64242' },
       info: { main: c.primary },
-      action: { hover: alpha(c.primary, .065), selected: alpha(c.primary, .12) },
+      action: {
+        hover: alpha(c.primary, 0.06),
+        selected: alpha(c.primary, 0.12),
+        disabledBackground: mode === 'light' ? '#edf1f5' : '#1d2a39',
+      },
     },
     typography: {
-      fontFamily: 'Cairo, "Segoe UI", Tahoma, Arial, sans-serif',
+      fontFamily,
       h1: { fontWeight: 800, fontSize: 'clamp(1.35rem, 2vw, 1.75rem)', lineHeight: 1.45 },
       h2: { fontWeight: 800, fontSize: '1.35rem', lineHeight: 1.5 },
-      h3: { fontWeight: 750, fontSize: '1.15rem' },
-      h4: { fontWeight: 750, fontSize: '1.05rem' },
+      h3: { fontWeight: 750, fontSize: '1.15rem', lineHeight: 1.55 },
+      h4: { fontWeight: 750, fontSize: '1.05rem', lineHeight: 1.55 },
       h5: { fontWeight: 700, fontSize: '.98rem' },
       h6: { fontWeight: 700, fontSize: '.9rem' },
       body1: { fontSize: '.89rem', lineHeight: 1.8 },
@@ -93,12 +96,19 @@ export function AppTheme({ children }) {
       caption: { fontSize: '.72rem' },
       button: { fontWeight: 700, fontSize: '.8rem', textTransform: 'none' },
     },
-    shape: { borderRadius: 8 },
+    shape: { borderRadius: 7 },
     components: {
       MuiCssBaseline: {
         styleOverrides: {
-          body: { direction: 'rtl', background: c.bg },
-          '::selection': { background: alpha(c.primary, .2) },
+          html: { direction: 'rtl' },
+          body: {
+            direction: 'rtl',
+            textAlign: 'right',
+            backgroundColor: c.bg,
+            color: c.text,
+            fontFamily,
+          },
+          '::selection': { backgroundColor: alpha(c.primary, 0.2) },
         },
       },
       MuiTextField: {
@@ -109,19 +119,21 @@ export function AppTheme({ children }) {
         },
       },
       MuiFormControl: {
-        defaultProps: { size: 'small' },
+        defaultProps: { size: 'small', fullWidth: true },
       },
       MuiInputBase: {
         styleOverrides: {
           root: {
             width: '100%',
-            fontFamily: 'Cairo, "Segoe UI", Tahoma, Arial, sans-serif',
+            minWidth: 0,
+            fontFamily,
           },
           input: {
             direction: 'rtl',
             textAlign: 'right',
             fontSize: '.84rem',
             lineHeight: 1.6,
+            minWidth: 0,
             '&[dir="ltr"]': {
               direction: 'ltr',
               textAlign: 'left',
@@ -129,7 +141,7 @@ export function AppTheme({ children }) {
             },
             '&::placeholder': {
               color: c.muted,
-              opacity: .82,
+              opacity: 0.78,
             },
           },
         },
@@ -137,8 +149,8 @@ export function AppTheme({ children }) {
       MuiOutlinedInput: {
         styleOverrides: {
           root: {
-            minHeight: 44,
-            borderRadius: 5,
+            minHeight: 46,
+            borderRadius: 6,
             backgroundColor: c.paper,
             transition: 'background-color 160ms ease, box-shadow 180ms ease, transform 180ms ease',
             '& .MuiOutlinedInput-notchedOutline': {
@@ -146,68 +158,52 @@ export function AppTheme({ children }) {
               textAlign: 'right',
               transition: 'border-color 160ms ease, border-width 160ms ease',
             },
-            '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: c.strong,
-            },
+            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: c.strong },
             '&.Mui-focused': {
-              boxShadow: `0 0 0 3px ${alpha(c.primary, mode === 'light' ? .10 : .16)}`,
+              boxShadow: `0 0 0 3px ${alpha(c.primary, mode === 'light' ? 0.1 : 0.16)}`,
             },
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
               borderColor: c.primary,
               borderWidth: 2,
             },
-            '&.Mui-error .MuiOutlinedInput-notchedOutline': {
-              borderColor: '#d64242',
-            },
-            '&.Mui-disabled': {
-              backgroundColor: c.alt,
-            },
+            '&.Mui-error .MuiOutlinedInput-notchedOutline': { borderColor: '#d64242' },
+            '&.Mui-disabled': { backgroundColor: c.alt },
           },
           input: {
-            padding: '10px 14px',
+            padding: '11px 14px',
             minWidth: 0,
             textAlign: 'right',
           },
-          inputSizeSmall: {
-            padding: '10px 14px',
-          },
-          multiline: {
-            minHeight: 'auto',
-            padding: '10px 14px',
-          },
-          notchedOutline: {
-            textAlign: 'right',
-          },
+          inputSizeSmall: { padding: '11px 14px' },
+          multiline: { minHeight: 'auto', padding: '10px 14px' },
+          notchedOutline: { textAlign: 'right' },
         },
       },
       MuiInputLabel: {
         styleOverrides: {
           root: {
             direction: 'rtl',
+            right: 0,
+            left: 'auto',
             textAlign: 'right',
+            transform: 'translate(-14px, 12px) scale(1)',
             transformOrigin: 'top right',
             color: c.muted,
-            fontFamily: 'Cairo, "Segoe UI", Tahoma, Arial, sans-serif',
+            fontFamily,
             fontSize: '.84rem',
             fontWeight: 600,
-            letterSpacing: 0,
-            lineHeight: 1.4,
+            lineHeight: 1.5,
+            maxWidth: 'calc(100% - 46px)',
             transition: 'color 160ms ease, transform 180ms cubic-bezier(.4,0,.2,1), max-width 180ms ease',
-            '&.Mui-focused': {
-              color: c.primary,
-              fontWeight: 700,
+            '&.MuiInputLabel-shrink': {
+              transform: 'translate(-14px, -9px) scale(.75)',
+              maxWidth: 'calc(133% - 46px)',
             },
-            '&.Mui-error': {
-              color: '#d64242',
-            },
-            '&.Mui-disabled': {
-              color: c.muted,
-            },
+            '&.Mui-focused': { color: c.primary, fontWeight: 700 },
+            '&.Mui-error': { color: '#d64242' },
+            '&.Mui-disabled': { color: c.muted },
           },
-          asterisk: {
-            color: '#d64242',
-            marginInlineStart: 3,
-          },
+          asterisk: { color: '#d64242', marginInlineStart: 3 },
         },
       },
       MuiFormLabel: {
@@ -216,15 +212,12 @@ export function AppTheme({ children }) {
             direction: 'rtl',
             textAlign: 'right',
             color: c.text,
-            fontFamily: 'Cairo, "Segoe UI", Tahoma, Arial, sans-serif',
+            fontFamily,
             fontWeight: 700,
             fontSize: '.78rem',
             lineHeight: 1.45,
           },
-          asterisk: {
-            color: '#d64242',
-            marginInlineStart: 3,
-          },
+          asterisk: { color: '#d64242', marginInlineStart: 3 },
         },
       },
       MuiFormHelperText: {
@@ -233,7 +226,8 @@ export function AppTheme({ children }) {
             direction: 'rtl',
             textAlign: 'right',
             marginInline: 2,
-            fontFamily: 'Cairo, "Segoe UI", Tahoma, Arial, sans-serif',
+            marginTop: 5,
+            fontFamily,
             fontSize: '.68rem',
             lineHeight: 1.55,
           },
@@ -248,7 +242,7 @@ export function AppTheme({ children }) {
             alignItems: 'center',
             minHeight: 'unset',
             paddingInlineStart: '14px !important',
-            paddingInlineEnd: '40px !important',
+            paddingInlineEnd: '42px !important',
           },
           icon: {
             right: 'auto',
@@ -262,8 +256,39 @@ export function AppTheme({ children }) {
         styleOverrides: {
           root: {
             color: c.muted,
+            flexShrink: 0,
+            '&.MuiInputAdornment-positionStart': { marginRight: 0, marginLeft: 8 },
+            '&.MuiInputAdornment-positionEnd': { marginLeft: 0, marginRight: 8 },
             '& .MuiSvgIcon-root': { fontSize: '1.15rem' },
           },
+        },
+      },
+      MuiButton: {
+        defaultProps: { disableElevation: true },
+        styleOverrides: {
+          root: {
+            minHeight: 40,
+            borderRadius: 7,
+            paddingInline: 16,
+            gap: 8,
+            lineHeight: 1.5,
+            whiteSpace: 'nowrap',
+          },
+          startIcon: { margin: 0, display: 'inline-flex' },
+          endIcon: { margin: 0, display: 'inline-flex' },
+          containedPrimary: {
+            backgroundColor: c.primary,
+            '&:hover': { backgroundColor: c.primaryDark },
+          },
+          outlined: {
+            borderColor: c.border,
+            '&:hover': { borderColor: c.primary, backgroundColor: alpha(c.primary, 0.04) },
+          },
+        },
+      },
+      MuiIconButton: {
+        styleOverrides: {
+          root: { borderRadius: 7, transition: 'background-color 150ms ease, color 150ms ease, transform 150ms ease' },
         },
       },
       MuiMenu: {
@@ -272,11 +297,9 @@ export function AppTheme({ children }) {
             direction: 'rtl',
             border: `1px solid ${c.border}`,
             borderRadius: 7,
-            boxShadow: '0 16px 40px rgba(3,20,40,.16)',
+            boxShadow: '0 16px 40px rgba(3, 20, 40, .16)',
           },
-          list: {
-            paddingBlock: 5,
-          },
+          list: { paddingBlock: 5 },
         },
       },
       MuiMenuItem: {
@@ -286,12 +309,12 @@ export function AppTheme({ children }) {
             textAlign: 'right',
             justifyContent: 'flex-start',
             minHeight: 40,
-            fontFamily: 'Cairo, "Segoe UI", Tahoma, Arial, sans-serif',
+            fontFamily,
             fontSize: '.82rem',
             borderRadius: 4,
             marginInline: 5,
             '&.Mui-selected': {
-              backgroundColor: alpha(c.primary, .11),
+              backgroundColor: alpha(c.primary, 0.11),
               color: c.primary,
               fontWeight: 700,
             },
@@ -309,36 +332,34 @@ export function AppTheme({ children }) {
           root: { backgroundImage: 'none', boxShadow: 'none', border: `1px solid ${c.border}` },
         },
       },
-      MuiButton: {
-        defaultProps: { disableElevation: true },
-        styleOverrides: {
-          root: { minHeight: 40, borderRadius: 7, paddingInline: 16 },
-          containedPrimary: { backgroundColor: c.primary, '&:hover': { backgroundColor: c.primaryDark } },
-          outlined: { borderColor: c.border, '&:hover': { borderColor: c.primary, background: alpha(c.primary, .04) } },
-        },
-      },
-      MuiIconButton: { styleOverrides: { root: { borderRadius: 7 } } },
       MuiTableContainer: {
         styleOverrides: {
           root: { border: `1px solid ${c.border}`, borderRadius: 9, boxShadow: 'none', overflowX: 'auto' },
         },
       },
-      MuiTableHead: { styleOverrides: { root: { background: c.alt } } },
+      MuiTableHead: { styleOverrides: { root: { backgroundColor: c.alt } } },
       MuiTableCell: {
         styleOverrides: {
-          root: { textAlign: 'right', borderColor: c.border, padding: '11px 13px', fontSize: '.78rem', whiteSpace: 'nowrap' },
+          root: {
+            direction: 'rtl',
+            textAlign: 'right',
+            borderColor: c.border,
+            padding: '11px 13px',
+            fontSize: '.78rem',
+            whiteSpace: 'nowrap',
+          },
           head: { fontWeight: 800, color: c.muted },
         },
       },
       MuiDialog: {
-        styleOverrides: {
-          paper: { borderRadius: 12, border: `1px solid ${c.border}`, background: c.paper },
-        },
+        styleOverrides: { paper: { direction: 'rtl', borderRadius: 12, border: `1px solid ${c.border}`, backgroundColor: c.paper } },
       },
-      MuiDrawer: { styleOverrides: { paper: { background: c.paper, backgroundImage: 'none' } } },
+      MuiDrawer: {
+        styleOverrides: { paper: { direction: 'rtl', backgroundColor: c.paper, backgroundImage: 'none' } },
+      },
       MuiChip: { styleOverrides: { root: { height: 28, borderRadius: 6, fontWeight: 700, fontSize: '.72rem' } } },
       MuiAlert: { styleOverrides: { root: { borderRadius: 8, alignItems: 'center' } } },
-      MuiTooltip: { styleOverrides: { tooltip: { fontFamily: 'Cairo, sans-serif', borderRadius: 6, fontSize: '.72rem' } } },
+      MuiTooltip: { styleOverrides: { tooltip: { fontFamily, borderRadius: 6, fontSize: '.72rem' } } },
       MuiCheckbox: { styleOverrides: { root: { padding: 7 } } },
       MuiTabs: { styleOverrides: { root: { minHeight: 44 }, indicator: { height: 3, borderRadius: 3 } } },
       MuiTab: { styleOverrides: { root: { minHeight: 44, fontWeight: 700, textTransform: 'none' } } },
@@ -347,13 +368,11 @@ export function AppTheme({ children }) {
   }), [mode, c]);
 
   return (
-    <CacheProvider value={rtlCache}>
-      <ModeContext.Provider value={value}>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          {children}
-        </ThemeProvider>
-      </ModeContext.Provider>
-    </CacheProvider>
+    <ModeContext.Provider value={value}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        {children}
+      </ThemeProvider>
+    </ModeContext.Provider>
   );
 }

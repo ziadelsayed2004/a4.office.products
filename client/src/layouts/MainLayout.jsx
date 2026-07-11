@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Avatar, Badge, Box, Chip, IconButton, Menu, MenuItem, Tooltip, Typography
@@ -40,9 +40,26 @@ export function MainLayout() {
   const { mode, toggleMode } = useAppTheme();
   const location = useLocation();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('a4_sidebar_collapsed') === '1');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState(null);
+
+  useEffect(() => {
+    localStorage.setItem('a4_sidebar_collapsed', collapsed ? '1' : '0');
+  }, [collapsed]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+    setProfileAnchor(null);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setMobileOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, []);
 
   const menu = useMemo(() => {
     const cashier = [{ section: t('nav.cashier'), items: [
@@ -82,7 +99,7 @@ export function MainLayout() {
   return <div className={shellClass}>
     <header className="app-topbar">
       <div className="app-topbar__brand">
-        <IconButton className="hide-desktop" onClick={() => setMobileOpen(v => !v)} aria-label="فتح القائمة"><MenuRounded/></IconButton>
+        <IconButton className="hide-desktop" onClick={() => setMobileOpen(v => !v)} aria-label={mobileOpen ? "إغلاق القائمة" : "فتح القائمة"} aria-expanded={mobileOpen}><MenuRounded/></IconButton>
         <img className="app-brand-logo" src={logo} alt="A4 Office Products"/>
         <div className="app-brand-copy"><strong>A4 Office Products</strong><span>منصة إدارة المكتبة</span></div>
       </div>
@@ -100,14 +117,14 @@ export function MainLayout() {
       </div>
     </header>
 
-    <aside className="app-sidebar">
+    <aside className="app-sidebar" aria-label="القائمة الرئيسية">
       <div className="app-sidebar__profile"><div className="app-profile-card"><Avatar sx={{ width: 35, height: 35, bgcolor: 'primary.main', fontSize: '.78rem' }}>{user?.name?.slice(0,1)}</Avatar><div className="app-profile-card__copy"><strong>{user?.name}</strong><span>{user?.username} · {user?.role === 'Admin' ? 'مدير' : 'كاشير'}</span></div></div></div>
-      <div className="app-sidebar__scroll">
+      <nav className="app-sidebar__scroll">
         {menu.map((group) => <section className="app-sidebar__section" key={group.section}><div className="app-sidebar__heading">{group.section}</div>{group.items.map((item) => {
           const active = location.pathname === item.path;
-          return <Tooltip placement="left" title={collapsed ? item.label : ''} key={item.path}><button type="button" className={`app-nav-item ${active ? 'is-active' : ''}`} onClick={() => go(item.path)}>{item.icon}<span>{item.label}</span></button></Tooltip>;
+          return <Tooltip placement="left" title={collapsed ? item.label : ''} key={item.path}><button type="button" className={`app-nav-item ${active ? 'is-active' : ''}`} aria-current={active ? 'page' : undefined} onClick={() => go(item.path)}>{item.icon}<span>{item.label}</span></button></Tooltip>;
         })}</section>)}
-      </div>
+      </nav>
       <div className="app-sidebar__footer">
         <Tooltip placement="left" title={collapsed ? 'توسيع القائمة' : 'تصغير القائمة'}>
           <button type="button" className="app-nav-item app-sidebar-toggle" onClick={() => setCollapsed(v => !v)}>
@@ -118,7 +135,7 @@ export function MainLayout() {
       </div>
     </aside>
 
-    <button className="app-mobile-overlay" aria-label="إغلاق القائمة" onClick={() => setMobileOpen(false)}/>
+    <button type="button" className="app-mobile-overlay" aria-label="إغلاق القائمة" tabIndex={mobileOpen ? 0 : -1} onClick={() => setMobileOpen(false)}/>
     <main className="app-main"><Outlet/></main>
   </div>;
 }

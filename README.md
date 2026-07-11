@@ -1,53 +1,65 @@
 # A4 Office Products POS Platform
 
-A single-branch Arabic bookstore and retail POS platform.
+منصة كاشير وإدارة مكتبة لفرع واحد، بواجهة عربية ثابتة من اليمين إلى اليسار.
 
-## Stack
+## التقنية
 
 - Frontend: React + Vite + Material UI
 - Backend: Node.js + Express
 - Database: SQLite
-- Runtime UI: Arabic only, fixed RTL
-- Themes: light and dark
+- Runtime UI: Arabic only / RTL
+- Theme: Light + Dark
 - Currency: EGP
 - Timezone: Africa/Cairo
 
-## Main workflows
+## الوظائف الأساسية
 
-- Direct sale by product scan or search.
-- Preorder for unavailable stock with required customer name, phone, deposit, and secure pickup token.
-- Pickup by token scan, remaining-payment collection, stock deduction, and final receipt.
-- Cashier shift opening, own-shift closing request, and Admin approval.
-- Admin catalog, inventory, reports, users, printers, and AuditLog.
+- بيع مباشر بإدخال أو مسح رمز المنتج.
+- حجز مسبق للمنتجات غير المتاحة مع عربون وبيانات عميل إجبارية.
+- استلام الحجز بواسطة رمز آمن، تحصيل المتبقي، وخصم المخزون.
+- فتح شيفت للكاشير، ملخص وتقفيل، ثم مراجعة الأدمن.
+- إدارة المنتجات والتصنيفات وفئات الأسعار والمخزون والمستخدمين.
+- طباعة إيصالات البيع والحجز والاستلام وملصقات المنتجات.
+- تقارير وسجل عمليات كامل.
 
-## Frontend baseline
+## الواجهة
 
-The active frontend is `client/`. It is an A4-specific rebuild based on the compact dashboard morphology of:
+المشروع يعمل بالعربية فقط أثناء التشغيل. الملف `client/src/locales/en.json` محفوظ كقاموس ترجمة مستقبلي وغير محمل داخل الواجهة، ولا يوجد زر لتغيير اللغة.
 
-```text
-TEMPLETE-PROJECT/hamza.printing.press-main/client/
-```
+نظام الحقول يعتمد على MUI Outlined Inputs مع:
 
-The reference contributes visual patterns only. A4 branding, Arabic RTL behavior, routes, permissions, data, and server contracts remain authoritative.
+- Label متحرك إلى Notch أعلى يمين الحقل.
+- اتجاه عربي RTL للنص والقوائم.
+- اتجاه LTR محلي فقط للأكواد وأرقام الهاتف والتواريخ.
+- حالات Hover / Focus / Error / Disabled موحدة.
+- مسافات ثابتة بين أيقونة الزر والنص.
 
-Runtime translation loads `ar.json` only. `en.json` is retained as an unused future translation store; there is no language switch.
-
-## Verification
+## التشغيل
 
 ```bash
 npm install --prefix client
-npm run check --prefix client
-
-find server/src -name '*.js' -print0 | xargs -0 -n1 node --check
+npm install --prefix server
+npm run db:setup
+npm run dev
 ```
 
-Full server integration tests require successful installation of the native SQLite dependency.
+واجهة التطوير: `http://localhost:5173`
 
-## Agent Pack
+API الافتراضي: `http://localhost:3000`
 
-All 52 steps of the Agent Pack are completed and verified:
-- **Steps 001–037**: Backend/Product logic, relational SQLite database, and integration service tests.
-- **Steps 038–048**: Arabic RTL frontend reconstruction (Vite + React + MUI) based on the compact template morphology.
-- **Steps 049–052**: Final QA, template parity, responsive accessibility checks, and release handoff.
+الحسابات الافتراضية بعد إعداد قاعدة البيانات:
 
-The entire system is fully verified with a clean static UI validation suite, zero oxlint warnings/errors, and a successful Vite production build.
+```text
+admin / admin123
+cashier / cashier123
+```
+
+## التحقق
+
+```bash
+npm run check --prefix client
+find server/src -name '*.js' -print0 | xargs -0 -n1 node --check
+npm test --prefix server
+```
+
+اختبارات السيرفر تحتاج تثبيت Native dependency الخاصة بـ `sqlite3` بنجاح.

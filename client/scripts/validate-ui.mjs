@@ -39,6 +39,7 @@ const html = read('index.html');
 const theme = read('src/theme/AppTheme.jsx');
 const translator = read('src/locales/t.js');
 const app = read('src/App.jsx');
+const fieldComponent = read('src/components/forms/Field.jsx');
 const sourceFiles = filesUnder(src).filter((file) => /\.(jsx?|css)$/.test(file));
 const combinedSource = sourceFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
 
@@ -48,12 +49,19 @@ assert(/document\.documentElement\.dir\s*=\s*['"]rtl['"]/.test(theme), 'Runtime 
 assert(/from\s+['"]\.\/ar\.json['"]/.test(translator), 'Runtime translator reads Arabic JSON.');
 assert(!/from\s+['"]\.\/en\.json['"]/.test(translator), 'English JSON is not loaded at runtime.');
 assert(!/setLocale|toggleLanguage|languageSwitch|changeLanguage/i.test(combinedSource), 'No runtime language switch exists.');
-assert(/cloneElement\(children/.test(read('src/components/forms/Field.jsx')) && /label:\s*label/.test(read('src/components/forms/Field.jsx')), 'Shared Field injects animated MUI labels into TextField controls.');
+assert(/cloneElement\(children/.test(fieldComponent) && /label:\s*label/.test(fieldComponent), 'Shared Field injects animated MUI labels into TextField controls.');
 assert(!/MuiOutlinedInput-root legend \{ display: none; \}/.test(read('src/styles/index.css')), 'Outlined-field legends remain enabled for animated notches.');
 assert(/MuiOutlinedInput-notchedOutline[\s\S]*text-align:\s*right/.test(read('src/styles/index.css')), 'Outlined notches are aligned to the RTL start edge.');
 assert(/boxShadow:[\s\S]*0 0 0 3px/.test(theme), 'Focused fields use a clear animated focus ring.');
 assert(/MuiInputLabel:[\s\S]*transformOrigin:\s*['"]top right['"]/.test(theme), 'Input labels use RTL transform origin.');
 assert(/prefers-reduced-motion:\s*reduce/.test(read('src/styles/index.css')), 'Input animations respect reduced-motion preference.');
+
+assert(!/\b(?:InputProps|InputLabelProps|inputProps|PaperProps)\s*=/.test(combinedSource), 'Deprecated MUI props are not passed through the React tree.');
+assert(!/stylis-plugin-rtl|createCache\(|CacheProvider/.test(combinedSource), 'No custom Emotion/Stylis RTL cache remains in the runtime.');
+assert(/slotProps:\s*\{[\s\S]*inputLabel/.test(fieldComponent), 'Shared Field uses MUI v9 slotProps for the animated input label.');
+assert(/MuiButton:[\s\S]*gap:\s*8/.test(theme), 'Buttons keep a consistent gap between icon and text.');
+assert(/MuiButton-startIcon[\s\S]*margin:\s*0/.test(read('src/styles/index.css')), 'Button icon margins are normalized for RTL.');
+assert(!/max-width:\s*\.01px/.test(read('src/styles/index.css')), 'Native MUI notch width animation is not overridden by global CSS.');
 
 const requiredPages = [
   'Login', 'Dashboard', 'POS', 'Products', 'Categories', 'PriceTiers', 'Inventory',

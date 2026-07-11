@@ -209,3 +209,68 @@
   }
   .receipt-paper * { color: #000 !important; }
 }
+
+/* Final form and action polish. */
+.field {
+  position: relative;
+  gap: 0;
+}
+
+.field .MuiTextField-root,
+.field .MuiFormControl-root {
+  margin: 0;
+}
+
+.field .MuiOutlinedInput-root {
+  width: 100%;
+}
+
+.field .MuiInputLabel-root {
+  max-width: calc(100% - 48px);
+}
+
+.field .MuiInputLabel-root.MuiInputLabel-shrink {
+  max-width: calc(133% - 48px);
+}
+
+.field .MuiOutlinedInput-root.Mui-focused {
+  z-index: 1;
+}
+
+.page-header__actions .MuiButton-root,
+.filter-panel__actions .MuiButton-root,
+.entity-drawer__footer .MuiButton-root,
+.table-actions .MuiButton-root {
+  gap: 8px;
+}
+
+.filter-panel__head {
+  min-height: 56px;
+}
+
+.filter-panel__title {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.filter-panel__count {
+  white-space: nowrap;
+}
+
+.entity-drawer__header .MuiIconButton-root {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 720px) {
+  .filter-panel__body {
+    padding: 13px;
+  }
+
+  .filter-panel__actions {
+    width: 100%;
+  }
+
+  .filter-panel__actions .MuiButton-root {
+    flex: 1 1 140px;
+  }
+}
