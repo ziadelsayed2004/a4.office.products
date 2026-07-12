@@ -1,0 +1,14 @@
+.printer-settings-page__content {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.printer-settings-page__content .form-section:last-child {
+  margin-bottom: 0;
+}
+
+@media (min-width: 1024px) {
+  .printer-settings-page__content {
+    padding: var(--space-5);
+  }
+}

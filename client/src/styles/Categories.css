@@ -1,0 +1,8 @@
+/* Categories intentionally relies on the canonical table and drawer geometry. */
+.entity-drawer .field .a4-toolbar {
+  min-height: 40px;
+  padding-inline: var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-alt);
+}

@@ -9,14 +9,15 @@ import {
 } from '@mui/icons-material';
 import { useSearchParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { api } from '../api/client.js';
-import { PageHeader } from '../components/navigation/PageHeader.jsx';
+import { api } from '../services/apiClient.js';
+import { PageHeader } from '../components/PageHeader.jsx';
 import { Field } from '../components/forms/Field.jsx';
-import { LoadingState } from '../components/feedback/LoadingState.jsx';
-import { EmptyState } from '../components/feedback/EmptyState.jsx';
-import { AppSnackbar } from '../components/feedback/AppSnackbar.jsx';
+import { LoadingState } from '../components/LoadingState.jsx';
+import { EmptyState } from '../components/EmptyState.jsx';
+import { AppSnackbar } from '../components/AppSnackbar.jsx';
 import { dateTime, money, number, statusLabel } from '../utils/formatters.js';
 import logo from '../assets/a4-logo.png';
+import '../styles/Receipts.css';
 
 const referenceLabels = {
   order_sale: 'إيصال بيع مباشر',

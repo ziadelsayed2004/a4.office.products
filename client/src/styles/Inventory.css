@@ -1,0 +1,8 @@
+/* Inventory uses the shared filter, data-table and drawer primitives. */
+.inventory-quantity-positive {
+  color: var(--color-success);
+}
+
+.inventory-quantity-negative {
+  color: var(--color-danger);
+}

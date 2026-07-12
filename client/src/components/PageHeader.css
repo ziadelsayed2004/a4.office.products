@@ -1,0 +1,54 @@
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  direction: rtl;
+  text-align: right;
+}
+
+.page-header__copy {
+  min-width: 0;
+  flex: 1 1 420px;
+}
+
+.page-header__title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: clamp(1.4rem, 2vw, 1.8rem);
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.page-header__description {
+  max-width: 860px;
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.8;
+  text-align: right;
+}
+
+.page-header__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@media (max-width: 720px) {
+  .page-header {
+    gap: var(--space-3);
+  }
+
+  .page-header__actions {
+    width: 100%;
+  }
+
+  .page-header__actions .MuiButton-root {
+    flex: 1 1 140px;
+  }
+}

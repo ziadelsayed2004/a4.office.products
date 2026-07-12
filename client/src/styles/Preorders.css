@@ -1,0 +1,9 @@
+.a4-list-row {
+  min-height: 48px;
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.a4-list-row:last-child {
+  border-bottom: 0;
+}

@@ -1,17 +1,45 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, MenuItem, TextField } from '@mui/material';
 import { SaveRounded } from '@mui/icons-material';
-import { api } from '../api/client.js';
-import { PageHeader } from '../components/navigation/PageHeader.jsx';
+import { api } from '../services/apiClient.js';
+import { PageHeader } from '../components/PageHeader.jsx';
 import { Field } from '../components/forms/Field.jsx';
+import { FieldGrid } from '../components/forms/FieldGrid.jsx';
 import { FormSection } from '../components/forms/FormSection.jsx';
-import { LoadingState } from '../components/feedback/LoadingState.jsx';
-import { AppSnackbar } from '../components/feedback/AppSnackbar.jsx';
+import { LoadingState } from '../components/LoadingState.jsx';
+import { AppSnackbar } from '../components/AppSnackbar.jsx';
+import '../styles/PrinterSettings.css';
 
 export default function PrinterSettings() {
   const [form, setForm] = useState({ receipt_width: '80', receipt_printer_name: '', label_printer_name: '', default_label_size: 'medium', business_name: 'A4 Office Products', receipt_footer: 'شكراً لتعاملكم معنا' }); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState(''); const [toast, setToast] = useState(null);
   useEffect(() => { (async () => { try { const r = await api.get('/api/admin/printer-settings'); setForm(v => ({ ...v, ...r.data })); } catch (e) { setError(e.message); } finally { setLoading(false); } })(); }, []);
   const save = async () => { setSaving(true); try { await api.post('/api/admin/printer-settings', form); setToast({ message: 'تم حفظ إعدادات الطباعة.' }); } catch (e) { setToast({ severity: 'error', message: e.message }); } finally { setSaving(false); } };
   if (loading) return <div className="a4-page"><LoadingState/></div>;
-  return <div className="a4-page"><PageHeader title="إعدادات الطباعة" description="إعدادات ريسيت البيع والحجز وملصقات رمز QR للمنتجات." actions={<Button variant="contained" startIcon={<SaveRounded/>} onClick={save} disabled={saving}>حفظ الإعدادات</Button>}/>{error && <Alert severity="error">{error}</Alert>}<section className="a4-page-section"><FormSection title="بيانات الريسيت" description="تظهر في أعلى وأسفل جميع الإيصالات."><div className="a4-form-grid"><Field label="اسم النشاط"><TextField value={form.business_name || ''} onChange={e => setForm(v => ({ ...v, business_name: e.target.value }))}/></Field><Field label="عرض الريسيت"><TextField select value={String(form.receipt_width || '80')} onChange={e => setForm(v => ({ ...v, receipt_width: e.target.value }))}><MenuItem value="58">58 مم</MenuItem><MenuItem value="80">80 مم</MenuItem></TextField></Field><Field className="full" label="رسالة أسفل الريسيت"><TextField value={form.receipt_footer || ''} onChange={e => setForm(v => ({ ...v, receipt_footer: e.target.value }))}/></Field></div></FormSection><FormSection title="الطابعات الافتراضية"><div className="a4-form-grid"><Field label="اسم طابعة الريسيت" hint="اختياري، تظل الطباعة من متصفح الجهاز متاحة."><TextField value={form.receipt_printer_name || ''} onChange={e => setForm(v => ({ ...v, receipt_printer_name: e.target.value }))}/></Field><Field label="اسم طابعة الملصقات"><TextField value={form.label_printer_name || ''} onChange={e => setForm(v => ({ ...v, label_printer_name: e.target.value }))}/></Field><Field label="المقاس الافتراضي للملصق"><TextField select value={form.default_label_size || 'medium'} onChange={e => setForm(v => ({ ...v, default_label_size: e.target.value }))}><MenuItem value="small">صغير 38×25 مم</MenuItem><MenuItem value="medium">متوسط 50×25 مم</MenuItem><MenuItem value="large">كبير 80×50 مم</MenuItem></TextField></Field></div></FormSection></section><AppSnackbar state={toast} onClose={() => setToast(null)}/></div>;
+  return (
+    <div className="a4-page printer-settings-page">
+      <PageHeader
+        title="إعدادات الطباعة"
+        description="إعدادات ريسيت البيع والحجز وملصقات رمز QR للمنتجات."
+        actions={<Button variant="contained" startIcon={<SaveRounded />} onClick={save} disabled={saving}>حفظ الإعدادات</Button>}
+      />
+      {error && <Alert severity="error">{error}</Alert>}
+      <section className="a4-page-section printer-settings-page__content">
+        <FormSection title="بيانات الريسيت" description="تظهر في أعلى وأسفل جميع الإيصالات.">
+          <FieldGrid>
+            <Field label="اسم النشاط"><TextField value={form.business_name || ''} onChange={e => setForm(v => ({ ...v, business_name: e.target.value }))} /></Field>
+            <Field label="عرض الريسيت"><TextField select value={String(form.receipt_width || '80')} onChange={e => setForm(v => ({ ...v, receipt_width: e.target.value }))}><MenuItem value="58">58 مم</MenuItem><MenuItem value="80">80 مم</MenuItem></TextField></Field>
+            <Field className="full" label="رسالة أسفل الريسيت"><TextField value={form.receipt_footer || ''} onChange={e => setForm(v => ({ ...v, receipt_footer: e.target.value }))} /></Field>
+          </FieldGrid>
+        </FormSection>
+        <FormSection title="الطابعات الافتراضية">
+          <FieldGrid>
+            <Field label="اسم طابعة الريسيت" hint="اختياري، تظل الطباعة من متصفح الجهاز متاحة."><TextField value={form.receipt_printer_name || ''} onChange={e => setForm(v => ({ ...v, receipt_printer_name: e.target.value }))} /></Field>
+            <Field label="اسم طابعة الملصقات"><TextField value={form.label_printer_name || ''} onChange={e => setForm(v => ({ ...v, label_printer_name: e.target.value }))} /></Field>
+            <Field label="المقاس الافتراضي للملصق"><TextField select value={form.default_label_size || 'medium'} onChange={e => setForm(v => ({ ...v, default_label_size: e.target.value }))}><MenuItem value="small">صغير 38×25 مم</MenuItem><MenuItem value="medium">متوسط 50×25 مم</MenuItem><MenuItem value="large">كبير 80×50 مم</MenuItem></TextField></Field>
+          </FieldGrid>
+        </FormSection>
+      </section>
+      <AppSnackbar state={toast} onClose={() => setToast(null)} />
+    </div>
+  );
 }

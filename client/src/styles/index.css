@@ -1,93 +1,69 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
 @import './variables.css';
 @import './reset.css';
 @import './rtl.css';
+@import './layout.css';
 @import './forms.css';
 @import './tables.css';
-@import './dialogs.css';
 @import './drawers.css';
+@import './dialogs.css';
+@import './material-overrides.css';
 
-.a4-page {
-  width: min(100%, var(--content-max));
-  margin-inline: auto;
-  display: grid;
-  gap: 18px;
-  min-width: 0;
-  direction: rtl;
-  text-align: right;
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-.a4-page-section {
-  min-width: 0;
-  padding: 20px;
-  border: 1px solid var(--a4-border);
-  border-radius: var(--radius-xs);
-  background: var(--a4-paper);
-  box-shadow: none;
-  text-align: right;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.a4-grid { display: grid; gap: 16px; min-width: 0; }
-.a4-grid--metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.a4-grid--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.a4-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.a4-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; align-items: end; }
-.a4-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.a4-form-grid .full { grid-column: 1 / -1; }
-.a4-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.a4-actions--end { justify-content: flex-start; }
-.a4-muted { color: var(--a4-muted); }
-.a4-number { font-variant-numeric: tabular-nums; }
-.a4-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.a4-section-title { margin: 0; color: var(--a4-text); font-size: 1rem; font-weight: 700; text-align: right; }
-.a4-section-subtitle { margin: 4px 0 0; color: var(--a4-muted); font-size: 0.8rem; text-align: right; }
-.a4-scroll-x { min-width: 0; overflow-x: auto; }
-.a4-sticky-actions { position: sticky; bottom: 0; z-index: 3; margin: 18px -20px -20px; padding: 14px 20px; border-top: 1px solid var(--a4-border); background: var(--a4-paper); }
-
-::-webkit-scrollbar { width: 7px; height: 7px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--a4-muted) 42%, transparent); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--a4-muted) 66%, transparent); }
-* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--a4-muted) 42%, transparent) transparent; }
-::selection { background: color-mix(in srgb, var(--a4-primary) 24%, transparent); }
-
-@media (max-width: 1180px) {
-  .a4-grid--metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .a4-grid--three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-text-muted) 42%, transparent);
 }
 
-@media (max-width: 720px) {
-  :root { --topbar-height: 58px; }
-  .a4-page { gap: 14px; }
-  .a4-page-section { padding: 14px; }
-  .a4-grid--metrics,
-  .a4-grid--two,
-  .a4-grid--three,
-  .a4-form-grid { grid-template-columns: 1fr; }
-  .a4-filter-grid { grid-template-columns: 1fr; }
-  .a4-actions > .MuiButton-root { flex: 1 1 auto; }
-  .a4-sticky-actions { margin-inline: -14px; padding-inline: 14px; }
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-text-muted) 66%, transparent);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-text-muted) 42%, transparent) transparent;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-primary) 24%, transparent);
 }
 
 @media print {
   .no-print,
   .app-sidebar,
-  .app-topbar { display: none !important; }
-  .app-main { margin: 0 !important; padding: 0 !important; }
-  body { background: #fff !important; color: #000 !important; }
+  .app-topbar {
+    display: none !important;
+  }
+
+  .app-main {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; }
-}
+  html { scroll-behavior: auto; }
 
-/* Small reusable layout utilities replacing page-level inline styling. */
-.a4-form-grid--spaced { margin-top: 12px; }
-.a4-toolbar--section { margin-bottom: 15px; }
-.a4-grid--section-gap { margin-bottom: 16px; }
-.a4-section-title--spaced { margin-bottom: 14px; }
-.a4-list-row { padding-block: 10px; border-bottom: 1px solid var(--a4-border); }
-.a4-product-sku { margin-top: 2px; font-size: 0.68rem; }
-.a4-wrap-cell { display: block; min-width: 260px; white-space: normal; overflow-wrap: anywhere; text-align: right; }
-.metric-card__icon--small { width: 38px; height: 38px; margin-inline-end: 10px; }
-.metric-card__copy--fill { flex: 1; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -8,11 +8,13 @@ html {
   min-width: 320px;
   min-height: 100%;
   direction: rtl;
+  background: var(--color-bg);
   scroll-behavior: smooth;
 }
 
 body,
 #root {
+  width: 100%;
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
@@ -20,13 +22,14 @@ body,
 
 body {
   overflow-x: hidden;
-  background: var(--a4-bg);
-  color: var(--a4-text);
+  background: var(--color-bg);
+  color: var(--color-text);
   font-family: var(--app-font-family);
   line-height: 1.6;
   text-align: right;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 button,
@@ -45,9 +48,13 @@ a {
   text-decoration: none;
 }
 
+img,
+svg {
+  max-width: 100%;
+}
+
 img {
   display: block;
-  max-width: 100%;
   height: auto;
 }
 

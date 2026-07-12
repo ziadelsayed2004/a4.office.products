@@ -1,0 +1,12 @@
+.shift-difference {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.shift-difference--negative {
+  color: var(--color-danger);
+}
+
+.shift-difference--positive {
+  color: var(--color-warning);
+}

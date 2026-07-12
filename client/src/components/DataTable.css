@@ -1,0 +1,128 @@
+.desktop-table {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  background-color: var(--color-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  box-shadow: none;
+  scrollbar-width: thin;
+}
+
+.desktop-table .MuiTable-root {
+  min-width: 100%;
+  table-layout: auto;
+}
+
+.desktop-table .MuiTableHead-root {
+  background-color: var(--color-surface-alt);
+}
+
+.desktop-table .MuiTableCell-root {
+  padding: 10px var(--space-4);
+}
+
+.desktop-table .MuiTableCell-head {
+  color: var(--color-text);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.desktop-table .MuiTableCell-body {
+  color: var(--color-text);
+  font-size: 0.85rem;
+  vertical-align: middle;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.desktop-table .MuiTableRow-root:last-child .MuiTableCell-body {
+  border-bottom: 0;
+}
+
+.desktop-table .MuiTableRow-hover:hover {
+  background-color: var(--color-surface-alt);
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-1);
+}
+
+.data-table-empty {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.mobile-record-list {
+  display: none;
+  gap: 10px;
+}
+
+.mobile-record-card {
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-surface);
+  box-shadow: none;
+  color: var(--color-text);
+  text-align: right;
+}
+
+.mobile-record-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.mobile-record-card__head > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mobile-record-card__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.mobile-record-card__item {
+  min-width: 0;
+}
+
+.mobile-record-card__item > span {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+}
+
+.mobile-record-card__item > strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--color-text);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .desktop-table {
+    display: none;
+  }
+
+  .mobile-record-list {
+    display: grid;
+  }
+
+  .mobile-record-card__grid {
+    grid-template-columns: 1fr;
+  }
+}

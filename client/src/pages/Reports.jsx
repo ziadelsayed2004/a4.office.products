@@ -16,16 +16,17 @@ import {
   RefreshRounded,
   SwapHorizRounded,
 } from '@mui/icons-material';
-import { api } from '../api/client.js';
-import { PageHeader } from '../components/navigation/PageHeader.jsx';
-import { MetricCard } from '../components/data/MetricCard.jsx';
-import { DataTable } from '../components/data/DataTable.jsx';
-import { StatusChip } from '../components/data/StatusChip.jsx';
-import { FilterPanel } from '../components/forms/FilterPanel.jsx';
+import { api } from '../services/apiClient.js';
+import { PageHeader } from '../components/PageHeader.jsx';
+import { MetricCard } from '../components/MetricCard.jsx';
+import { DataTable } from '../components/DataTable.jsx';
+import { StatusChip } from '../components/StatusChip.jsx';
+import { FilterPanel } from '../components/FilterPanel.jsx';
 import { Field } from '../components/forms/Field.jsx';
-import { LoadingState } from '../components/feedback/LoadingState.jsx';
-import { AppSnackbar } from '../components/feedback/AppSnackbar.jsx';
+import { LoadingState } from '../components/LoadingState.jsx';
+import { AppSnackbar } from '../components/AppSnackbar.jsx';
 import { dateTime, money, number, statusLabel } from '../utils/formatters.js';
+import '../styles/Reports.css';
 
 const reportTabs = [
   { id: 'sales', label: 'المبيعات', icon: <PointOfSaleRounded /> },
@@ -228,7 +229,7 @@ export default function Reports() {
   }, [data.summary, tab]);
 
   return (
-    <div className="a4-page">
+    <div className="a4-page reports-page">
       <PageHeader
         title="التقارير"
         description="اعرض المبيعات والحجوزات والمخزون والشيفتات، ثم صدّر النتائج إلى ملف CSV عربي متوافق مع Excel."

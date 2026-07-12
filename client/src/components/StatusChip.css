@@ -1,0 +1,10 @@
+.status-chip.MuiChip-root {
+  height: 24px;
+  border-radius: var(--radius-xs);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-chip .MuiChip-label {
+  padding-inline: var(--space-2);
+}

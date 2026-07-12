@@ -1,0 +1,31 @@
+.breadcrumbs-container {
+  margin-bottom: var(--space-4);
+  direction: rtl;
+}
+
+.breadcrumbs-list {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.breadcrumbs-list .MuiBreadcrumbs-separator {
+  margin-inline: var(--space-1);
+  color: var(--color-text-muted);
+}
+
+.breadcrumbs-link {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+}
+
+.breadcrumbs-home-icon {
+  margin-inline-end: var(--space-1);
+  font-size: 1rem;
+}
+
+.breadcrumbs-current.MuiTypography-root {
+  color: var(--color-text);
+  font-size: inherit;
+  font-weight: 500;
+}

@@ -1,0 +1,80 @@
+.filter-panel {
+  overflow: visible;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  text-align: right;
+}
+
+.filter-panel__head {
+  min-height: 58px;
+  padding: 13px var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-bottom: 1px solid transparent;
+}
+
+.filter-panel.is-open .filter-panel__head {
+  border-bottom-color: var(--border-color);
+}
+
+.filter-panel__title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.filter-panel__title svg {
+  color: var(--color-text-muted);
+}
+
+.filter-panel__count {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.filter-panel__body {
+  padding: var(--space-4);
+}
+
+.filter-panel__actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.filter-panel__actions .MuiButton-root {
+  height: var(--control-height);
+  min-height: var(--control-height);
+}
+
+@media (max-width: 720px) {
+  .filter-panel__body {
+    padding: 13px;
+  }
+
+  .filter-panel__actions {
+    width: 100%;
+  }
+
+  .filter-panel__actions .MuiButton-root {
+    flex: 1 1 140px;
+    height: var(--control-height-mobile);
+    min-height: var(--control-height-mobile);
+  }
+}

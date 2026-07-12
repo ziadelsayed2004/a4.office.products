@@ -1,0 +1,91 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  direction: rtl;
+  text-align: right;
+}
+
+.field .MuiTextField-root,
+.field .MuiFormControl-root,
+.field .MuiAutocomplete-root {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+.field--comfortable .MuiOutlinedInput-root:not(.MuiInputBase-multiline) {
+  height: var(--control-height-comfortable);
+  min-height: var(--control-height-comfortable);
+}
+
+.field--comfortable .MuiOutlinedInput-input,
+.field--comfortable .MuiSelect-select {
+  padding-block: 16px;
+}
+
+.field--comfortable .MuiOutlinedInput-root.MuiInputBase-multiline {
+  min-height: var(--control-height-comfortable);
+}
+
+.field--compact .MuiInputBase-input,
+.field--compact .MuiSelect-select {
+  font-size: 0.84rem;
+}
+
+.field .a4-ltr-value,
+.field input[type="date"],
+.field input[type="datetime-local"],
+.field input[type="time"],
+.field input[type="month"],
+.field input[type="week"],
+.field input[type="number"],
+.field input[type="tel"] {
+  direction: ltr;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.field__external-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.field__required {
+  color: var(--color-danger);
+}
+
+.field__hint,
+.field__error {
+  display: block;
+  margin-top: 5px;
+  padding-inline: 2px;
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.field__hint {
+  color: var(--color-text-muted);
+}
+
+.field__error {
+  color: var(--color-danger);
+}
+
+@media (max-width: 720px) {
+  .field--comfortable .MuiOutlinedInput-root:not(.MuiInputBase-multiline) {
+    height: var(--control-height-mobile);
+    min-height: var(--control-height-mobile);
+  }
+
+  .field--comfortable .MuiOutlinedInput-root.MuiInputBase-multiline {
+    min-height: var(--control-height-mobile);
+  }
+}

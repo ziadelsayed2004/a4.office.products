@@ -1,32 +1,35 @@
 :root,
 [data-theme='light'] {
-  --app-font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+  --app-font-family: 'Cairo', 'Inter', 'Roboto', 'Segoe UI', Tahoma, Arial, sans-serif;
 
-  --a4-bg: #f8f9fa;
-  --a4-paper: #ffffff;
-  --a4-elevated: #ffffff;
-  --a4-alt: #f1f3f4;
-  --a4-text: #202124;
-  --a4-muted: #5f6368;
-  --a4-border: #dadce0;
-  --a4-border-strong: #bdc1c6;
-  --a4-primary: #0f5fa6;
-  --a4-primary-hover: #0b4d88;
-  --a4-primary-soft: #e8f2fb;
-  --a4-success: #188038;
-  --a4-warning: #e37400;
-  --a4-danger: #d93025;
-  --a4-info: #0f5fa6;
-  --a4-shadow-sm: 0 1px 2px rgba(32, 33, 36, 0.08);
-  --a4-shadow-md: 0 8px 24px rgba(32, 33, 36, 0.1);
-  --a4-field-bg: #ffffff;
-  --a4-field-disabled: #f1f3f4;
-  --a4-field-label-surface: #ffffff;
-  --a4-focus-ring: 0 0 0 3px rgba(15, 95, 166, 0.14);
+  /* Canonical semantic colors, matching the template vocabulary. */
+  --color-bg: #f8f9fa;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-surface-alt: #f1f3f4;
+  --color-text: #202124;
+  --color-text-muted: #5f6368;
+  --color-primary: #0f5fa6;
+  --color-primary-hover: #0b4d88;
+  --color-primary-soft: #e8f2fb;
+  --color-success: #188038;
+  --color-warning: #e37400;
+  --color-danger: #d93025;
+  --color-error: var(--color-danger);
+  --color-info: #0f5fa6;
+  --border-color: #dadce0;
+  --border-strong: #bdc1c6;
+  --field-background: var(--color-surface);
+  --field-disabled-background: #f1f3f4;
+  --shadow-sm: 0 1px 2px rgba(32, 33, 36, 0.08);
+  --shadow-md: 0 8px 24px rgba(32, 33, 36, 0.1);
+  --overlay-background: rgba(5, 15, 28, 0.48);
 
   --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
+  --radius-lg: 16px;
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -35,32 +38,60 @@
   --space-6: 24px;
   --space-8: 32px;
 
-  --sidebar-width: 288px;
-  --sidebar-collapsed: 76px;
+  --sidebar-width: 270px;
+  --sidebar-collapsed-width: 72px;
   --topbar-height: 64px;
-  --content-max: 1600px;
+  --content-max-width: 1440px;
+  --control-height: 40px;
+  --control-height-comfortable: 56px;
+  --control-height-mobile: 44px;
+  --entity-drawer-width: 820px;
+  --entity-drawer-wide-width: 920px;
+  --confirm-dialog-max-width: 480px;
+
+  /* Transitional aliases keep existing A4 page styles source-compatible. */
+  --a4-bg: var(--color-bg);
+  --a4-paper: var(--color-surface);
+  --a4-elevated: var(--color-surface-elevated);
+  --a4-alt: var(--color-surface-alt);
+  --a4-text: var(--color-text);
+  --a4-muted: var(--color-text-muted);
+  --a4-border: var(--border-color);
+  --a4-border-strong: var(--border-strong);
+  --a4-primary: var(--color-primary);
+  --a4-primary-hover: var(--color-primary-hover);
+  --a4-primary-soft: var(--color-primary-soft);
+  --a4-success: var(--color-success);
+  --a4-warning: var(--color-warning);
+  --a4-danger: var(--color-danger);
+  --a4-info: var(--color-info);
+  --a4-shadow-sm: var(--shadow-sm);
+  --a4-shadow-md: var(--shadow-md);
+  --a4-field-bg: var(--field-background);
+  --a4-field-disabled: var(--field-disabled-background);
+  --a4-field-label-surface: var(--field-background);
+  --sidebar-collapsed: var(--sidebar-collapsed-width);
+  --content-max: var(--content-max-width);
 }
 
 [data-theme='dark'] {
-  --a4-bg: #121212;
-  --a4-paper: #1e1e1e;
-  --a4-elevated: #242424;
-  --a4-alt: #2a2a2a;
-  --a4-text: #e8eaed;
-  --a4-muted: #9aa0a6;
-  --a4-border: #3c4043;
-  --a4-border-strong: #5f6368;
-  --a4-primary: #8ab4f8;
-  --a4-primary-hover: #aecbfa;
-  --a4-primary-soft: rgba(138, 180, 248, 0.12);
-  --a4-success: #81c995;
-  --a4-warning: #fdd663;
-  --a4-danger: #f28b82;
-  --a4-info: #8ab4f8;
-  --a4-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --a4-shadow-md: 0 10px 30px rgba(0, 0, 0, 0.32);
-  --a4-field-bg: #1e1e1e;
-  --a4-field-disabled: #252525;
-  --a4-field-label-surface: #1e1e1e;
-  --a4-focus-ring: 0 0 0 3px rgba(138, 180, 248, 0.18);
+  --color-bg: #121212;
+  --color-surface: #1e1e1e;
+  --color-surface-elevated: #242424;
+  --color-surface-alt: #2a2a2a;
+  --color-text: #e8eaed;
+  --color-text-muted: #9aa0a6;
+  --color-primary: #8ab4f8;
+  --color-primary-hover: #aecbfa;
+  --color-primary-soft: rgba(138, 180, 248, 0.12);
+  --color-success: #81c995;
+  --color-warning: #fdd663;
+  --color-danger: #f28b82;
+  --color-info: #8ab4f8;
+  --border-color: #3c4043;
+  --border-strong: #5f6368;
+  --field-disabled-background: #252525;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.32);
+  --overlay-background: rgba(0, 0, 0, 0.58);
 }

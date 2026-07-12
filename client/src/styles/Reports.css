@@ -1,0 +1,75 @@
+.reports-page {
+  padding-bottom: var(--space-6);
+}
+
+.report-tabs-panel {
+  padding: 0 var(--space-3);
+  overflow: hidden;
+}
+
+.report-tabs-panel .MuiTabs-flexContainer {
+  gap: var(--space-1);
+}
+
+.report-tabs-panel .MuiTabs-indicator {
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+}
+
+.report-tabs-panel .MuiTab-root {
+  min-width: 130px;
+  min-height: 52px;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.report-tabs-panel .MuiTab-root.Mui-selected {
+  color: var(--color-primary);
+}
+
+.reports-page .a4-grid--metrics {
+  align-items: stretch;
+}
+
+.reports-page .metric-card {
+  height: 100%;
+}
+
+@media (max-width: 600px) {
+  .report-tabs-panel {
+    padding-inline: var(--space-1);
+  }
+
+  .report-tabs-panel .MuiTab-root {
+    min-width: 112px;
+  }
+}
+
+@media print {
+  .reports-page .page-header__actions,
+  .reports-page .report-tabs-panel,
+  .reports-page .filter-panel,
+  .reports-page > .MuiAlert-root,
+  .reports-page > .a4-grid--metrics {
+    display: none !important;
+  }
+
+  .reports-page,
+  .reports-page .a4-page-section {
+    width: 100% !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .reports-page table {
+    page-break-inside: auto;
+  }
+
+  .reports-page tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}

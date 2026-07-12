@@ -1,0 +1,59 @@
+.fatal-error {
+  min-height: 100vh;
+  padding: var(--space-5);
+  display: grid;
+  place-items: center;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--app-font-family);
+  text-align: center;
+}
+
+.fatal-error__card {
+  width: 100%;
+  max-width: 500px;
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.fatal-error__icon {
+  width: 72px;
+  height: 72px;
+  margin-bottom: var(--space-4);
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  background-color: var(--color-surface-alt);
+}
+
+.fatal-error__icon svg {
+  font-size: 2.25rem;
+}
+
+.fatal-error h1 {
+  margin: 0 0 var(--space-3);
+  color: var(--color-danger);
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.fatal-error p {
+  margin: 0 0 var(--space-6);
+  color: var(--color-text-muted);
+  line-height: 1.7;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .fatal-error__card {
+    padding: var(--space-6) var(--space-4);
+  }
+}

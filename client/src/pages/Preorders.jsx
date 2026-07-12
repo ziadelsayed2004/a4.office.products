@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, MenuItem, TextField, Tooltip } from '@mui/material';
 import { EditRounded, RefreshRounded, VisibilityRounded } from '@mui/icons-material';
-import { api } from '../api/client.js';
-import { PageHeader } from '../components/navigation/PageHeader.jsx';
-import { DataTable } from '../components/data/DataTable.jsx';
-import { FilterPanel } from '../components/forms/FilterPanel.jsx';
+import { api } from '../services/apiClient.js';
+import { PageHeader } from '../components/PageHeader.jsx';
+import { DataTable } from '../components/DataTable.jsx';
+import { FilterPanel } from '../components/FilterPanel.jsx';
 import { Field } from '../components/forms/Field.jsx';
-import { StatusChip } from '../components/data/StatusChip.jsx';
-import { LoadingState } from '../components/feedback/LoadingState.jsx';
-import { AppSnackbar } from '../components/feedback/AppSnackbar.jsx';
+import { StatusChip } from '../components/StatusChip.jsx';
+import { LoadingState } from '../components/LoadingState.jsx';
+import { AppSnackbar } from '../components/AppSnackbar.jsx';
 import { dateTime, money, number, statusLabel } from '../utils/formatters.js';
+import '../styles/Preorders.css';
 
 const statuses = ['DEPOSIT_PAID_WAITING_STOCK','READY_FOR_PICKUP','PICKED_UP','CANCELLED','EXPIRED'];
 export default function Preorders() {

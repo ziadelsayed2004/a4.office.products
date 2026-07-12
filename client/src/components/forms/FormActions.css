@@ -1,0 +1,16 @@
+.form-actions {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  border-top: 1px solid var(--border-color);
+}
+
+@media (max-width: 600px) {
+  .form-actions .MuiButton-root {
+    flex: 1 1 140px;
+  }
+}

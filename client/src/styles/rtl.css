@@ -1,6 +1,7 @@
 html,
 body,
 #root,
+.theme-root,
 .MuiPopover-root,
 .MuiDialog-root,
 .MuiDrawer-root,
@@ -30,37 +31,72 @@ textarea.MuiInputBase-input {
   unicode-bidi: plaintext;
 }
 
+.MuiOutlinedInput-root,
+.MuiInputBase-root {
+  direction: rtl;
+}
+
+.MuiInputLabel-root {
+  direction: rtl;
+  text-align: right;
+  transform-origin: top right;
+}
+
+.MuiSelect-select.MuiInputBase-input {
+  width: 100%;
+  justify-content: flex-start;
+  direction: rtl;
+  text-align: right;
+}
+
+.MuiSelect-icon {
+  inset-inline-start: auto;
+  inset-inline-end: 7px;
+}
+
+/* The native MUI fieldset and legend own the animated RTL notch. */
 .MuiOutlinedInput-notchedOutline,
 .MuiOutlinedInput-notchedOutline legend {
   text-align: right;
 }
 
-.MuiTable-root {
+.MuiTable-root,
+.MuiTableCell-root {
   direction: rtl;
 }
 
 .MuiTableCell-root {
-  direction: rtl;
   text-align: right;
 }
 
+.ltr-value,
 .a4-ltr,
 .a4-ltr-value,
+.field--ltr input,
+.field--ltr textarea,
 .a4-ltr input,
 .a4-ltr textarea,
-input[dir='ltr'],
-textarea[dir='ltr'] {
+input[dir="ltr"],
+textarea[dir="ltr"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="month"],
+input[type="week"],
+input[type="number"],
+input[type="tel"] {
   direction: ltr;
-  unicode-bidi: plaintext;
   text-align: left;
+  unicode-bidi: plaintext;
   font-variant-numeric: tabular-nums;
 }
 
+.ltr-value,
 .a4-ltr-inline {
   display: inline-block;
   direction: ltr;
-  unicode-bidi: isolate;
   text-align: left;
+  unicode-bidi: isolate;
 }
 
 .a4-center,
@@ -76,6 +112,12 @@ textarea[dir='ltr'] {
   text-align: center;
 }
 
-.text-right { text-align: right !important; }
-.text-center { text-align: center !important; }
-.text-left { text-align: left !important; }
+.text-right {
+  text-align: right !important;
+}
+.text-center {
+  text-align: center !important;
+}
+.text-left {
+  text-align: left !important;
+}

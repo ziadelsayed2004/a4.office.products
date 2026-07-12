@@ -1,0 +1,50 @@
+/* Utility-only Material helpers; core component behavior lives in ThemeConfig. */
+.sidebar-active-item {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.flat-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+  box-shadow: none;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.font-monospace {
+  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace !important;
+}
+
+.font-bold {
+  font-weight: 700 !important;
+}
+
+.text-error {
+  color: var(--color-danger) !important;
+}
+
+.audit-log-pre {
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.MuiTabs-root {
+  position: relative;
+}
+
+.MuiTabs-root .MuiTabs-scroller {
+  width: 100%;
+  flex-grow: 1;
+}
+
+@media (max-width: 768px) {
+  .MuiTabs-root .MuiTabScrollButton-root {
+    display: none;
+  }
+}

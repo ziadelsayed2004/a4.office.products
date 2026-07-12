@@ -1,0 +1,20 @@
+.app-snackbar__alert.MuiAlert-root {
+  min-width: min(360px, calc(100vw - 32px));
+  align-items: center;
+  border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-md);
+  font-family: var(--app-font-family);
+}
+
+@media (max-width: 600px) {
+  .app-snackbar.MuiSnackbar-root {
+    right: var(--space-3);
+    bottom: var(--space-3);
+    left: var(--space-3);
+  }
+
+  .app-snackbar__alert.MuiAlert-root {
+    width: 100%;
+    min-width: 0;
+  }
+}

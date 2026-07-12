@@ -1,0 +1,15 @@
+.metric-card__copy--fill {
+  flex: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.metric-card__copy--fill + .MuiCheckbox-root {
+  margin-inline-start: auto;
+}
+
+@media (max-width: 600px) {
+  .metric-card__copy--fill {
+    min-width: 0;
+  }
+}

@@ -1,0 +1,5 @@
+/* Price tiers uses the canonical table, field and drawer visual primitives. */
+.price-tier-description {
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}

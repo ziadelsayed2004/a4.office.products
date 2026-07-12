@@ -1,0 +1,20 @@
+.shift-close-summary {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  line-height: 1.7;
+}
+
+.shift-close-summary > span {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.shift-close-summary > span strong {
+  color: var(--color-text);
+}
+
+.shift-close-summary .field {
+  margin-top: var(--space-3);
+}

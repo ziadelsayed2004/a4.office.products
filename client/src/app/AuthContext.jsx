@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api } from '../api/client.js';
+import { api } from '../services/apiClient.js';
+import { APP_CONFIG } from '../config/appConfig.js';
 
 const AuthContext = createContext(null);
 
@@ -9,14 +10,14 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const clearSession = useCallback(() => {
-    localStorage.removeItem('a4_access_token');
-    localStorage.removeItem('a4_refresh_token');
+    localStorage.removeItem(APP_CONFIG.storageKeys.accessToken);
+    localStorage.removeItem(APP_CONFIG.storageKeys.refreshToken);
     setUser(null);
     setCurrentShift(null);
   }, []);
 
   const loadShift = useCallback(async () => {
-    if (!localStorage.getItem('a4_access_token')) return null;
+    if (!localStorage.getItem(APP_CONFIG.storageKeys.accessToken)) return null;
     try {
       const response = await api.get('/api/shifts/current');
       const shift = response?.data || null;
@@ -29,7 +30,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const bootstrap = useCallback(async () => {
-    const token = localStorage.getItem('a4_access_token');
+    const token = localStorage.getItem(APP_CONFIG.storageKeys.accessToken);
     if (!token) { setLoading(false); return; }
     try {
       const response = await api.get('/api/auth/me');
@@ -47,15 +48,15 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (username, password) => {
     const response = await api.post('/api/auth/login', { username, password });
     const auth = response.data;
-    localStorage.setItem('a4_access_token', auth.accessToken);
-    if (auth.refreshToken) localStorage.setItem('a4_refresh_token', auth.refreshToken);
+    localStorage.setItem(APP_CONFIG.storageKeys.accessToken, auth.accessToken);
+    if (auth.refreshToken) localStorage.setItem(APP_CONFIG.storageKeys.refreshToken, auth.refreshToken);
     setUser(auth.user);
     await loadShift();
     return auth.user;
   }, [loadShift]);
 
   const logout = useCallback(async () => {
-    const refreshToken = localStorage.getItem('a4_refresh_token');
+    const refreshToken = localStorage.getItem(APP_CONFIG.storageKeys.refreshToken);
     try { if (refreshToken) await api.post('/api/auth/logout', { refreshToken }); } catch { /* local logout remains valid */ }
     clearSession();
   }, [clearSession]);

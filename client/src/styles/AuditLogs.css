@@ -1,0 +1,14 @@
+/* Audit log layout is composed from the shared page, filter and table primitives. */
+.a4-wrap-cell {
+  display: block;
+  min-width: 260px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+@media (max-width: 720px) {
+  .a4-wrap-cell {
+    min-width: 0;
+  }
+}

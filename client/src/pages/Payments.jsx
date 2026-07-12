@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Checkbox } from '@mui/material';
 import { PaymentsRounded, SaveRounded } from '@mui/icons-material';
-import { api } from '../api/client.js';
-import { PageHeader } from '../components/navigation/PageHeader.jsx';
-import { LoadingState } from '../components/feedback/LoadingState.jsx';
-import { AppSnackbar } from '../components/feedback/AppSnackbar.jsx';
+import { api } from '../services/apiClient.js';
+import { PageHeader } from '../components/PageHeader.jsx';
+import { LoadingState } from '../components/LoadingState.jsx';
+import { AppSnackbar } from '../components/AppSnackbar.jsx';
+import '../styles/Payments.css';
 
 export default function Payments() {
   const [rows, setRows] = useState([]); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState(''); const [toast, setToast] = useState(null);

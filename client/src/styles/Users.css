@@ -1,0 +1,4 @@
+/* Users uses shared table, form-section, drawer and confirm-dialog primitives. */
+.users-page .table-actions {
+  flex-wrap: nowrap;
+}

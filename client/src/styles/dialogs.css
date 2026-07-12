@@ -1,41 +1,52 @@
 .MuiDialog-paper {
   direction: rtl;
   text-align: right;
-  border: 1px solid var(--a4-border);
-  border-radius: var(--radius-xs) !important;
-  background: var(--a4-paper);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--color-surface);
   background-image: none;
 }
 
 .MuiDialogTitle-root {
-  padding: 18px 20px 12px;
-  color: var(--a4-text);
+  padding: 18px var(--space-5) var(--space-3);
+  color: var(--color-text);
   font-size: 1.05rem;
   font-weight: 700;
   text-align: right;
 }
 
 .MuiDialogContent-root {
-  color: var(--a4-text);
+  color: var(--color-text);
   text-align: right;
 }
 
 .MuiDialogActions-root {
   direction: rtl;
-  justify-content: flex-start;
-  gap: 8px;
-  padding: 12px 20px 18px;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5) 18px;
 }
 
 .MuiDialogActions-root .MuiButton-root {
   margin: 0;
 }
 
+/* POS and other operational full-screen dialogs keep their dedicated behavior. */
+.MuiDialog-paper.MuiDialog-paperFullScreen {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
 @media (max-width: 600px) {
-  .MuiDialog-paper {
-    margin: 12px;
+  .MuiDialog-paper:not(.MuiDialog-paperFullScreen) {
     width: calc(100% - 24px);
     max-height: calc(100% - 24px);
+    margin: 12px;
   }
 
   .MuiDialogActions-root {

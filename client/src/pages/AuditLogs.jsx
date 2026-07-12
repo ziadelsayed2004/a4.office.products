@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, TextField } from '@mui/material';
 import { RefreshRounded } from '@mui/icons-material';
-import { api } from '../api/client.js';
-import { PageHeader } from '../components/navigation/PageHeader.jsx';
-import { DataTable } from '../components/data/DataTable.jsx';
-import { FilterPanel } from '../components/forms/FilterPanel.jsx';
+import { api } from '../services/apiClient.js';
+import { PageHeader } from '../components/PageHeader.jsx';
+import { DataTable } from '../components/DataTable.jsx';
+import { FilterPanel } from '../components/FilterPanel.jsx';
 import { Field } from '../components/forms/Field.jsx';
-import { LoadingState } from '../components/feedback/LoadingState.jsx';
+import { LoadingState } from '../components/LoadingState.jsx';
 import { dateTime } from '../utils/formatters.js';
+import '../styles/AuditLogs.css';
 
 export default function AuditLogs() {
   const [rows, setRows] = useState([]); const [total, setTotal] = useState(0); const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [filters, setFilters] = useState({ actionType: '', entityType: '', startDate: '', endDate: '' });

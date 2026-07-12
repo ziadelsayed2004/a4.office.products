@@ -83,7 +83,7 @@ Products are generic retail items. Book fields are optional, so the same catalog
 - `client/src/locales/en.json` may remain as an unused future translation store only. Runtime translation code loads `ar.json` only.
 - All menus, labels, tables, filters, forms, dialogs, validation messages, reports, receipts, and print templates are Arabic.
 - Technical values such as SKU, barcode, phone number, token, and IDs may be direction-isolated with a dedicated LTR utility class.
-- Field labels are rendered above controls. MUI floating labels and outlined notches are not used.
+- Forms use native MUI outlined labels that animate into an RTL-safe notch at the top-right, with no manual label transforms.
 - Light/dark is the only user-facing display switch.
 - The visual system follows the compact structure of the embedded reference template while using A4 branding and business content only.
 
@@ -302,5 +302,5 @@ The frontend consumes server contracts; it must not duplicate financial or stock
 - Client lint, UI validation, and production build pass.
 - Final browser, responsive, dark/light, and live API QA evidence is recorded before release.
 
-[Back to top](#top)
 
+[Back to top](#top)

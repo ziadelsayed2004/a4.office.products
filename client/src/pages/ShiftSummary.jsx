@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, MenuItem, TextField } from '@mui/material';
 import { AddCircleRounded, CloseRounded, PaymentsRounded, RefreshRounded, RemoveCircleRounded, ShoppingCartRounded } from '@mui/icons-material';
-import { api } from '../api/client.js';
+import { api } from '../services/apiClient.js';
 import { useAuth } from '../app/AuthContext.jsx';
-import { PageHeader } from '../components/navigation/PageHeader.jsx';
-import { MetricCard } from '../components/data/MetricCard.jsx';
-import { DataTable } from '../components/data/DataTable.jsx';
-import { StatusChip } from '../components/data/StatusChip.jsx';
-import { EntityDrawer } from '../components/forms/EntityDrawer.jsx';
+import { PageHeader } from '../components/PageHeader.jsx';
+import { MetricCard } from '../components/MetricCard.jsx';
+import { DataTable } from '../components/DataTable.jsx';
+import { StatusChip } from '../components/StatusChip.jsx';
+import { EntityDrawer } from '../components/EntityDrawer.jsx';
 import { Field } from '../components/forms/Field.jsx';
-import { ConfirmDialog } from '../components/feedback/ConfirmDialog.jsx';
-import { LoadingState } from '../components/feedback/LoadingState.jsx';
-import { AppSnackbar } from '../components/feedback/AppSnackbar.jsx';
+import { FieldGrid } from '../components/forms/FieldGrid.jsx';
+import { ConfirmDialog } from '../components/ConfirmDialog.jsx';
+import { LoadingState } from '../components/LoadingState.jsx';
+import { AppSnackbar } from '../components/AppSnackbar.jsx';
 import { dateTime, money, number } from '../utils/formatters.js';
+import '../styles/ShiftSummary.css';
 
 export default function ShiftSummary(){
  const {loadShift}=useAuth();const [data,setData]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[drawer,setDrawer]=useState(false),[movement,setMovement]=useState({type:'PAY_IN',amount:'',notes:''}),[closing,setClosing]=useState(false),[actual,setActual]=useState(''),[saving,setSaving]=useState(false),[toast,setToast]=useState(null);
@@ -24,6 +26,6 @@ export default function ShiftSummary(){
  const diff=Math.round(Number(actual||0)*100)-data.expectedClosingCash;
  const columns=[{key:'created_at',label:'التاريخ',render:r=>dateTime(r.created_at)},{key:'type',label:'نوع الحركة',render:r=>({OPENING:'عهدة افتتاحية',PAY_IN:'إضافة نقدية',PAY_OUT:'صرف نقدي',CLOSING:'تقفيل'}[r.type]||r.type)},{key:'amount',label:'المبلغ',render:r=>money(r.amount)},{key:'notes',label:'ملاحظات'}];
  return <div className="a4-page"><PageHeader title="شيفتي الحالية" description={`الشيفت #${data.shift.id} — بدأ ${dateTime(data.shift.opened_at)}`} actions={<><Button variant="outlined" startIcon={<RefreshRounded/>} onClick={load}>تحديث</Button>{data.shift.status==='OPEN'&&<Button variant="outlined" startIcon={<AddCircleRounded/>} onClick={()=>setDrawer(true)}>حركة نقدية</Button>} {data.shift.status==='OPEN'&&<Button color="error" variant="contained" startIcon={<CloseRounded/>} onClick={()=>{setActual((data.expectedClosingCash/100).toFixed(2));setClosing(true)}}>طلب تقفيل الشيفت</Button>}</>}/>{error&&<Alert severity="error">{error}</Alert>}<div className="a4-grid a4-grid--metrics"><MetricCard icon={<ShoppingCartRounded/>} label="عدد الفواتير" value={number(data.sales.count)} hint={`إجمالي ${money(data.sales.total_amount)}`}/><MetricCard icon={<PaymentsRounded/>} label="الكاش المتوقع" value={money(data.expectedClosingCash)} hint={`عهدة البداية ${money(data.shift.opening_cash)}`}/><MetricCard icon={<AddCircleRounded/>} label="إضافات نقدية" value={money(data.cashMovements.find(x=>x.type==='PAY_IN')?.total_amount||0)}/><MetricCard icon={<RemoveCircleRounded/>} label="مصروفات نقدية" value={money(data.cashMovements.find(x=>x.type==='PAY_OUT')?.total_amount||0)} hint={<StatusChip status={data.shift.status}/>}/></div><section className="a4-page-section"><h2 className="a4-section-title a4-section-title--spaced">المدفوعات حسب الطريقة</h2><div className="a4-grid a4-grid--three">{data.payments.length?data.payments.map(p=><div className="metric-card" key={p.payment_method}><div className="metric-card__copy"><span className="metric-card__label">{p.payment_method}</span><strong>{money(p.total_amount)}</strong></div></div>):<Alert severity="info">لا توجد مدفوعات بعد.</Alert>}</div></section><section className="a4-page-section"><h2 className="a4-section-title a4-section-title--spaced">حركات الدرج</h2><DataTable columns={columns} rows={data.cashMovementsList||[]} mobilePrimary={r=>r.type}/></section>
- <EntityDrawer open={drawer} title="تسجيل حركة نقدية" onClose={()=>setDrawer(false)} onSubmit={addMovement} loading={saving}><div className="a4-form-grid"><Field label="نوع الحركة"><TextField select value={movement.type} onChange={e=>setMovement(v=>({...v,type:e.target.value}))}><MenuItem value="PAY_IN">إضافة نقدية</MenuItem><MenuItem value="PAY_OUT">صرف نقدي</MenuItem></TextField></Field><Field label="المبلغ" required><TextField type="number" slotProps={{ htmlInput: {min:0,step:.01} }} value={movement.amount} onChange={e=>setMovement(v=>({...v,amount:e.target.value}))}/></Field><Field className="full" label="السبب" required><TextField multiline minRows={3} value={movement.notes} onChange={e=>setMovement(v=>({...v,notes:e.target.value}))}/></Field></div></EntityDrawer>
- <ConfirmDialog open={closing} title="تأكيد طلب التقفيل" description={<span>المتوقع في الدرج: <strong>{money(data.expectedClosingCash)}</strong><br/>الفعلي المدخل: <strong>{money(Math.round(Number(actual||0)*100))}</strong><br/>الفرق: <strong>{money(diff)}</strong><br/><br/><TextField label="المبلغ الفعلي في الدرج" fullWidth type="number" value={actual} onChange={e=>setActual(e.target.value)} slotProps={{ htmlInput: {min:0,step:.01} }}/></span>} confirmLabel="إرسال للمراجعة" loading={saving} onClose={()=>setClosing(false)} onConfirm={closeShift}/><AppSnackbar state={toast} onClose={()=>setToast(null)}/></div>;
+ <EntityDrawer open={drawer} title="تسجيل حركة نقدية" onClose={()=>setDrawer(false)} onSubmit={addMovement} loading={saving}><FieldGrid><Field label="نوع الحركة"><TextField select value={movement.type} onChange={e=>setMovement(v=>({...v,type:e.target.value}))}><MenuItem value="PAY_IN">إضافة نقدية</MenuItem><MenuItem value="PAY_OUT">صرف نقدي</MenuItem></TextField></Field><Field label="المبلغ" required><TextField type="number" slotProps={{ htmlInput: {min:0,step:.01} }} value={movement.amount} onChange={e=>setMovement(v=>({...v,amount:e.target.value}))}/></Field><Field className="full" label="السبب" required><TextField multiline minRows={3} value={movement.notes} onChange={e=>setMovement(v=>({...v,notes:e.target.value}))}/></Field></FieldGrid></EntityDrawer>
+ <ConfirmDialog open={closing} title="تأكيد طلب التقفيل" description={<div className="shift-close-summary"><span>المتوقع في الدرج: <strong>{money(data.expectedClosingCash)}</strong></span><span>الفعلي المدخل: <strong>{money(Math.round(Number(actual||0)*100))}</strong></span><span>الفرق: <strong>{money(diff)}</strong></span><Field label="المبلغ الفعلي في الدرج" required><TextField type="number" value={actual} onChange={e=>setActual(e.target.value)} slotProps={{ htmlInput: {min:0,step:.01} }}/></Field></div>} confirmLabel="إرسال للمراجعة" loading={saving} onClose={()=>setClosing(false)} onConfirm={closeShift}/><AppSnackbar state={toast} onClose={()=>setToast(null)}/></div>;
 }
