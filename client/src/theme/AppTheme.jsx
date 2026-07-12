@@ -1,5 +1,17 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { alpha, createTheme, CssBaseline, ThemeProvider } from '@mui/material';
+import rtlPlugin from 'stylis-plugin-rtl';
+import { CacheProvider } from '@emotion/react';
+import createCache from '@emotion/cache';
+import { prefixer } from 'stylis';
+
+// Create Emotion cache for RTL
+const cacheRtl = createCache({
+  key: 'muirtl',
+  stylisPlugins: [rtlPlugin.default || rtlPlugin],
+  prepend: true,
+});
+
 
 const ModeContext = createContext(null);
 export const useAppTheme = () => useContext(ModeContext);
@@ -96,7 +108,7 @@ export function AppTheme({ children }) {
       caption: { fontSize: '.72rem' },
       button: { fontWeight: 700, fontSize: '.8rem', textTransform: 'none' },
     },
-    shape: { borderRadius: 7 },
+    shape: { borderRadius: 4 },
     components: {
       MuiCssBaseline: {
         styleOverrides: {
@@ -150,12 +162,11 @@ export function AppTheme({ children }) {
         styleOverrides: {
           root: {
             minHeight: 46,
-            borderRadius: 6,
+            borderRadius: 4,
             backgroundColor: c.paper,
             transition: 'background-color 160ms ease, box-shadow 180ms ease, transform 180ms ease',
             '& .MuiOutlinedInput-notchedOutline': {
               borderColor: c.border,
-              textAlign: 'right',
               transition: 'border-color 160ms ease, border-width 160ms ease',
             },
             '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: c.strong },
@@ -172,36 +183,29 @@ export function AppTheme({ children }) {
           input: {
             padding: '11px 14px',
             minWidth: 0,
-            textAlign: 'right',
           },
           inputSizeSmall: { padding: '11px 14px' },
           multiline: { minHeight: 'auto', padding: '10px 14px' },
-          notchedOutline: { textAlign: 'right' },
         },
       },
       MuiInputLabel: {
         styleOverrides: {
           root: {
-            direction: 'rtl',
-            right: 0,
-            left: 'auto',
-            textAlign: 'right',
-            transform: 'translate(-14px, 12px) scale(1)',
-            transformOrigin: 'top right',
             color: c.muted,
             fontFamily,
             fontSize: '.84rem',
             fontWeight: 600,
             lineHeight: 1.5,
-            maxWidth: 'calc(100% - 46px)',
             transition: 'color 160ms ease, transform 180ms cubic-bezier(.4,0,.2,1), max-width 180ms ease',
-            '&.MuiInputLabel-shrink': {
-              transform: 'translate(-14px, -9px) scale(.75)',
-              maxWidth: 'calc(133% - 46px)',
-            },
             '&.Mui-focused': { color: c.primary, fontWeight: 700 },
             '&.Mui-error': { color: '#d64242' },
             '&.Mui-disabled': { color: c.muted },
+            '&.MuiInputLabel-shrink': {
+              backgroundColor: c.paper,
+              padding: '0 6px',
+              marginInlineStart: -4,
+              zIndex: 1,
+            },
           },
           asterisk: { color: '#d64242', marginInlineStart: 3 },
         },
@@ -334,45 +338,57 @@ export function AppTheme({ children }) {
       },
       MuiTableContainer: {
         styleOverrides: {
-          root: { border: `1px solid ${c.border}`, borderRadius: 9, boxShadow: 'none', overflowX: 'auto' },
+          root: { border: `1px solid ${c.border}`, borderRadius: 4, boxShadow: 'none', overflowX: 'auto' },
         },
       },
-      MuiTableHead: { styleOverrides: { root: { backgroundColor: c.alt } } },
+      MuiTableHead: {
+        styleOverrides: {
+          root: {
+            backgroundColor: c.alt,
+            '& .MuiTableCell-root': {
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              color: c.text,
+              borderBottom: `2px solid ${c.border}`,
+            },
+          },
+        },
+      },
       MuiTableCell: {
         styleOverrides: {
           root: {
-            direction: 'rtl',
-            textAlign: 'right',
             borderColor: c.border,
-            padding: '11px 13px',
-            fontSize: '.78rem',
+            padding: '10px 16px',
+            fontSize: '0.82rem',
             whiteSpace: 'nowrap',
+            borderBottom: `1px solid ${c.border}`,
           },
-          head: { fontWeight: 800, color: c.muted },
         },
       },
       MuiDialog: {
-        styleOverrides: { paper: { direction: 'rtl', borderRadius: 12, border: `1px solid ${c.border}`, backgroundColor: c.paper } },
+        styleOverrides: { paper: { borderRadius: 6, border: `1px solid ${c.border}`, backgroundColor: c.paper, padding: 12 } },
       },
       MuiDrawer: {
-        styleOverrides: { paper: { direction: 'rtl', backgroundColor: c.paper, backgroundImage: 'none' } },
+        styleOverrides: { paper: { backgroundColor: c.paper, backgroundImage: 'none' } },
       },
-      MuiChip: { styleOverrides: { root: { height: 28, borderRadius: 6, fontWeight: 700, fontSize: '.72rem' } } },
-      MuiAlert: { styleOverrides: { root: { borderRadius: 8, alignItems: 'center' } } },
-      MuiTooltip: { styleOverrides: { tooltip: { fontFamily, borderRadius: 6, fontSize: '.72rem' } } },
+      MuiChip: { styleOverrides: { root: { height: 28, borderRadius: 4, fontWeight: 700, fontSize: '.72rem' } } },
+      MuiAlert: { styleOverrides: { root: { borderRadius: 4, alignItems: 'center' } } },
+      MuiTooltip: { styleOverrides: { tooltip: { fontFamily, borderRadius: 4, fontSize: '.72rem' } } },
       MuiCheckbox: { styleOverrides: { root: { padding: 7 } } },
-      MuiTabs: { styleOverrides: { root: { minHeight: 44 }, indicator: { height: 3, borderRadius: 3 } } },
-      MuiTab: { styleOverrides: { root: { minHeight: 44, fontWeight: 700, textTransform: 'none' } } },
+      MuiTabs: { styleOverrides: { root: { minHeight: 40 }, indicator: { height: 3, borderRadius: 3 } } },
+      MuiTab: { styleOverrides: { root: { minHeight: 40, fontWeight: 700, textTransform: 'none' } } },
     },
     a4: c,
   }), [mode, c]);
 
   return (
-    <ModeContext.Provider value={value}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        {children}
-      </ThemeProvider>
-    </ModeContext.Provider>
+    <CacheProvider value={cacheRtl}>
+      <ModeContext.Provider value={value}>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          {children}
+        </ThemeProvider>
+      </ModeContext.Provider>
+    </CacheProvider>
   );
 }

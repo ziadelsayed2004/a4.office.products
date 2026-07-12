@@ -59,9 +59,6 @@
 
 /* Native MUI notch, mirrored for Arabic RTL. */
 .field .MuiInputLabel-root {
-  direction: rtl;
-  text-align: right;
-  transform-origin: top right;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -70,10 +67,6 @@
 
 .field .MuiInputLabel-root.MuiInputLabel-shrink {
   max-width: calc(133% - 48px);
-}
-
-.field .MuiOutlinedInput-notchedOutline {
-  text-align: right;
 }
 
 .field .MuiOutlinedInput-notchedOutline legend,

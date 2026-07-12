@@ -111,27 +111,8 @@ html, body, #root, .MuiPopover-root, .MuiDialog-root, .MuiDrawer-root { directio
   text-align: right;
 }
 
-.MuiOutlinedInput-notchedOutline legend {
-  display: block;
-  float: unset;
-  width: auto;
-  direction: rtl;
-  text-align: right;
-  transition: max-width 180ms cubic-bezier(.4, 0, .2, 1);
-}
-
-.MuiOutlinedInput-notchedOutline legend > span {
-  display: inline-block;
-  padding-inline: 5px;
-  white-space: nowrap;
-}
 
 
-.MuiInputLabel-root {
-  direction: rtl;
-  text-align: right;
-  transform-origin: top right;
-}
 
 .MuiInputBase-input,
 .MuiSelect-select,
@@ -247,27 +228,7 @@ input[type="tel"] {
   text-align: right;
 }
 
-.MuiOutlinedInput-notchedOutline > legend {
-  direction: rtl;
-  text-align: right;
-  margin-inline-start: auto;
-  margin-inline-end: 0;
-  transition: max-width 180ms cubic-bezier(.4, 0, .2, 1);
-}
 
-
-.MuiOutlinedInput-notchedOutline > legend > span {
-  display: inline-block;
-  padding-inline: 5px;
-  white-space: nowrap;
-}
-
-.MuiInputLabel-root {
-  pointer-events: none;
-  direction: rtl;
-  text-align: right;
-  transform-origin: top right;
-}
 
 .MuiInputBase-input,
 .MuiSelect-select,
@@ -315,10 +276,33 @@ textarea[dir="ltr"] {
   font-variant-numeric: tabular-nums;
 }
 
+/* Premium card, list, and interactive hover transitions & micro-animations */
+.MuiCard-root,
+.MuiPaper-outlined,
+.pos-product-card,
+.app-profile-card,
+.app-nav-item {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
 @media (hover: hover) {
   .MuiButton-root:not(.Mui-disabled):hover,
   .MuiIconButton-root:not(.Mui-disabled):hover {
-    transform: translateY(-1px);
+    transform: translateY(-1.5px) scale(1.015);
+  }
+  
+  .MuiCard-root:hover,
+  .MuiPaper-outlined:not(.pos-mode-tabs):hover {
+    transform: translateY(-2px);
+    box-shadow: var(--a4-shadow);
+    border-color: var(--a4-primary) !important;
+  }
+
+  .app-nav-item:not(.is-active):hover {
+    transform: translateX(-3px);
   }
 }
 
