@@ -29,6 +29,7 @@ import {
   CategoryRounded,
   DarkModeRounded,
   DashboardRounded,
+  DescriptionRounded,
   EventAvailableRounded,
   GroupsRounded,
   HistoryRounded,
@@ -58,6 +59,7 @@ const titles = {
   "/pos": ["نقطة البيع", "بيع مباشر أو إنشاء واستلام حجز مسبق"],
   "/shift-summary": ["شيفتي الحالية", "متابعة حركات الشيفت وطلب التقفيل"],
   "/receipts": ["الإيصالات", "البحث عن الإيصالات وعرضها وإعادة طباعتها"],
+  "/invoices": ["مركز الفواتير", "بحث وعرض الفواتير المحفوظة بحسب صلاحياتك"],
   "/products": ["المنتجات", "إدارة المنتجات والأسعار وخصائص الحجز"],
   "/categories": ["التصنيفات", "تنظيم المنتجات داخل تصنيفات واضحة"],
   "/price-tiers": [
@@ -117,6 +119,11 @@ export function MainLayout() {
             label: t("nav.receipts"),
             path: "/receipts",
             icon: <ReceiptLongRounded />,
+          },
+          {
+            label: t("nav.invoices"),
+            path: "/invoices",
+            icon: <DescriptionRounded />,
           },
         ],
       },

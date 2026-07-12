@@ -10,6 +10,8 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { api } from '../services/apiClient.js';
+import { printReceiptInFrame } from '../services/printService.js';
+import { useAuth } from '../app/AuthContext.jsx';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { Field } from '../components/forms/Field.jsx';
 import { LoadingState } from '../components/LoadingState.jsx';
@@ -26,11 +28,13 @@ const referenceLabels = {
 };
 
 export default function Receipts() {
+  const { currentShift } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [code, setCode] = useState(searchParams.get('code') || '');
   const [receipt, setReceipt] = useState(null);
   const [loading, setLoading] = useState(false);
   const [reprinting, setReprinting] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
   const [toast, setToast] = useState(null);
@@ -67,15 +71,49 @@ export default function Receipts() {
     [receipt],
   );
 
+  const hasOpenShift = currentShift?.status === 'OPEN';
+  const updatePrintCount = (result) => {
+    const request = result?.printRequest || {};
+    const nextCount = request.print_count
+      ?? request.printCount
+      ?? request.receipt?.print_count
+      ?? Number(receipt?.print_count || 0) + 1;
+    setReceipt((current) => current ? {
+      ...current,
+      print_count: nextCount,
+      last_printed_at: new Date().toISOString(),
+    } : current);
+  };
+
+  const doPrint = async () => {
+    if (!receipt || !hasOpenShift) return;
+    setPrinting(true);
+    try {
+      const result = await printReceiptInFrame({
+        receiptId: receipt.receipt_number || receipt.id,
+        isReprint: Number(receipt.print_count || 0) > 0,
+      });
+      updatePrintCount(result);
+      setToast({ message: 'تم تسجيل طلب الطباعة وفتح مستند الإيصال.' });
+    } catch (err) {
+      setToast({ severity: 'error', message: err.message });
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   const doReprint = async () => {
-    if (!receipt) return;
+    if (!receipt || !hasOpenShift) return;
     setReprinting(true);
     try {
-      const response = await api.post(`/api/pos/receipts/${receipt.id}/reprint`, { reason: reason.trim() });
-      setReceipt((current) => ({ ...current, print_count: response.data.print_count, last_printed_at: new Date().toISOString() }));
+      const result = await printReceiptInFrame({
+        receiptId: receipt.receipt_number || receipt.id,
+        reason,
+        isReprint: true,
+      });
+      updatePrintCount(result);
       setReason('');
-      setToast({ message: 'تم تسجيل إعادة الطباعة في سجل العمليات.' });
-      requestAnimationFrame(() => window.print());
+      setToast({ message: 'تم تسجيل طلب إعادة الطباعة وفتح النسخة المعلّمة.' });
     } catch (err) {
       setToast({ severity: 'error', message: err.message });
     } finally {
@@ -187,12 +225,13 @@ export default function Receipts() {
           <aside className="receipt-actions no-print">
             <div className="receipt-actions__icon"><QrCode2Rounded /></div>
             <h2>خيارات الطباعة</h2>
-            <p>استخدم الطباعة العادية لأول نسخة. عند إعادة الطباعة، اكتب سبباً مختصراً حتى يظهر في سجل العمليات.</p>
-            <Button fullWidth variant="contained" startIcon={<PrintRounded />} onClick={() => window.print()}>طباعة الإيصال</Button>
+            <p>يفتح النظام مستنداً معزولاً بنفس الموقع بعد جاهزية الخطوط والصور وQR. كل محاولة طباعة تسجل باسم الحساب.</p>
+            {!hasOpenShift && <Alert severity="warning">العرض متاح، لكن الطباعة تحتاج شيفتاً مفتوحاً خاصاً بك.</Alert>}
+            <Button fullWidth variant="contained" startIcon={<PrintRounded />} onClick={doPrint} disabled={printing || reprinting || !hasOpenShift}>{printing ? 'جاري تجهيز الطباعة...' : 'طباعة الإيصال'}</Button>
             <Field label="سبب إعادة الطباعة" hint="اختياري، لكنه مفضل للمراجعة المالية.">
               <TextField multiline minRows={3} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="مثال: العميل فقد النسخة الأولى" />
             </Field>
-            <Button fullWidth variant="outlined" startIcon={<PrintRounded />} onClick={doReprint} disabled={reprinting}>
+            <Button fullWidth variant="outlined" startIcon={<PrintRounded />} onClick={doReprint} disabled={reprinting || printing || !hasOpenShift}>
               {reprinting ? 'جاري التسجيل...' : 'تسجيل وإعادة الطباعة'}
             </Button>
           </aside>

@@ -13,7 +13,20 @@ export const apiRateLimiter = rateLimit({
     error: 'لقد تجاوزت الحد الأقصى من الطلبات المسموح بها. يرجى المحاولة مرة أخرى لاحقاً.',
     code: 'TOO_MANY_REQUESTS'
   },
-  statusCode: 429
+  statusCode: 429,
+  skip: (req) => req.path === '/auth/login'
+});
+
+export const loginRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: {
+    error: 'محاولات تسجيل الدخول كثيرة جداً. يرجى المحاولة لاحقاً.',
+    code: 'LOGIN_RATE_LIMITED'
+  }
 });
 
 // helmet: secure HTTP headers
@@ -23,6 +36,7 @@ export const helmetSecurityHeaders = helmet();
 export const customCorsOptions = {
   origin: config.cors.origin,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
+  exposedHeaders: ['Idempotency-Replayed', 'RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset'],
   credentials: true
 };

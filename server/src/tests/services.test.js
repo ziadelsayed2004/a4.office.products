@@ -1,51 +1,36 @@
 import assert from 'assert';
 import http from 'http';
-import app from '../app.js';
-import db from '../db/index.js';
-import { runMigrations } from '../db/migrate.js';
-
-const PORT = 6001;
-const BASE_URL = `http://localhost:${PORT}`;
+import {
+  closeTestServer,
+  createTestEnvironment,
+  disposeTestEnvironment
+} from './test-environment.js';
 
 let server;
+let db;
+const testEnvironment = createTestEnvironment('services');
 
 async function runServicesTests() {
   console.log('========================================');
   console.log(' STARTING COMPREHENSIVE SERVICE TESTS');
   console.log('========================================');
 
-  // Perform database cleanup & fresh seeding in safe topological order
-  try {
-    await db.run('PRAGMA foreign_keys = OFF;');
-    const tables = [
-      'preorder_items', 'preorders', 'return_items', 'returns',
-      'payments', 'order_items', 'orders', 'qr_tokens',
-      'inventory_ledger', 'product_prices', 'product_book_details',
-      'products', 'categories', 'price_tiers', 'users', 'customers',
-      'printer_settings', 'shifts', 'cash_movements', 'audit_logs', 'sessions', 'sqlite_sequence'
-    ];
-    for (const table of tables) {
-      try {
-        await db.run(`DELETE FROM ${table}`);
-      } catch (err) {
-        console.error(`Failed to delete from ${table}:`, err.message);
-        throw err;
-      }
-    }
-    
-    // Execute migrations with foreign keys temporarily disabled to prevent seed order conflicts
-    await runMigrations();
-    
-    await db.run('PRAGMA foreign_keys = ON;');
-    console.log('✔ Cleaned up database tables of previous test records and re-seeded.');
-  } catch (dbErr) {
-    console.error('Warning: Pre-test cleanup failed:', dbErr.message);
-  }
+  const [{ default: app }, dbModule, migrationModule] = await Promise.all([
+    import('../app.js'),
+    import('../db/index.js'),
+    import('../db/migrate.js')
+  ]);
+  db = dbModule.default;
+  assert.strictEqual(dbModule.dbPath, testEnvironment.databasePath, 'service test must use its isolated database');
+  await migrationModule.runMigrations();
+  console.log(`✔ Fresh isolated database created at ${testEnvironment.databasePath}.`);
 
   // Start temporary test server
   server = http.createServer(app);
-  await new Promise((resolve) => server.listen(PORT, resolve));
-  console.log(`Test server listening on port ${PORT}`);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const BASE_URL = `http://127.0.0.1:${port}`;
+  console.log(`Test server listening on port ${port}`);
 
   try {
     let adminToken;
@@ -267,13 +252,16 @@ async function runServicesTests() {
         sku: 'SKU-KASHK-A4-WIRE',
         barcode: '6221100220033',
         category_id: testCategoryId,
-        stock: 50,
-        low_stock_threshold: 10,
+        availabilityPolicy: 'STOCK_WITH_PREORDER_WHEN_OUT_OF_STOCK',
+        isActive: true,
+        initialStock: 50,
+        lowStockThreshold: 10,
+        purchaseCost: 0,
         is_book: 0,
-        prices: [
-          { price_tier_id: 1, price: 12000 }, // Retail default: 120 EGP (12000 piastres)
-          { price_tier_id: testPriceTierId, price: 10000 } // Special commercial: 100 EGP (10000 piastres)
-        ]
+        prices: getPTsData.data.map((tier) => ({
+          price_tier_id: tier.id,
+          price: tier.id === testPriceTierId ? 10000 : 12000
+        }))
       })
     });
     if (createProdRes.status !== 201) {
@@ -308,13 +296,14 @@ async function runServicesTests() {
     assert.ok(printQRData.data.token);
     console.log('✔ QR labels token generated.');
 
-    console.log('\n[PRODUCTS SERVICE] Testing print preview HTML rendering...');
-    const printJobRes = await fetch(`${BASE_URL}/api/admin/print-job/${printQRData.data.token}?qty=5&size=medium`);
-    assert.strictEqual(printJobRes.status, 200);
-    const printJobHtml = await printJobRes.text();
-    assert.ok(printJobHtml.includes('طباعة ملصقات الباركود'));
-    assert.ok(printJobHtml.includes('qrious'));
-    console.log('✔ Print preview HTML content verified.');
+    console.log('\n[PRODUCTS SERVICE] Verifying legacy print preview is retired...');
+    const printJobRes = await fetch(`${BASE_URL}/api/admin/print-job/${printQRData.data.token}?qty=5&size=medium`, {
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    });
+    assert.strictEqual(printJobRes.status, 410);
+    const printJobData = await printJobRes.json();
+    assert.strictEqual(printJobData.code, 'LEGACY_PRINT_ROUTE_REMOVED');
+    console.log('✔ Legacy CDN-backed print preview is retired.');
 
     // ------------------------------------------------------------------------
     // 5. INVENTORY SERVICE TESTS
@@ -541,14 +530,15 @@ async function runServicesTests() {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${cashierToken}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Idempotency-Key': 'services-sale-checkout-001'
       },
       body: JSON.stringify({
         customerId: testCustomerId,
         items: [{ product_id: testProductId, quantity: 2, price_tier_id: 1 }],
         discount: 2000, // 20 EGP discount
         payments: [
-          { method: 'Cash', amount: 12000 },  // 120 EGP cash
+          { method: 'Cash', amount: 12000, cashReceived: 15000 }, // 120 EGP applied, 150 EGP tendered
           { method: 'Card', amount: 10000 }   // 100 EGP card (subtotal is 240, net is 220)
         ]
       })
@@ -564,14 +554,41 @@ async function runServicesTests() {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${cashierToken}`,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': 'services-order-return-001'
+      },
+      body: JSON.stringify({
+        items: [{ productId: testProductId, quantity: 1 }],
+        payments: [{ method: 'Cash', amount: 11000, cashReceived: 11000 }]
+      })
+    });
+    assert.strictEqual(returnRes.status, 201);
+    console.log('✔ Return order processed.');
+
+    console.log('\n[PREORDERS SERVICE] Reducing physical stock to exactly zero...');
+    const stockBeforePreorderRes = await fetch(`${BASE_URL}/api/products/${testProductId}`, {
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    });
+    assert.strictEqual(stockBeforePreorderRes.status, 200);
+    const stockBeforePreorderData = await stockBeforePreorderRes.json();
+    const stockBeforePreorder = Number(
+      stockBeforePreorderData.data.stock ?? stockBeforePreorderData.data.stock_on_hand ?? 0
+    );
+    assert.ok(stockBeforePreorder > 0, 'sale/return fixture should leave positive stock before depletion');
+    const depleteStockRes = await fetch(`${BASE_URL}/api/admin/inventory/adjust`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${adminToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        items: [{ productId: testProductId, quantity: 1 }] // refund 1 notebook
+        product_id: testProductId,
+        adjustment_type: 'SUB',
+        quantity: stockBeforePreorder,
+        notes: 'Test fixture: reach zero stock before preorder'
       })
     });
-    assert.strictEqual(returnRes.status, 200);
-    console.log('✔ Return order processed.');
+    assert.strictEqual(depleteStockRes.status, 200);
 
     // ------------------------------------------------------------------------
     // 10. PREORDERS SERVICE TESTS
@@ -581,14 +598,15 @@ async function runServicesTests() {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${cashierToken}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Idempotency-Key': 'services-preorder-create-001'
       },
       body: JSON.stringify({
         customerName: 'صلاح الدين',
         customerPhone: '01511223344',
         items: [{ product_id: testProductId, quantity: 3, price_tier_id: 1 }],
         depositPaid: 18000, // 180 EGP deposit (subtotal is 360)
-        payments: [{ method: 'Cash', amount: 18000 }]
+        payments: [{ method: 'Cash', amount: 18000, cashReceived: 18000 }]
       })
     });
     if (preorderRes.status !== 201) {
@@ -624,15 +642,42 @@ async function runServicesTests() {
     assert.strictEqual(scanPickupData.data.preorder.id, testPreorderId);
     console.log('✔ Pickup scan matched.');
 
+    console.log('\n[PREORDERS SERVICE] Receiving stock and marking preorder ready...');
+    const receivePreorderStockRes = await fetch(`${BASE_URL}/api/admin/inventory/adjust`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${adminToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        product_id: testProductId,
+        adjustment_type: 'STOCK_IN',
+        quantity: 3,
+        notes: 'Test fixture: stock received for preorder pickup'
+      })
+    });
+    assert.strictEqual(receivePreorderStockRes.status, 200);
+
+    const markReadyRes = await fetch(`${BASE_URL}/api/admin/preorders/${testPreorderId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${adminToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ status: 'READY_FOR_PICKUP' })
+    });
+    assert.strictEqual(markReadyRes.status, 200);
+
     console.log('\n[PREORDERS SERVICE] Finalizing pickup checkout...');
     const pickupCheckoutRes = await fetch(`${BASE_URL}/api/pos/preorders/${testPreorderId}/pickup`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${cashierToken}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Idempotency-Key': 'services-preorder-pickup-001'
       },
       body: JSON.stringify({
-        payments: [{ method: 'Cash', amount: 18000 }] // remaining amount 360 - 180 = 180 EGP
+        payments: [{ method: 'Cash', amount: 18000, cashReceived: 18000 }]
       })
     });
     if (pickupCheckoutRes.status !== 200) {
@@ -659,7 +704,8 @@ async function runServicesTests() {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${cashierToken}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Idempotency-Key': 'services-receipt-reprint-001'
       },
       body: JSON.stringify({ reason: 'طلب العميل نسخة إضافية للمحاسب' })
     });
@@ -759,8 +805,16 @@ async function runServicesTests() {
   } finally {
     // Shutdown temporary server
     console.log('\nStopping test server...');
-    server.close();
+    await closeTestServer(server);
   }
 }
 
-runServicesTests();
+try {
+  await runServicesTests();
+} catch (error) {
+  console.error('\n❌ SERVICE TEST SETUP FAILED:', error.stack || error.message);
+  process.exitCode = 1;
+} finally {
+  await closeTestServer(server);
+  await disposeTestEnvironment(testEnvironment, db);
+}

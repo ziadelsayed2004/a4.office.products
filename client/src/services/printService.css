@@ -1,0 +1,10 @@
+.a4-print-frame {
+  position: fixed;
+  inset-inline-end: 100%;
+  inset-block-end: 100%;
+  width: 1px;
+  height: 1px;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}

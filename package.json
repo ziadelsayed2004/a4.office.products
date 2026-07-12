@@ -10,8 +10,11 @@
     "dev": "npx --yes concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "build:client": "npm run build --prefix client",
     "build": "npm run build:client",
+    "lint": "npm run lint --prefix server",
     "test": "npm run test --prefix server",
+    "test:schema": "npm run test:schema --prefix server",
     "db:setup": "npm run db:setup --prefix server",
+    "db:reset": "node server/src/db/reset.js",
     "db:backup": "npm run db:backup --prefix server"
   }
 }

@@ -13,5 +13,7 @@ router.get('/', paymentsController.getPaymentMethodsController);
 
 // Only Admins can modify active payment methods
 router.post('/admin', isAdmin, paymentsController.updatePaymentMethodsController);
+router.post('/admin/methods', isAdmin, paymentsController.createPaymentMethodController);
+router.patch('/admin/methods/:id', isAdmin, paymentsController.updatePaymentMethodController);
 
 export default router;

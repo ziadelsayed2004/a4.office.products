@@ -8,6 +8,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/:id', receiptsController.getReceiptDetailsController);
+router.post('/:id/print-request', receiptsController.requestReceiptPrintController);
 router.post('/:id/reprint', receiptsController.reprintReceiptController);
 
 export default router;

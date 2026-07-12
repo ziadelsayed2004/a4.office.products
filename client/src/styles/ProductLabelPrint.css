@@ -1,0 +1,17 @@
+.product-label-print { margin: 0; padding: 0; display: grid; justify-content: center; background: #fff; color: #000; }
+.product-label { box-sizing: border-box; overflow: hidden; padding: 2mm; border: 1px solid #000; break-inside: avoid; page-break-inside: avoid; background: #fff; display: grid; gap: 1mm; }
+.product-label-print--small .product-label { width: 38mm; height: 25mm; }
+.product-label-print--medium .product-label { width: 50mm; height: 25mm; }
+.product-label-print--large .product-label { width: 80mm; height: 50mm; padding: 3mm; }
+.product-label header, .product-label__body { display: flex; align-items: center; justify-content: space-between; gap: 2mm; }
+.product-label header { border-bottom: .3mm solid #000; font-size: 6pt; }
+.product-label h1 { margin: 0; text-align: center; font-size: 8pt; line-height: 1.25; }
+.product-label-print--large h1 { font-size: 12pt; }
+.product-label__body > div { display: grid; gap: 1mm; min-width: 0; }
+.product-label__body b { font-size: 9pt; }
+.product-label__body span { font: 6pt monospace; overflow-wrap: anywhere; }
+@media print {
+  @page { margin: 0; }
+  html, body, #root { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  .product-label { border: 0; page-break-after: always; }
+}

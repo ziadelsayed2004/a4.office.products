@@ -21,6 +21,9 @@ const Shifts = lazy(() => import('./pages/Shifts.jsx'));
 const Users = lazy(() => import('./pages/Users.jsx'));
 const Reports = lazy(() => import('./pages/Reports.jsx'));
 const Receipts = lazy(() => import('./pages/Receipts.jsx'));
+const Invoices = lazy(() => import('./pages/Invoices.jsx'));
+const ReceiptPrint = lazy(() => import('./pages/ReceiptPrint.jsx'));
+const ProductLabelPrint = lazy(() => import('./pages/ProductLabelPrint.jsx'));
 const AuditLogs = lazy(() => import('./pages/AuditLogs.jsx'));
 const PrinterSettings = lazy(() => import('./pages/PrinterSettings.jsx'));
 
@@ -56,11 +59,14 @@ export default function App() {
           <Suspense fallback={<LoadingState label="جاري فتح الصفحة..." />}>
             <Routes>
               <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
+              <Route path="/receipts/:receiptId/print" element={<Protected><ReceiptPrint /></Protected>} />
+              <Route path="/labels/print" element={<Protected><ProductLabelPrint /></Protected>} />
               <Route path="/" element={<Protected><MainLayout /></Protected>}>
                 <Route index element={<Home />} />
                 <Route path="pos" element={<POS />} />
                 <Route path="shift-summary" element={<ShiftSummary />} />
                 <Route path="receipts" element={<Receipts />} />
+                <Route path="invoices" element={<Invoices />} />
                 <Route path="products" element={<AdminOnly><Products /></AdminOnly>} />
                 <Route path="categories" element={<AdminOnly><Categories /></AdminOnly>} />
                 <Route path="price-tiers" element={<AdminOnly><PriceTiers /></AdminOnly>} />

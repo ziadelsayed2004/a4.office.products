@@ -11,6 +11,9 @@ router.get('/reports/sales', authenticate, isAdmin, reportsController.getSalesRe
 router.get('/reports/preorders', authenticate, isAdmin, reportsController.getPreordersReportController);
 router.get('/reports/inventory', authenticate, isAdmin, reportsController.getInventoryReportController);
 router.get('/reports/shifts', authenticate, isAdmin, reportsController.getShiftsReportController);
+router.get('/reports/invoices', authenticate, isAdmin, reportsController.getInvoicesReportController);
+router.get('/reports/payments', authenticate, isAdmin, reportsController.getPaymentsReportController);
+router.get('/reports/cashiers', authenticate, isAdmin, reportsController.getCashiersReportController);
 router.get('/reports/export', authenticate, isAdmin, reportsController.exportReportController);
 
 export default router;

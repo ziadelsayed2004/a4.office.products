@@ -1,0 +1,38 @@
+.receipt-print-page {
+  min-height: 100vh;
+  padding-block: var(--space-4);
+  display: grid;
+  align-content: start;
+  justify-content: center;
+  gap: var(--space-4);
+  color: #000000;
+  background: #eeeeee;
+}
+
+.receipt-print-page > .loading-state,
+.receipt-print-page > .MuiAlert-root {
+  width: min(92vw, 560px);
+  margin: var(--space-5) auto;
+}
+
+.receipt-print-page .thermal-receipt {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+}
+
+@media print {
+  .receipt-print-page {
+    min-height: 0;
+    padding: 0;
+    display: block;
+    background: #ffffff;
+  }
+
+  .receipt-print-page > .loading-state,
+  .receipt-print-page > .MuiAlert-root {
+    display: none !important;
+  }
+
+  .receipt-print-page .thermal-receipt {
+    box-shadow: none;
+  }
+}

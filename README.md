@@ -43,6 +43,16 @@ npm run db:setup
 npm run dev
 ```
 
+`db:setup` غير هدّام: يطبق الـ schema والـ migrations فقط ولا يمسح البيانات الموجودة.
+إعادة الضبط الكاملة مخصصة لقواعد التطوير/الاختبار المعزولة، وتُرفض في production أو على قاعدة التطبيق الافتراضية. مثال PowerShell آمن:
+
+```powershell
+$env:NODE_ENV = 'development'
+$env:ALLOW_DATABASE_RESET = 'true'
+$env:SQLITE_DB_PATH = './src/db/a4_pos.local.db'
+npm.cmd run db:reset -- --confirm-reset
+```
+
 واجهة التطوير: `http://localhost:5173`
 
 API الافتراضي: `http://localhost:3000`
@@ -58,7 +68,8 @@ cashier / cashier123
 
 ```bash
 npm run check --prefix client
-find server/src -name '*.js' -print0 | xargs -0 -n1 node --check
+npm run lint --prefix server
+npm run test:schema --prefix server
 npm test --prefix server
 ```
 

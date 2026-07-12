@@ -1,38 +1,39 @@
-import db from './index.js';
-import { runMigrations } from './migrate.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { assertSafeResetTarget } from './reset-safety.js';
 
-async function resetDatabase() {
-  console.log('========================================');
-  console.log(' Resetting A4 POS database...');
-  console.log('========================================');
-  try {
-    await db.run('PRAGMA foreign_keys = OFF;');
-    const tables = [
-      'preorder_items', 'preorders', 'return_items', 'returns',
-      'payments', 'order_items', 'orders', 'qr_tokens',
-      'inventory_ledger', 'product_prices', 'product_book_details',
-      'products', 'categories', 'price_tiers', 'users', 'customers',
-      'printer_settings', 'shifts', 'cash_movements', 'audit_logs', 'sessions', 'sqlite_sequence'
-    ];
-    for (const table of tables) {
-      try {
-        await db.run(`DELETE FROM ${table}`);
-      } catch (err) {
-        // Ignore if tables do not exist yet
-      }
-    }
-    console.log('✔ Purged all database tables.');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const serverRoot = path.resolve(__dirname, '../..');
+const configuredPath = path.resolve(
+  serverRoot,
+  process.env.SQLITE_DB_PATH || './src/db/a4_pos.db'
+);
 
-    // Run migrations to recreate tables & seed defaults
-    await runMigrations();
-    
-    await db.run('PRAGMA foreign_keys = ON;');
-    console.log('✔ Database successfully reset and seeded.');
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ FATAL: Database reset failed:', error.message);
-    process.exit(1);
+let db;
+
+try {
+  const databasePath = assertSafeResetTarget({
+    targetPath: configuredPath,
+    serverRoot
+  });
+
+  // The guard above runs before the database module is imported or any file is removed.
+  for (const suffix of ['', '-journal', '-wal', '-shm']) {
+    fs.rmSync(`${databasePath}${suffix}`, { force: true });
   }
-}
 
-resetDatabase();
+  process.env.SQLITE_DB_PATH = databasePath;
+  const dbModule = await import('./index.js');
+  const migrationModule = await import('./migrate.js');
+  db = dbModule.default;
+
+  console.log(`Resetting isolated development/test database: ${databasePath}`);
+  await migrationModule.runMigrations();
+  console.log('Database reset and setup completed successfully.');
+} catch (error) {
+  console.error(`Database reset refused or failed: ${error.message}`);
+  process.exitCode = 1;
+} finally {
+  if (db) await db.close();
+}

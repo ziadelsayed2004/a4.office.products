@@ -2,7 +2,7 @@ import * as productsService from './products.service.js';
 
 export async function searchProductsController(req, res, next) {
   try {
-    const { q, categoryId } = req.query;
+    const { q, categoryId, availabilityPolicy } = req.query;
     
     // Cashiers see only active products. Admins see all by default.
     const isCashier = req.user.role === 'Cashier';
@@ -11,7 +11,8 @@ export async function searchProductsController(req, res, next) {
     const products = await productsService.searchProducts({
       q,
       categoryId: categoryId ? parseInt(categoryId, 10) : null,
-      activeOnly
+      activeOnly,
+      availabilityPolicy
     });
 
     return res.status(200).json({
@@ -19,9 +20,9 @@ export async function searchProductsController(req, res, next) {
       data: products
     });
   } catch (error) {
-    return res.status(500).json({
-      error: 'حدث خطأ أثناء البحث عن المنتجات.',
-      code: 'SERVER_ERROR'
+    return res.status(error.status || 500).json({
+      error: error.status ? error.message : 'حدث خطأ أثناء البحث عن المنتجات.',
+      code: error.code || 'SERVER_ERROR'
     });
   }
 }
@@ -53,9 +54,9 @@ export async function getProductDetailsController(req, res, next) {
       data: product
     });
   } catch (error) {
-    return res.status(500).json({
-      error: 'حدث خطأ أثناء تحميل تفاصيل المنتج.',
-      code: 'SERVER_ERROR'
+    return res.status(error.status || 500).json({
+      error: error.status ? error.message : 'حدث خطأ أثناء تحميل تفاصيل المنتج.',
+      code: error.code || 'SERVER_ERROR'
     });
   }
 }
@@ -69,9 +70,9 @@ export async function createProductController(req, res, next) {
       data: newProduct
     });
   } catch (error) {
-    return res.status(400).json({
+    return res.status(error.status || 400).json({
       error: error.message,
-      code: 'CREATE_PRODUCT_FAILED'
+      code: error.code || 'CREATE_PRODUCT_FAILED'
     });
   }
 }
@@ -86,9 +87,9 @@ export async function updateProductController(req, res, next) {
       data: updated
     });
   } catch (error) {
-    return res.status(400).json({
+    return res.status(error.status || 400).json({
       error: error.message,
-      code: 'UPDATE_PRODUCT_FAILED'
+      code: error.code || 'UPDATE_PRODUCT_FAILED'
     });
   }
 }
@@ -110,9 +111,9 @@ export async function generateQrLabelsController(req, res, next) {
       data: result
     });
   } catch (error) {
-    return res.status(400).json({
+    return res.status(error.status || 400).json({
       error: error.message,
-      code: 'QR_GEN_FAILED'
+      code: error.code || 'QR_GEN_FAILED'
     });
   }
 }

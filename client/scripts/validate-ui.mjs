@@ -71,6 +71,8 @@ const requiredPages = [
   "Users",
   "Reports",
   "Receipts",
+  "Invoices",
+  "ReceiptPrint",
   "AuditLogs",
   "PrinterSettings",
 ];
@@ -514,6 +516,8 @@ const requiredRoutes = [
   "/pos",
   "/shift-summary",
   "/receipts",
+  "/invoices",
+  "/receipts/:receiptId/print",
   "/products",
   "/categories",
   "/price-tiers",

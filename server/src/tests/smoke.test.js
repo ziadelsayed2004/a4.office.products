@@ -1,51 +1,38 @@
 import assert from 'assert';
 import http from 'http';
-import app from '../app.js';
-import db from '../db/index.js';
-import { runMigrations } from '../db/migrate.js';
-
-const PORT = 5999;
-const BASE_URL = `http://localhost:${PORT}`;
+import {
+  closeTestServer,
+  createTestEnvironment,
+  disposeTestEnvironment,
+  seedCatalogFixture
+} from './test-environment.js';
 
 let server;
+let db;
+const testEnvironment = createTestEnvironment('smoke');
 
 async function runTests() {
   console.log('========================================');
   console.log(' STARTING INTEGRATION SMOKE TESTS');
   console.log('========================================');
 
-  // Perform database cleanup & fresh seeding
-  try {
-    await db.run('PRAGMA foreign_keys = OFF;');
-    const tables = [
-      'preorder_items', 'preorders', 'return_items', 'returns',
-      'payments', 'order_items', 'orders', 'qr_tokens',
-      'inventory_ledger', 'product_prices', 'product_book_details',
-      'products', 'categories', 'price_tiers', 'users', 'customers',
-      'printer_settings', 'shifts', 'cash_movements', 'audit_logs', 'sessions', 'sqlite_sequence'
-    ];
-    for (const table of tables) {
-      try {
-        await db.run(`DELETE FROM ${table}`);
-      } catch (err) {
-        console.error(`Failed to delete from ${table}:`, err.message);
-        throw err;
-      }
-    }
-    
-    // Execute migrations with foreign keys temporarily disabled to prevent seed order conflicts
-    await runMigrations();
-    
-    await db.run('PRAGMA foreign_keys = ON;');
-    console.log('✔ Database reset and seeded.');
-  } catch (dbErr) {
-    console.error('Warning: DB reset failed:', dbErr.message);
-  }
+  const [{ default: app }, dbModule, migrationModule] = await Promise.all([
+    import('../app.js'),
+    import('../db/index.js'),
+    import('../db/migrate.js')
+  ]);
+  db = dbModule.default;
+  assert.strictEqual(dbModule.dbPath, testEnvironment.databasePath, 'smoke test must use its isolated database');
+  await migrationModule.runMigrations();
+  await seedCatalogFixture(db);
+  console.log(`✔ Fresh isolated database created at ${testEnvironment.databasePath}.`);
 
   // Start temporary test server
   server = http.createServer(app);
-  await new Promise((resolve) => server.listen(PORT, resolve));
-  console.log(`Test server listening on port ${PORT}`);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const BASE_URL = `http://127.0.0.1:${port}`;
+  console.log(`Test server listening on port ${port}`);
 
   try {
     let adminToken;
@@ -225,14 +212,15 @@ async function runTests() {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${cashierToken}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Idempotency-Key': 'smoke-preorder-create-001'
       },
       body: JSON.stringify({
         customerName: 'محمد أحمد',
         customerPhone: '01122334455',
         items: [{ product_id: targetProductId, quantity: 2, price_tier_id: actualPriceTierId }],
         depositPaid: targetDepositPaid,
-        payments: [{ method: 'Cash', amount: targetDepositPaid }]
+        payments: [{ method: 'Cash', amount: targetDepositPaid, cashReceived: targetDepositPaid }]
       })
     });
     if (preorderRes.status !== 201) {
@@ -252,7 +240,8 @@ async function runTests() {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${cashierToken}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Idempotency-Key': 'smoke-receipt-reprint-001'
       },
       body: JSON.stringify({ reason: 'نسخة مكررة للعميل' })
     });
@@ -270,8 +259,16 @@ async function runTests() {
   } finally {
     // Shutdown temporary server
     console.log('\nStopping test server...');
-    server.close();
+    await closeTestServer(server);
   }
 }
 
-runTests();
+try {
+  await runTests();
+} catch (error) {
+  console.error('\n❌ TEST SETUP FAILED:', error.stack || error.message);
+  process.exitCode = 1;
+} finally {
+  await closeTestServer(server);
+  await disposeTestEnvironment(testEnvironment, db);
+}

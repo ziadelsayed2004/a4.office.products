@@ -7,8 +7,15 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node src/tests/smoke.test.js && node src/tests/services.test.js",
-    "db:setup": "node src/db/reset.js",
+    "lint": "node scripts/check-syntax.mjs",
+    "check:syntax": "node scripts/check-syntax.mjs",
+    "test": "npm run lint && npm run test:unit && npm run test:schema && npm run test:smoke && npm run test:services",
+    "test:unit": "node src/tests/reset-safety.test.js",
+    "test:schema": "node src/tests/schema.test.js",
+    "test:smoke": "node src/tests/smoke.test.js",
+    "test:services": "node src/tests/services.test.js",
+    "db:setup": "node src/db/setup.js",
+    "db:reset": "node src/db/reset.js",
     "db:backup": "node src/utils/run-backup.js"
   },
   "dependencies": {

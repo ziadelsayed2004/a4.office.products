@@ -1,4 +1,21 @@
 import * as posService from './pos.service.js';
+import { resolveScan } from './scanResolver.service.js';
+
+function sendError(res, error, fallbackCode, fallbackStatus = 400) {
+  return res.status(error.status || fallbackStatus).json({
+    error: error.message,
+    code: error.code || fallbackCode
+  });
+}
+
+export async function resolveScanController(req, res) {
+  try {
+    const result = await resolveScan(req.body?.code || req.body?.token, req.user);
+    return res.status(200).json({ status: 'success', data: result });
+  } catch (error) {
+    return sendError(res, error, 'SCAN_RESOLVE_FAILED');
+  }
+}
 
 export async function scanProductController(req, res, next) {
   try {
@@ -42,18 +59,17 @@ export async function checkoutController(req, res, next) {
       customerId,
       items,
       discount,
-      payments
+      payments,
+      idempotencyKey: req.get('Idempotency-Key')
     });
 
-    return res.status(201).json({
+    res.setHeader('Idempotency-Replayed', String(Boolean(result.replayed)));
+    return res.status(result.statusCode).json({
       status: 'success',
-      data: result
+      data: result.data
     });
   } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'POS_CHECKOUT_FAILED'
-    });
+    return sendError(res, error, 'POS_CHECKOUT_FAILED');
   }
 }
 
@@ -61,24 +77,23 @@ export async function returnOrderController(req, res, next) {
   try {
     const cashierId = req.user.id;
     const { id } = req.params;
-    const { items, notes, refundMethod } = req.body;
+    const { items, notes, payments } = req.body;
 
-    const result = await posService.returnOrderItems(
+    const result = await posService.returnOrderItems({
       cashierId,
-      parseInt(id),
+      orderId: parseInt(id, 10),
       items,
       notes,
-      refundMethod
-    );
+      payments,
+      idempotencyKey: req.get('Idempotency-Key')
+    });
 
-    return res.status(200).json({
+    res.setHeader('Idempotency-Replayed', String(Boolean(result.replayed)));
+    return res.status(result.statusCode).json({
       status: 'success',
-      data: result
+      data: result.data
     });
   } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'POS_RETURN_FAILED'
-    });
+    return sendError(res, error, 'POS_RETURN_FAILED');
   }
 }

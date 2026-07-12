@@ -5,15 +5,16 @@ export async function createPreorderController(req, res, next) {
     const preorderData = req.body;
     const cashierId = req.user.id;
 
-    const result = await preordersService.createPreorder(preorderData, cashierId);
-    return res.status(201).json({
+    const result = await preordersService.createPreorder(preorderData, cashierId, req.get('Idempotency-Key'));
+    res.set('Idempotency-Replayed', String(result.replayed));
+    return res.status(result.statusCode).json({
       status: 'success',
-      data: result
+      data: result.data
     });
   } catch (error) {
-    return res.status(400).json({
+    return res.status(error.status || 400).json({
       error: error.message,
-      code: 'PREORDER_CREATE_FAILED'
+      code: error.code || 'PREORDER_CREATE_FAILED'
     });
   }
 }
@@ -27,9 +28,9 @@ export async function listPreordersController(req, res, next) {
       data: result
     });
   } catch (error) {
-    return res.status(400).json({
+    return res.status(error.status || 400).json({
       error: error.message,
-      code: 'PREORDER_LIST_FAILED'
+      code: error.code || 'PREORDER_LIST_FAILED'
     });
   }
 }
@@ -46,9 +47,9 @@ export async function updatePreorderStatusController(req, res, next) {
       data: result
     });
   } catch (error) {
-    return res.status(400).json({
+    return res.status(error.status || 400).json({
       error: error.message,
-      code: 'PREORDER_STATUS_UPDATE_FAILED'
+      code: error.code || 'PREORDER_STATUS_UPDATE_FAILED'
     });
   }
 }
@@ -61,9 +62,9 @@ export async function getPreordersReportController(req, res, next) {
       data: result
     });
   } catch (error) {
-    return res.status(400).json({
+    return res.status(error.status || 400).json({
       error: error.message,
-      code: 'PREORDER_REPORT_FAILED'
+      code: error.code || 'PREORDER_REPORT_FAILED'
     });
   }
 }
@@ -86,9 +87,9 @@ export async function scanPreorderController(req, res, next) {
       data: result
     });
   } catch (error) {
-    return res.status(400).json({
+    return res.status(error.status || 400).json({
       error: error.message,
-      code: 'SCAN_PREORDER_FAILED'
+      code: error.code || 'SCAN_PREORDER_FAILED'
     });
   }
 }
@@ -99,15 +100,25 @@ export async function pickupPreorderController(req, res, next) {
     const pickupData = req.body;
     const cashierId = req.user.id;
 
-    const result = await preordersService.pickupPreorder(parseInt(id, 10), pickupData, cashierId);
-    return res.status(200).json({
+    const result = await preordersService.pickupPreorder(parseInt(id, 10), pickupData, cashierId, req.get('Idempotency-Key'));
+    res.set('Idempotency-Replayed', String(result.replayed));
+    return res.status(result.statusCode).json({
       status: 'success',
-      data: result
+      data: result.data
     });
   } catch (error) {
-    return res.status(400).json({
+    return res.status(error.status || 400).json({
       error: error.message,
-      code: 'PICKUP_PREORDER_FAILED'
+      code: error.code || 'PICKUP_PREORDER_FAILED'
     });
+  }
+}
+
+export async function searchPreordersController(req, res) {
+  try {
+    const rows = await preordersService.searchPreordersForCashier(req.query.q, req.user.id);
+    return res.status(200).json({ status: 'success', data: rows });
+  } catch (error) {
+    return res.status(error.status || 400).json({ error: error.message, code: error.code || 'PREORDER_SEARCH_FAILED' });
   }
 }

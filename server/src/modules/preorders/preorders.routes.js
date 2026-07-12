@@ -10,6 +10,7 @@ router.use(authenticate);
 
 router.post('/', preordersController.createPreorderController);
 router.post('/scan', preordersController.scanPreorderController);
+router.get('/search', preordersController.searchPreordersController);
 router.post('/:id/pickup', preordersController.pickupPreorderController);
 
 // Admin-only preorder tracking routes

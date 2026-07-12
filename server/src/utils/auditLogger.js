@@ -11,21 +11,20 @@ export async function writeAuditLog({
   entityId = null,
   beforeValues = null,
   afterValues = null,
-  notes = null
+  notes = null,
+  connection = db
 }) {
-  try {
-    const beforeStr = beforeValues ? JSON.stringify(beforeValues) : null;
-    const afterStr = afterValues ? JSON.stringify(afterValues) : null;
+  const beforeStr = beforeValues === null ? null : JSON.stringify(beforeValues);
+  const afterStr = afterValues === null ? null : JSON.stringify(afterValues);
 
-    await db.run(
-      `INSERT INTO audit_logs (
-        user_id, shift_id, action_type, entity_type, entity_id, before_values, after_values, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
-      [userId, shiftId, actionType, entityType, entityId, beforeStr, afterStr, notes]
-    );
+  // Audit writes are part of the financial transaction. Deliberately allow a
+  // failure to bubble so the business mutation cannot commit without its trail.
+  await connection.run(
+    `INSERT INTO audit_logs (
+      user_id, shift_id, action_type, entity_type, entity_id, before_values, after_values, notes
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+    [userId, shiftId, actionType, entityType, entityId, beforeStr, afterStr, notes]
+  );
 
-    console.log(`[AUDIT LOG] Action: ${actionType} | User: ${userId} | Notes: ${notes}`);
-  } catch (error) {
-    console.error('Failed to write audit log:', error.message);
-  }
+  console.log(`[AUDIT LOG] Action: ${actionType} | User: ${userId}`);
 }

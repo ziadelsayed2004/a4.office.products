@@ -1,611 +1,428 @@
-import db from '../../db/index.js';
+import db, { withTransaction } from '../../db/index.js';
 import { writeAuditLog } from '../../utils/auditLogger.js';
-import crypto from 'crypto';
+import {
+  AppError, aggregateItems, generateSecureToken, nextDocumentNumber, requireInteger, requirePiasters,
+  saveSecureToken, withIdempotency
+} from '../../utils/financial.js';
+import { insertPayments, validateSplitPayments } from '../payments/payments.service.js';
+import { PRODUCT_POLICIES } from '../products/products.service.js';
 
-/**
- * Creates a new preorder reservation with deposit payment.
- */
-export async function createPreorder(preorderData, cashierId) {
-  const {
-    customerName,
-    customerPhone,
-    items,
-    discount,
-    depositPaid,
-    pickupMethod = 'walk_in',
-    payments
-  } = preorderData;
+const OPEN_STATUSES = ['DEPOSIT_PAID_WAITING_STOCK', 'READY_FOR_PICKUP'];
+const TRANSITIONS = {
+  DEPOSIT_PAID_WAITING_STOCK: new Set(['READY_FOR_PICKUP', 'CANCELLED', 'EXPIRED']),
+  READY_FOR_PICKUP: new Set(['CANCELLED', 'EXPIRED']),
+  PICKED_UP: new Set(),
+  CANCELLED: new Set(),
+  EXPIRED: new Set()
+};
 
-  // 1. Mandatory customer details check
-  if (!customerName || !customerName.trim()) {
-    throw new Error('اسم العميل إلزامي لعمل الحجز المسبق.');
-  }
-  if (!customerPhone || !customerPhone.trim()) {
-    throw new Error('رقم هاتف العميل إلزامي لعمل الحجز المسبق.');
-  }
-
-  // 2. Active open shift validation
-  const activeShift = await db.get(
-    "SELECT id FROM shifts WHERE user_id = ? AND status = 'OPEN';",
-    [cashierId]
+async function requireOwnOpenShift(connection, userId) {
+  const shift = await connection.get(
+    "SELECT * FROM shifts WHERE user_id = ? AND status = 'OPEN' ORDER BY id DESC LIMIT 1;", [userId]
   );
-  if (!activeShift) {
-    throw new Error('لا يوجد شيفت مفتوح حالياً لتسجيل هذا الحجز. يرجى فتح شيفت أولاً.');
-  }
-  const shiftId = activeShift.id;
-
-  if (!items || items.length === 0) {
-    throw new Error('يجب إدخال صنف واحد على الأقل في الحجز.');
-  }
-
-  const parsedDiscount = parseInt(discount, 10) || 0;
-  const parsedDepositPaid = parseInt(depositPaid, 10) || 0;
-
-  if (parsedDepositPaid <= 0) {
-    throw new Error('مبلغ العربون المدفوع يجب أن يكون أكبر من صفر.');
-  }
-
-  await db.run('BEGIN TRANSACTION;');
-  try {
-    // 3. Find or register customer directly to avoid nested transactions
-    const trimmedName = customerName.trim();
-    const trimmedPhone = customerPhone.trim();
-    
-    let customer = await db.get(
-      'SELECT * FROM customers WHERE name = ? AND phone = ?;',
-      [trimmedName, trimmedPhone]
-    );
-
-    if (!customer) {
-      if (trimmedPhone.length < 5) {
-        throw new Error('رقم الهاتف غير صالح.');
-      }
-      const customerResult = await db.run(
-        `INSERT INTO customers (name, phone, created_at, updated_at)
-         VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);`,
-        [trimmedName, trimmedPhone]
-      );
-      customer = {
-        id: customerResult.lastID,
-        name: trimmedName,
-        phone: trimmedPhone
-      };
-
-      await writeAuditLog({
-        userId: cashierId,
-        actionType: 'CUSTOMER_CREATE',
-        entityType: 'customers',
-        entityId: customer.id,
-        notes: `تم تسجيل عميل جديد أثناء الحجز: ${trimmedName} (هاتف: ${trimmedPhone})`
-      });
-    }
-
-    // 4. Validate items and calculate required deposits
-    let subtotal = 0;
-    let totalDepositRequired = 0;
-    const itemsWithPrices = [];
-
-    for (const item of items) {
-      const product = await db.get(
-        `SELECT p.*,
-                COALESCE((SELECT price FROM product_prices WHERE product_id = p.id AND price_tier_id = ?), 0) AS tier_price
-         FROM products p
-         WHERE p.id = ?;`,
-        [item.price_tier_id, item.product_id]
-      );
-
-      if (!product) {
-        throw new Error(`المنتج ذو المعرف (${item.product_id}) غير موجود.`);
-      }
-      if (product.is_active !== 1 || product.can_be_preordered !== 1) {
-        throw new Error(`المنتج (${product.name}) غير متاح للحجز المسبق.`);
-      }
-
-      const unitPrice = product.tier_price;
-      const totalPrice = unitPrice * item.quantity;
-      subtotal += totalPrice;
-
-      const depositPct = product.default_preorder_deposit_pct || 50;
-      const itemDepositRequired = Math.round(totalPrice * (depositPct / 100));
-      totalDepositRequired += itemDepositRequired;
-
-      itemsWithPrices.push({
-        product_id: item.product_id,
-        quantity: item.quantity,
-        price_tier_id: item.price_tier_id,
-        unit_price: unitPrice,
-        total_price: totalPrice
-      });
-    }
-
-    const totalAmount = Math.max(0, subtotal - parsedDiscount);
-
-    // Scale minimum deposit required by discount proportion if applicable
-    if (subtotal > 0 && parsedDiscount > 0) {
-      totalDepositRequired = Math.round(totalDepositRequired * (totalAmount / subtotal));
-    }
-
-    // Enforce minimum deposit paid limit
-    if (parsedDepositPaid < totalDepositRequired) {
-      throw new Error(
-        `مبلغ العربون المدفوع (${(parsedDepositPaid / 100).toFixed(2)} ج.م) أقل من الحد الأدنى المطلوب وهو (${(totalDepositRequired / 100).toFixed(2)} ج.م).`
-      );
-    }
-
-    // 5. Generate preorder number: PR-YYYYMMDD-Sequence
-    const date = new Date();
-    const cairoDateStr = date.toLocaleDateString('en-US', { timeZone: 'Africa/Cairo' });
-    const [month, day, year] = cairoDateStr.split('/');
-    const formattedDate = `${year}${month.padStart(2, '0')}${day.padStart(2, '0')}`;
-
-    const countRow = await db.get(
-      "SELECT COUNT(*) as count FROM preorders WHERE created_at >= date('now', 'start of day');"
-    );
-    const sequence = (countRow.count + 1).toString().padStart(4, '0');
-    const preorderNumber = `PR-${formattedDate}-${sequence}`;
-
-    // 6. Generate secure pickup token
-    const qrPickupToken = `pre_${crypto.randomBytes(16).toString('hex')}`;
-
-    // 7. Insert preorder record
-    const preorderResult = await db.run(
-      `INSERT INTO preorders (
-        preorder_number, shift_id, cashier_id, customer_id, status, subtotal, discount, total_amount,
-        deposit_required, deposit_paid, remaining_amount, pickup_method, qr_pickup_token, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, 'DEPOSIT_PAID_WAITING_STOCK', ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);`,
-      [
-        preorderNumber,
-        shiftId,
-        cashierId,
-        customer.id,
-        subtotal,
-        parsedDiscount,
-        totalAmount,
-        totalDepositRequired,
-        parsedDepositPaid,
-        totalAmount - parsedDepositPaid,
-        pickupMethod,
-        qrPickupToken
-      ]
-    );
-    const preorderId = preorderResult.lastID;
-
-    // 8. Register secure QR token mapping
-    await db.run(
-      `INSERT INTO qr_tokens (token, type, reference_id, created_at)
-       VALUES (?, 'preorder', ?, CURRENT_TIMESTAMP);`,
-      [qrPickupToken, preorderId]
-    );
-
-    // 9. Insert preorder items (does not decrement stock!)
-    for (const d of itemsWithPrices) {
-      await db.run(
-        `INSERT INTO preorder_items (preorder_id, product_id, quantity, unit_price, price_tier_id, total_price, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`,
-        [preorderId, d.product_id, d.quantity, d.unit_price, d.price_tier_id, d.total_price]
-      );
-    }
-
-    // 10. Insert split payments
-    for (const p of payments) {
-      await db.run(
-        `INSERT INTO payments (shift_id, cashier_id, reference_type, reference_id, payment_method, amount, created_at)
-         VALUES (?, ?, 'preorder', ?, ?, ?, CURRENT_TIMESTAMP);`,
-        [shiftId, cashierId, preorderId, p.method, p.amount]
-      );
-    }
-
-    // 11. Create corresponding receipt record directly to avoid nested transactions
-    const recCountRow = await db.get(
-      "SELECT COUNT(*) as count FROM receipts WHERE created_at >= date('now', 'start of day');"
-    );
-    const recSequence = (recCountRow.count + 1).toString().padStart(4, '0');
-    const receiptNumber = `REC-${formattedDate}-${recSequence}`;
-
-    const receiptResult = await db.run(
-      `INSERT INTO receipts (receipt_number, reference_type, reference_id, printed_by, print_count, last_printed_at, created_at)
-       VALUES (?, 'preorder_deposit', ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);`,
-      [receiptNumber, preorderId, cashierId]
-    );
-    const receiptId = receiptResult.lastID;
-
-    // 12. Write Audit Log
-    await writeAuditLog({
-      userId: cashierId,
-      actionType: 'PREORDER_CREATE',
-      entityType: 'preorders',
-      entityId: preorderId,
-      notes: `تسجيل حجز مسبق جديد رقم ${preorderNumber} بقيمة ${(totalAmount / 100).toFixed(2)} ج.م (عربون: ${(parsedDepositPaid / 100).toFixed(2)} ج.م) للعميل ${customer.name}`
-    });
-
-    await db.run('COMMIT;');
-
-    return {
-      id: preorderId,
-      preorder_number: preorderNumber,
-      receipt_id: receiptId,
-      receipt_number: receiptNumber,
-      customer_id: customer.id,
-      customer_name: customer.name,
-      customer_phone: customer.phone,
-      subtotal,
-      discount: parsedDiscount,
-      total_amount: totalAmount,
-      deposit_required: totalDepositRequired,
-      deposit_paid: parsedDepositPaid,
-      remaining_amount: totalAmount - parsedDepositPaid,
-      qr_pickup_token: qrPickupToken,
-      items: itemsWithPrices
-    };
-
-  } catch (err) {
-    await db.run('ROLLBACK;');
-    throw err;
-  }
+  if (!shift) throw new AppError('An open shift belonging to the acting user is required.', 409, 'OPEN_SHIFT_REQUIRED');
+  return shift;
 }
 
-/**
- * Lists preorders for admin tracking with optional filters.
- */
-export async function listPreordersForAdmin(filters = {}) {
-  let query = `
-    SELECT pr.*, c.name AS customer_name, c.phone AS customer_phone, u.name AS cashier_name
-    FROM preorders pr
-    JOIN customers c ON pr.customer_id = c.id
-    JOIN users u ON pr.cashier_id = u.id
-    WHERE 1=1
-  `;
-  const params = [];
-
-  if (filters.status) {
-    query += ' AND pr.status = ?';
-    params.push(filters.status);
-  }
-
-  if (filters.q && filters.q.trim().length > 0) {
-    const searchVal = `%${filters.q.trim()}%`;
-    query += ' AND (pr.preorder_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)';
-    params.push(searchVal, searchVal, searchVal);
-  }
-
-  query += ' ORDER BY pr.created_at DESC;';
-
-  const preorders = await db.all(query, params);
-
-  // Load items list for each preorder
-  for (const preorder of preorders) {
-    const items = await db.all(
-      `SELECT pi.*, p.name AS product_name, p.sku AS product_sku
-       FROM preorder_items pi
-       JOIN products p ON pi.product_id = p.id
-       WHERE pi.preorder_id = ?;`,
-      [preorder.id]
+async function findOrCreateCustomer(connection, name, phone) {
+  const cleanName = String(name || '').trim();
+  const cleanPhone = String(phone || '').trim();
+  if (!cleanName) throw new AppError('Customer name is required.', 400, 'CUSTOMER_NAME_REQUIRED');
+  if (cleanPhone.length < 5) throw new AppError('A valid customer phone is required.', 400, 'CUSTOMER_PHONE_REQUIRED');
+  let customer = await connection.get('SELECT * FROM customers WHERE name = ? AND phone = ?;', [cleanName, cleanPhone]);
+  if (!customer) {
+    const result = await connection.run(
+      'INSERT INTO customers (name, phone) VALUES (?, ?);', [cleanName, cleanPhone]
     );
-    preorder.items = items;
+    customer = { id: result.lastID, name: cleanName, phone: cleanPhone };
   }
-
-  return preorders;
+  return customer;
 }
 
-/**
- * Manually updates preorder status.
- */
-export async function updatePreorderStatus(preorderId, status, adminUserId) {
-  const allowedStatuses = ['DEPOSIT_PAID_WAITING_STOCK', 'READY_FOR_PICKUP', 'PICKED_UP', 'CANCELLED', 'EXPIRED'];
-  if (!allowedStatuses.includes(status)) {
-    throw new Error('حالة الحجز غير صالحة.');
-  }
-
-  const preorder = await db.get(
-    'SELECT preorder_number, status FROM preorders WHERE id = ?;',
-    [preorderId]
-  );
-  if (!preorder) {
-    throw new Error('طلب الحجز المطلوب غير موجود.');
-  }
-
-  const oldStatus = preorder.status;
-
-  await db.run('BEGIN TRANSACTION;');
-  try {
-    await db.run(
-      'UPDATE preorders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;',
-      [status, preorderId]
-    );
-
-    await writeAuditLog({
-      userId: adminUserId,
-      actionType: 'PREORDER_STATUS_UPDATE',
-      entityType: 'preorders',
-      entityId: preorderId,
-      notes: `تم تعديل حالة الحجز رقم ${preorder.preorder_number} من ${oldStatus} إلى ${status}`
-    });
-
-    await db.run('COMMIT;');
-
-    return {
-      id: preorderId,
-      preorder_number: preorder.preorder_number,
-      old_status: oldStatus,
-      status
-    };
-  } catch (err) {
-    await db.run('ROLLBACK;');
-    throw err;
-  }
-}
-
-/**
- * Returns summary reporting metrics of preorder transactions.
- */
-export async function getPreordersReport() {
-  const summary = await db.get(`
-    SELECT
-      COUNT(*) AS total_count,
-      COALESCE(SUM(total_amount), 0) AS total_amount,
-      COALESCE(SUM(deposit_paid), 0) AS total_deposit_paid,
-      COALESCE(SUM(remaining_amount), 0) AS total_remaining_amount
-    FROM preorders;
-  `);
-
-  const breakdownRows = await db.all(`
-    SELECT status, COUNT(*) AS count, COALESCE(SUM(total_amount), 0) AS total_amount
-    FROM preorders
-    GROUP BY status;
-  `);
-
-  const preordersList = await listPreordersForAdmin();
-
+function preorderReceiptSnapshot({ receiptId, receiptNumber, preorder, items, payments, cashierName, type }) {
+  const pickup = type === 'preorder_pickup';
   return {
-    summary: {
-      total_count: summary.total_count,
-      total_amount: summary.total_amount,
-      total_deposit_paid: summary.total_deposit_paid,
-      total_remaining_amount: summary.total_remaining_amount
-    },
-    breakdown: breakdownRows,
-    preorders: preordersList
+    version: 2,
+    receiptId,
+    receiptNumber,
+    referenceType: type,
+    preorderId: preorder.id,
+    preorderNumber: preorder.preorder_number,
+    invoiceId: preorder.pickup_order_id || null,
+    invoiceNumber: preorder.invoice_number || null,
+    status: preorder.status,
+    cashierName,
+    customerName: preorder.customer_name_snapshot,
+    customerPhone: preorder.customer_phone_snapshot,
+    subtotal: preorder.subtotal,
+    discount: preorder.discount,
+    total: preorder.total_amount,
+    depositRequired: preorder.deposit_required,
+    depositPaid: preorder.deposit_paid,
+    remainingAmount: pickup ? 0 : preorder.remaining_amount,
+    pickupAmount: pickup ? preorder.pickup_amount : 0,
+    pickupMethod: preorder.pickup_method,
+    qrToken: pickup ? preorder.invoice_qr_token : preorder.qr_pickup_token,
+    items: items.map((item) => ({
+      productId: item.product_id,
+      productName: item.product_name_snapshot,
+      productSku: item.sku_snapshot,
+      priceTierName: item.price_tier_name_snapshot,
+      availabilityPolicy: item.availability_policy_snapshot,
+      depositPct: item.deposit_pct_snapshot,
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+      totalPrice: item.total_price
+    })),
+    payments: payments.map((payment) => ({
+      method: payment.method,
+      methodName: payment.methodSnapshot,
+      stage: pickup ? 'PREORDER_PICKUP' : 'PREORDER_DEPOSIT',
+      direction: 'IN', amount: payment.amount,
+      cashReceived: payment.cashReceived, changeAmount: payment.changeAmount,
+      referenceNumber: payment.referenceNumber, note: payment.note
+    }))
   };
 }
 
-/**
- * Scans a preorder QR token and returns the preorder and its items details.
- */
-export async function scanPreorderToken(token, cashierId) {
-  // 1. Validate open shift
-  const activeShift = await db.get(
-    "SELECT id FROM shifts WHERE user_id = ? AND status = 'OPEN';",
-    [cashierId]
-  );
-  if (!activeShift) {
-    throw new Error('لا يوجد شيفت مفتوح حالياً لتسجيل عمليات الاستلام. يرجى فتح شيفت أولاً.');
-  }
-
-  // 2. Lookup qr token
-  const qrRow = await db.get(
-    "SELECT * FROM qr_tokens WHERE token = ? AND type = 'preorder';",
-    [token]
-  );
-  if (!qrRow) {
-    throw new Error('رمز الاستلام الممسوح غير صحيح أو غير مسجل بالنظام.');
-  }
-
-  const preorderId = qrRow.reference_id;
-
-  // 3. Fetch preorder and customer details
-  const preorder = await db.get(
-    `SELECT p.*, c.name AS customer_name, c.phone AS customer_phone
-     FROM preorders p
-     JOIN customers c ON p.customer_id = c.id
-     WHERE p.id = ?;`,
-    [preorderId]
-  );
-
-  if (!preorder) {
-    throw new Error('لم يتم العثور على الحجز المرتبط بالرمز.');
-  }
-
-  // 4. Fetch preorder items
-  const items = await db.all(
-    `SELECT pi.*, p.name AS product_name, p.sku AS product_sku,
-            COALESCE((SELECT after_quantity FROM inventory_ledger WHERE product_id = p.id ORDER BY id DESC LIMIT 1), 0) AS stock
-     FROM preorder_items pi
-     JOIN products p ON pi.product_id = p.id
-     WHERE pi.preorder_id = ?;`,
-    [preorderId]
-  );
-
-  return {
-    preorder,
-    items
+export async function createPreorder(preorderData, cashierId, idempotencyKey) {
+  const items = aggregateItems(preorderData.items);
+  const discount = requirePiasters(preorderData.discount ?? 0, 'discount');
+  const depositPaid = requirePiasters(preorderData.depositPaid ?? preorderData.deposit_paid ?? 0, 'depositPaid');
+  const payload = {
+    customerName: String(preorderData.customerName || '').trim(),
+    customerPhone: String(preorderData.customerPhone || '').trim(),
+    items, discount, depositPaid,
+    pickupMethod: preorderData.pickupMethod || 'walk_in',
+    expectedPickupDate: preorderData.expectedPickupDate || null,
+    notes: preorderData.notes || null,
+    payments: preorderData.payments
   };
-}
-
-/**
- * Finalizes a preorder pickup checkout:
- * - Collects the remaining payment.
- * - Decrements product inventory stock.
- * - Converts the preorder to a completed sale invoice (orders record).
- * - Generates final receipt.
- */
-export async function pickupPreorder(preorderId, pickupData, cashierId) {
-  const { payments } = pickupData;
-
-  // 1. Validate active open shift
-  const activeShift = await db.get(
-    "SELECT id FROM shifts WHERE user_id = ? AND status = 'OPEN' ORDER BY id DESC LIMIT 1;",
-    [cashierId]
-  );
-  if (!activeShift) {
-    throw new Error('لا يوجد شيفت مفتوح حالياً لتسجيل عمليات الاستلام. يرجى فتح شيفت أولاً.');
-  }
-  const shiftId = activeShift.id;
-
-  // 2. Preorder Lookup and validation
-  const preorder = await db.get(
-    "SELECT * FROM preorders WHERE id = ?;",
-    [preorderId]
-  );
-  if (!preorder) {
-    throw new Error('طلب الحجز المطلوب غير موجود.');
-  }
-  if (preorder.status === 'PICKED_UP') {
-    throw new Error('تم استلام هذا الحجز مسبقاً.');
-  }
-  if (preorder.status === 'CANCELLED') {
-    throw new Error('هذا الحجز ملغي ولا يمكن تسليمه.');
-  }
-
-  // 3. Verify stock availability
-  const items = await db.all(
-    `SELECT pi.*, p.name AS product_name,
-            COALESCE((SELECT after_quantity FROM inventory_ledger WHERE product_id = p.id ORDER BY id DESC LIMIT 1), 0) AS stock
-     FROM preorder_items pi
-     JOIN products p ON pi.product_id = p.id
-     WHERE pi.preorder_id = ?;`,
-    [preorderId]
-  );
-
-  for (const item of items) {
-    if (item.stock < item.quantity) {
-      throw new Error(
-        `المخزون غير كافٍ لتسليم المنتج (${item.product_name}). المتاح حالياً: ${item.stock}، المطلوب: ${item.quantity}.`
-      );
-    }
-  }
-
-  // 4. Validate remaining payment total
-  const remaining = preorder.remaining_amount;
-  let paymentsSum = 0;
-  if (payments && payments.length > 0) {
-    paymentsSum = payments.reduce((acc, curr) => acc + (parseInt(curr.amount, 10) || 0), 0);
-  }
-
-  if (paymentsSum !== remaining) {
-    throw new Error(
-      `إجمالي مبالغ الدفع (${(paymentsSum / 100).toFixed(2)} ج.م) يجب أن يساوي تماماً المبلغ المتبقي وهو (${(remaining / 100).toFixed(2)} ج.م).`
-    );
-  }
-
-  await db.run('BEGIN TRANSACTION;');
-  try {
-    // 5. Create final sales order (invoice)
-    const date = new Date();
-    const cairoDateStr = date.toLocaleDateString('en-US', { timeZone: 'Africa/Cairo' });
-    const [month, day, year] = cairoDateStr.split('/');
-    const formattedDate = `${year}${month.padStart(2, '0')}${day.padStart(2, '0')}`;
-
-    const countRow = await db.get(
-      "SELECT COUNT(*) as count FROM orders WHERE created_at >= date('now', 'start of day');"
-    );
-    const sequence = (countRow.count + 1).toString().padStart(4, '0');
-    const invoiceNumber = `INV-${formattedDate}-${sequence}`;
-
-    const orderResult = await db.run(
-      `INSERT INTO orders (invoice_number, shift_id, cashier_id, customer_id, subtotal, discount, total, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`,
-      [invoiceNumber, shiftId, cashierId, preorder.customer_id, preorder.subtotal, preorder.discount, preorder.total_amount]
-    );
-    const orderId = orderResult.lastID;
-
-    // 6. Insert order items and decrement stock
-    for (const item of items) {
-      await db.run(
-        `INSERT INTO order_items (order_id, product_id, quantity, unit_price, price_tier_id, total_price, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`,
-        [orderId, item.product_id, item.quantity, item.unit_price, item.price_tier_id, item.total_price]
-      );
-
-      const beforeQty = item.stock;
-      const afterQty = beforeQty - item.quantity;
-
-      await db.run(
-        `INSERT INTO inventory_ledger (product_id, transaction_type, quantity_changed, before_quantity, after_quantity, user_id, shift_id, reference_type, reference_id, notes, created_at)
-         VALUES (?, 'SALE', ?, ?, ?, ?, ?, 'order', ?, ?, CURRENT_TIMESTAMP);`,
+  return withIdempotency(
+    { key: idempotencyKey, userId: cashierId, operation: 'PREORDER_CREATE', payload },
+    async (connection) => {
+      const shift = await requireOwnOpenShift(connection, cashierId);
+      const customer = await findOrCreateCustomer(connection, payload.customerName, payload.customerPhone);
+      let subtotal = 0;
+      let minimumDeposit = 0;
+      const detailedItems = [];
+      for (const item of items) {
+        const product = await connection.get(
+          `SELECT p.*,
+                  COALESCE((SELECT after_quantity FROM inventory_ledger il WHERE il.product_id = p.id ORDER BY il.id DESC LIMIT 1), 0) AS stock
+             FROM products p WHERE p.id = ?;`, [item.product_id]
+        );
+        if (!product || product.is_active !== 1 || product.can_be_sold !== 1) {
+          throw new AppError(`Product ${item.product_id} is unavailable.`, 409, 'PRODUCT_UNAVAILABLE');
+        }
+        if (product.availability_policy !== PRODUCT_POLICIES.STOCK_WITH_PREORDER_WHEN_OUT_OF_STOCK) {
+          throw new AppError(`${product.name} is configured as stock-only.`, 409, 'PRODUCT_NOT_PREORDER_ENABLED');
+        }
+        if (product.stock !== 0) {
+          throw new AppError(`${product.name} can be preordered only when physical stock is exactly zero.`, 409, 'PREORDER_REQUIRES_ZERO_STOCK');
+        }
+        const tier = await connection.get(
+          `SELECT pp.price, pt.name FROM product_prices pp JOIN price_tiers pt ON pt.id = pp.price_tier_id
+            WHERE pp.product_id = ? AND pp.price_tier_id = ? AND pt.is_active = 1;`,
+          [item.product_id, item.price_tier_id]
+        );
+        if (!tier) throw new AppError(`Active tier price is missing for ${product.name}.`, 409, 'PRICE_NOT_FOUND');
+        const totalPrice = tier.price * item.quantity;
+        subtotal += totalPrice;
+        minimumDeposit += Math.round(totalPrice * product.default_preorder_deposit_pct / 100);
+        detailedItems.push({
+          ...item, unit_price: tier.price, total_price: totalPrice,
+          product_name_snapshot: product.name, sku_snapshot: product.sku,
+          price_tier_name_snapshot: tier.name,
+          availability_policy_snapshot: product.availability_policy,
+          deposit_pct_snapshot: product.default_preorder_deposit_pct,
+          preorder_instructions_snapshot: product.preorder_instructions
+        });
+      }
+      if (discount > subtotal) throw new AppError('Discount cannot exceed subtotal.', 400, 'DISCOUNT_EXCEEDS_SUBTOTAL');
+      const total = subtotal - discount;
+      if (discount > 0 && subtotal > 0) minimumDeposit = Math.round(minimumDeposit * total / subtotal);
+      if (depositPaid < minimumDeposit) throw new AppError('Deposit is below the required product-policy minimum.', 400, 'DEPOSIT_BELOW_MINIMUM');
+      if (depositPaid > total) throw new AppError('Deposit cannot exceed preorder total.', 400, 'DEPOSIT_EXCEEDS_TOTAL');
+      const normalizedPayments = await validateSplitPayments(preorderData.payments, depositPaid, connection);
+      const [preorderNumber, receiptNumber] = await Promise.all([
+        nextDocumentNumber(connection, 'preorder'), nextDocumentNumber(connection, 'receipt')
+      ]);
+      const pickupToken = generateSecureToken('preorder');
+      const result = await connection.run(
+        `INSERT INTO preorders
+         (preorder_number, shift_id, cashier_id, customer_id, status, subtotal, discount,
+          total_amount, deposit_required, deposit_paid, remaining_amount, pickup_method,
+          expected_pickup_date, notes, qr_pickup_token, customer_name_snapshot,
+          customer_phone_snapshot, preorder_instructions_snapshot)
+         VALUES (?, ?, ?, ?, 'DEPOSIT_PAID_WAITING_STOCK', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
-          item.product_id,
-          -item.quantity,
-          beforeQty,
-          afterQty,
-          cashierId,
-          shiftId,
-          orderId,
-          `استلام حجز مسبق رقم ${preorder.preorder_number}`
+          preorderNumber, shift.id, cashierId, customer.id, subtotal, discount, total,
+          minimumDeposit, depositPaid, total - depositPaid, payload.pickupMethod,
+          payload.expectedPickupDate, payload.notes, pickupToken, customer.name, customer.phone,
+          detailedItems.map((item) => item.preorder_instructions_snapshot).filter(Boolean).join('\n') || null
         ]
       );
-    }
-
-    // 7. Insert the final pickup payment
-    if (payments && payments.length > 0) {
-      for (const p of payments) {
-        await db.run(
-          `INSERT INTO payments (shift_id, cashier_id, reference_type, reference_id, payment_method, amount, created_at)
-           VALUES (?, ?, 'order', ?, ?, ?, CURRENT_TIMESTAMP);`,
-          [shiftId, cashierId, orderId, p.method, p.amount]
+      const preorderId = result.lastID;
+      await saveSecureToken(connection, 'preorder', preorderId, pickupToken);
+      await connection.run("INSERT OR IGNORE INTO qr_tokens (token, type, reference_id) VALUES (?, 'preorder', ?);", [pickupToken, preorderId]);
+      for (const item of detailedItems) {
+        await connection.run(
+          `INSERT INTO preorder_items
+           (preorder_id, product_id, quantity, unit_price, price_tier_id, total_price,
+            product_name_snapshot, sku_snapshot, price_tier_name_snapshot,
+            availability_policy_snapshot, deposit_pct_snapshot)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          [
+            preorderId, item.product_id, item.quantity, item.unit_price, item.price_tier_id, item.total_price,
+            item.product_name_snapshot, item.sku_snapshot, item.price_tier_name_snapshot,
+            item.availability_policy_snapshot, item.deposit_pct_snapshot
+          ]
+        );
+        await connection.run(
+          'UPDATE products SET open_preorder_quantity = open_preorder_quantity + ? WHERE id = ?;',
+          [item.quantity, item.product_id]
         );
       }
-    }
-
-    // 8. Copy original preorder deposit payments to the order
-    const depositPayments = await db.all(
-      "SELECT * FROM payments WHERE reference_type = 'preorder' AND reference_id = ?;",
-      [preorderId]
-    );
-    for (const dp of depositPayments) {
-      await db.run(
-        `INSERT INTO payments (shift_id, cashier_id, reference_type, reference_id, payment_method, amount, created_at)
-         VALUES (?, ?, 'order', ?, ?, ?, ?);`,
-        [dp.shift_id, dp.cashier_id, orderId, dp.payment_method, dp.amount, dp.created_at]
+      await insertPayments(connection, {
+        shiftId: shift.id, cashierId, referenceType: 'preorder', referenceId: preorderId, stage: 'PREORDER_DEPOSIT'
+      }, normalizedPayments);
+      const receipt = await connection.run(
+        `INSERT INTO receipts (receipt_number, reference_type, reference_id, printed_by, print_count, qr_token)
+         VALUES (?, 'preorder_deposit', ?, ?, 1, ?);`, [receiptNumber, preorderId, cashierId, pickupToken]
       );
+      const cashier = await connection.get('SELECT name FROM users WHERE id = ?;', [cashierId]);
+      const preorder = {
+        id: preorderId, preorder_number: preorderNumber, status: 'DEPOSIT_PAID_WAITING_STOCK',
+        customer_name_snapshot: customer.name, customer_phone_snapshot: customer.phone,
+        subtotal, discount, total_amount: total, deposit_required: minimumDeposit,
+        deposit_paid: depositPaid, remaining_amount: total - depositPaid,
+        pickup_method: payload.pickupMethod, qr_pickup_token: pickupToken
+      };
+      const snapshot = preorderReceiptSnapshot({
+        receiptId: receipt.lastID, receiptNumber, preorder, items: detailedItems,
+        payments: normalizedPayments, cashierName: cashier.name, type: 'preorder_deposit'
+      });
+      await connection.run('UPDATE receipts SET snapshot_json = ? WHERE id = ?;', [JSON.stringify(snapshot), receipt.lastID]);
+      await writeAuditLog({
+        userId: cashierId, shiftId: shift.id, actionType: 'PREORDER_CREATE', entityType: 'preorders', entityId: preorderId,
+        afterValues: { preorderNumber, total, depositPaid, physicalStockChanged: false }, connection
+      });
+      return {
+        statusCode: 201,
+        data: {
+          ...preorder, receipt_id: receipt.lastID, receipt_number: receiptNumber,
+          customer_id: customer.id, customer_name: customer.name, customer_phone: customer.phone,
+          qr_pickup_token: pickupToken, items: detailedItems
+        }
+      };
     }
+  );
+}
 
-    // 9. Update preorder status
-    await db.run(
-      `UPDATE preorders
-       SET status = 'PICKED_UP',
-           deposit_paid = deposit_paid + ?,
-           remaining_amount = 0,
-           pickup_order_id = ?,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?;`,
-      [remaining, orderId, preorderId]
-    );
-
-    // 10. Generate final pickup receipt
-    const recCountRow = await db.get(
-      "SELECT COUNT(*) as count FROM receipts WHERE created_at >= date('now', 'start of day');"
-    );
-    const recSequence = (recCountRow.count + 1).toString().padStart(4, '0');
-    const receiptNumber = `REC-${formattedDate}-${recSequence}`;
-
-    const receiptResult = await db.run(
-      `INSERT INTO receipts (receipt_number, reference_type, reference_id, printed_by, print_count, last_printed_at, created_at)
-       VALUES (?, 'preorder_pickup', ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);`,
-      [receiptNumber, preorderId, cashierId]
-    );
-    const receiptId = receiptResult.lastID;
-
-    // 11. Write Audit Log
-    await writeAuditLog({
-      userId: cashierId,
-      actionType: 'PREORDER_PICKUP',
-      entityType: 'preorders',
-      entityId: preorderId,
-      notes: `تم تسليم الحجز المسبق رقم ${preorder.preorder_number} بنجاح. الفاتورة المرتبطة: ${invoiceNumber}`
-    });
-
-    await db.run('COMMIT;');
-
-    return {
-      preorder_id: preorderId,
-      order_id: orderId,
-      invoice_number: invoiceNumber,
-      receipt_id: receiptId,
-      receipt_number: receiptNumber
-    };
-
-  } catch (err) {
-    await db.run('ROLLBACK;');
-    throw err;
+export async function listPreordersForAdmin(filters = {}, connection = db) {
+  let sql = `SELECT pr.*, pr.customer_name_snapshot AS customer_name,
+                    pr.customer_phone_snapshot AS customer_phone, u.name AS cashier_name
+               FROM preorders pr JOIN users u ON u.id = pr.cashier_id WHERE 1 = 1`;
+  const params = [];
+  if (filters.status) { sql += ' AND pr.status = ?'; params.push(filters.status); }
+  if (filters.q?.trim()) {
+    const value = `%${filters.q.trim()}%`;
+    sql += ' AND (pr.preorder_number LIKE ? OR pr.customer_name_snapshot LIKE ? OR pr.customer_phone_snapshot LIKE ?)';
+    params.push(value, value, value);
   }
+  if (filters.cashierId) { sql += ' AND pr.cashier_id = ?'; params.push(filters.cashierId); }
+  sql += ' ORDER BY pr.created_at DESC;';
+  const rows = await connection.all(sql, params);
+  for (const preorder of rows) {
+    preorder.items = await connection.all(
+      `SELECT pi.*, pi.product_name_snapshot AS product_name, pi.sku_snapshot AS product_sku,
+              p.availability_policy, p.open_preorder_quantity,
+              COALESCE((SELECT after_quantity FROM inventory_ledger il WHERE il.product_id = p.id ORDER BY il.id DESC LIMIT 1), 0) AS stock_on_hand
+         FROM preorder_items pi JOIN products p ON p.id = pi.product_id WHERE pi.preorder_id = ? ORDER BY pi.id;`,
+      [preorder.id]
+    );
+  }
+  return rows;
+}
+
+export async function searchPreordersForCashier(query, userId, connection = db) {
+  const value = String(query || '').trim();
+  if (!value) return [];
+  return connection.all(
+    `SELECT pr.id, pr.preorder_number, pr.status, pr.customer_name_snapshot AS customer_name,
+            pr.customer_phone_snapshot AS customer_phone, pr.total_amount, pr.deposit_paid,
+            pr.remaining_amount, pr.created_at
+       FROM preorders pr
+      WHERE pr.preorder_number = ? OR pr.customer_phone_snapshot = ?
+      ORDER BY pr.created_at DESC LIMIT 20;`,
+    [value, value]
+  );
+}
+
+export async function updatePreorderStatus(preorderId, status, adminUserId) {
+  const id = requireInteger(Number(preorderId), 'preorderId', { min: 1 });
+  return withTransaction(async (connection) => {
+    const preorder = await connection.get('SELECT * FROM preorders WHERE id = ?;', [id]);
+    if (!preorder) throw new AppError('Preorder not found.', 404, 'PREORDER_NOT_FOUND');
+    if (status === 'PICKED_UP') throw new AppError('PICKED_UP is only allowed through the pickup workflow.', 409, 'PICKUP_WORKFLOW_REQUIRED');
+    if (!TRANSITIONS[preorder.status]?.has(status)) {
+      throw new AppError(`Transition ${preorder.status} -> ${status} is not allowed.`, 409, 'INVALID_PREORDER_TRANSITION');
+    }
+    await connection.run('UPDATE preorders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;', [status, id]);
+    if (OPEN_STATUSES.includes(preorder.status) && !OPEN_STATUSES.includes(status)) {
+      const items = await connection.all('SELECT product_id, quantity FROM preorder_items WHERE preorder_id = ?;', [id]);
+      for (const item of items) {
+        const update = await connection.run(
+          `UPDATE products SET open_preorder_quantity = open_preorder_quantity - ?
+            WHERE id = ? AND open_preorder_quantity >= ?;`,
+          [item.quantity, item.product_id, item.quantity]
+        );
+        if (update.changes !== 1) throw new AppError('Open preorder quantity is inconsistent.', 409, 'OPEN_PREORDER_QUANTITY_INCONSISTENT');
+      }
+    }
+    await writeAuditLog({
+      userId: adminUserId, actionType: 'PREORDER_STATUS_UPDATE', entityType: 'preorders', entityId: id,
+      beforeValues: { status: preorder.status }, afterValues: { status }, connection
+    });
+    return { id, preorder_number: preorder.preorder_number, old_status: preorder.status, status };
+  });
+}
+
+export async function getPreordersReport() {
+  const rows = await listPreordersForAdmin();
+  return {
+    summary: {
+      total_count: rows.length,
+      total_amount: rows.reduce((sum, row) => sum + row.total_amount, 0),
+      total_deposit_paid: rows.reduce((sum, row) => sum + row.deposit_paid, 0),
+      total_remaining_amount: rows.reduce((sum, row) => sum + row.remaining_amount, 0)
+    },
+    preorders: rows
+  };
+}
+
+export async function scanPreorderToken(token, cashierId, connection = db) {
+  const clean = String(token || '').trim();
+  const mapping = await connection.get(
+    "SELECT reference_id FROM secure_tokens WHERE token = ? AND token_type = 'preorder';", [clean]
+  );
+  if (!mapping) throw new AppError('Preorder QR token is invalid.', 404, 'PREORDER_TOKEN_NOT_FOUND');
+  const preorder = await connection.get(
+    `SELECT pr.*, pr.customer_name_snapshot AS customer_name, pr.customer_phone_snapshot AS customer_phone
+       FROM preorders pr WHERE pr.id = ?;`, [mapping.reference_id]
+  );
+  if (!preorder) throw new AppError('Preorder not found.', 404, 'PREORDER_NOT_FOUND');
+  const items = await connection.all(
+    `SELECT pi.*, pi.product_name_snapshot AS product_name, pi.sku_snapshot AS product_sku,
+            COALESCE((SELECT after_quantity FROM inventory_ledger il WHERE il.product_id = pi.product_id ORDER BY il.id DESC LIMIT 1), 0) AS stock
+       FROM preorder_items pi WHERE pi.preorder_id = ? ORDER BY pi.id;`, [preorder.id]
+  );
+  return { preorder, items };
+}
+
+export async function pickupPreorder(preorderId, pickupData, cashierId, idempotencyKey) {
+  const id = requireInteger(Number(preorderId), 'preorderId', { min: 1 });
+  const payload = { preorderId: id, payments: pickupData.payments };
+  return withIdempotency(
+    { key: idempotencyKey, userId: cashierId, operation: 'PREORDER_PICKUP', payload },
+    async (connection) => {
+      const shift = await requireOwnOpenShift(connection, cashierId);
+      const preorder = await connection.get('SELECT * FROM preorders WHERE id = ?;', [id]);
+      if (!preorder) throw new AppError('Preorder not found.', 404, 'PREORDER_NOT_FOUND');
+      if (preorder.status !== 'READY_FOR_PICKUP') {
+        throw new AppError('Only a READY_FOR_PICKUP preorder can be picked up.', 409, 'PREORDER_NOT_READY');
+      }
+      const items = await connection.all('SELECT * FROM preorder_items WHERE preorder_id = ? ORDER BY id;', [id]);
+      for (const item of items) {
+        const stock = await connection.get(
+          'SELECT after_quantity FROM inventory_ledger WHERE product_id = ? ORDER BY id DESC LIMIT 1;', [item.product_id]
+        );
+        item.stock = stock?.after_quantity || 0;
+        if (item.stock < item.quantity) {
+          throw new AppError(`Insufficient stock for ${item.product_name_snapshot}.`, 409, 'INSUFFICIENT_PICKUP_STOCK');
+        }
+      }
+      const normalizedPayments = await validateSplitPayments(pickupData.payments, preorder.remaining_amount, connection);
+      const [invoiceNumber, receiptNumber] = await Promise.all([
+        nextDocumentNumber(connection, 'invoice'), nextDocumentNumber(connection, 'receipt')
+      ]);
+      const orderResult = await connection.run(
+        `INSERT INTO orders
+         (invoice_number, shift_id, cashier_id, customer_id, subtotal, discount, total,
+          origin, status, preorder_id, customer_name_snapshot, customer_phone_snapshot)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'PREORDER_PICKUP', 'COMPLETED', ?, ?, ?);`,
+        [
+          invoiceNumber, shift.id, cashierId, preorder.customer_id, preorder.subtotal, preorder.discount,
+          preorder.total_amount, id, preorder.customer_name_snapshot, preorder.customer_phone_snapshot
+        ]
+      );
+      const invoiceToken = await saveSecureToken(connection, 'invoice', orderResult.lastID);
+      await connection.run('UPDATE orders SET qr_token = ? WHERE id = ?;', [invoiceToken, orderResult.lastID]);
+      for (const item of items) {
+        await connection.run(
+          `INSERT INTO order_items
+           (order_id, product_id, quantity, unit_price, price_tier_id, total_price,
+            product_name_snapshot, sku_snapshot, price_tier_name_snapshot, availability_policy_snapshot)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          [
+            orderResult.lastID, item.product_id, item.quantity, item.unit_price, item.price_tier_id, item.total_price,
+            item.product_name_snapshot, item.sku_snapshot, item.price_tier_name_snapshot, item.availability_policy_snapshot
+          ]
+        );
+        await connection.run(
+          `INSERT INTO inventory_ledger
+           (product_id, transaction_type, quantity_changed, before_quantity, after_quantity,
+            reference_type, reference_id, user_id, shift_id, notes)
+           VALUES (?, 'PREORDER_PICKUP', ?, ?, ?, 'order', ?, ?, ?, ?);`,
+          [
+            item.product_id, -item.quantity, item.stock, item.stock - item.quantity,
+            orderResult.lastID, cashierId, shift.id, `Pickup ${preorder.preorder_number}`
+          ]
+        );
+        const decrement = await connection.run(
+          `UPDATE products SET open_preorder_quantity = open_preorder_quantity - ?
+            WHERE id = ? AND open_preorder_quantity >= ?;`,
+          [item.quantity, item.product_id, item.quantity]
+        );
+        if (decrement.changes !== 1) throw new AppError('Open preorder quantity is inconsistent.', 409, 'OPEN_PREORDER_QUANTITY_INCONSISTENT');
+      }
+      await insertPayments(connection, {
+        shiftId: shift.id, cashierId, referenceType: 'order', referenceId: orderResult.lastID, stage: 'PREORDER_PICKUP'
+      }, normalizedPayments);
+      const transition = await connection.run(
+        `UPDATE preorders SET status = 'PICKED_UP', remaining_amount = 0, pickup_order_id = ?,
+         pickup_shift_id = ?, pickup_cashier_id = ?, pickup_amount = ?, picked_up_at = CURRENT_TIMESTAMP,
+         updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'READY_FOR_PICKUP';`,
+        [orderResult.lastID, shift.id, cashierId, preorder.remaining_amount, id]
+      );
+      if (transition.changes !== 1) throw new AppError('Preorder was already changed by another request.', 409, 'PREORDER_STATE_CONFLICT');
+      const receipt = await connection.run(
+        `INSERT INTO receipts (receipt_number, reference_type, reference_id, printed_by, print_count, qr_token)
+         VALUES (?, 'preorder_pickup', ?, ?, 1, ?);`, [receiptNumber, id, cashierId, invoiceToken]
+      );
+      const cashier = await connection.get('SELECT name FROM users WHERE id = ?;', [cashierId]);
+      const snapshotPreorder = {
+        ...preorder, status: 'PICKED_UP', pickup_order_id: orderResult.lastID,
+        pickup_amount: preorder.remaining_amount, invoice_number: invoiceNumber, invoice_qr_token: invoiceToken
+      };
+      const snapshot = preorderReceiptSnapshot({
+        receiptId: receipt.lastID, receiptNumber, preorder: snapshotPreorder,
+        items, payments: normalizedPayments, cashierName: cashier.name, type: 'preorder_pickup'
+      });
+      await connection.run('UPDATE receipts SET snapshot_json = ? WHERE id = ?;', [JSON.stringify(snapshot), receipt.lastID]);
+      await writeAuditLog({
+        userId: cashierId, shiftId: shift.id, actionType: 'PREORDER_PICKUP', entityType: 'preorders', entityId: id,
+        afterValues: { orderId: orderResult.lastID, invoiceNumber, pickupAmount: preorder.remaining_amount }, connection
+      });
+      return {
+        statusCode: 200,
+        data: {
+          preorder_id: id, order_id: orderResult.lastID, invoice_number: invoiceNumber,
+          invoice_qr_token: invoiceToken, receipt_id: receipt.lastID, receipt_number: receiptNumber,
+          pickup_amount: preorder.remaining_amount
+        }
+      };
+    }
+  );
 }

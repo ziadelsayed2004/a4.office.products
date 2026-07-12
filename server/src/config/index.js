@@ -53,7 +53,7 @@ const config = {
   },
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // Default 15 minutes (15 * 60 * 1000)
-    max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10) // Default 100 requests per window
+    max: parseInt(process.env.RATE_LIMIT_MAX || '1500', 10) // Scanner-heavy authenticated POS traffic
   }
 };
 

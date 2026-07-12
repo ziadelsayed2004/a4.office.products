@@ -15,6 +15,8 @@ router.post('/current/cash-movement', shiftsController.registerCashMovementContr
 
 // Admin-only review endpoints
 router.get('/pending-review', requireRole(['Admin']), shiftsController.getPendingReviewShiftsController);
+router.get('/all', requireRole(['Admin']), shiftsController.listAllShiftsController);
+router.get('/:id', requireRole(['Admin']), shiftsController.getShiftDetailsController);
 router.post('/:id/approve', requireRole(['Admin']), shiftsController.approveShiftCloseController);
 router.post('/:id/reject', requireRole(['Admin']), shiftsController.rejectShiftCloseController);
 

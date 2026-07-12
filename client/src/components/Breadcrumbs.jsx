@@ -9,6 +9,7 @@ const routeLabels = {
   '/pos': 'nav.pos',
   '/shift-summary': 'nav.currentShift',
   '/receipts': 'nav.receipts',
+  '/invoices': 'nav.invoices',
   '/products': 'nav.products',
   '/categories': 'nav.categories',
   '/price-tiers': 'nav.priceTiers',

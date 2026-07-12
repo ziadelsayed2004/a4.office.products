@@ -1,161 +1,56 @@
 import * as shiftsService from './shifts.service.js';
 
-export async function openShiftController(req, res, next) {
-  try {
-    const userId = req.user.id;
-    const { openingCash } = req.body;
-
-    if (openingCash === undefined || openingCash === null) {
-      return res.status(400).json({
-        error: 'مبلغ عهدة البداية مطلوب لفتح الوردية.',
-        code: 'SHIFT_OPEN_FAILED'
-      });
-    }
-
-    const result = await shiftsService.openShift(userId, openingCash);
-    return res.status(200).json({
-      status: 'success',
-      data: result
-    });
-  } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'SHIFT_OPEN_FAILED'
-    });
-  }
+function failure(res, error, fallback) {
+  return res.status(error.status || 400).json({ error: error.message, code: error.code || fallback });
 }
 
-export async function getCurrentShiftController(req, res, next) {
+export async function openShiftController(req, res) {
   try {
-    const userId = req.user.id;
-    const shift = await shiftsService.getCurrentShift(userId);
-    return res.status(200).json({
-      status: 'success',
-      data: shift
-    });
-  } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'GET_SHIFT_FAILED'
-    });
-  }
+    return res.status(200).json({ status: 'success', data: await shiftsService.openShift(req.user.id, req.body.openingCash) });
+  } catch (error) { return failure(res, error, 'SHIFT_OPEN_FAILED'); }
 }
 
-export async function getCurrentShiftSummaryController(req, res, next) {
-  try {
-    const userId = req.user.id;
-    const summary = await shiftsService.getCurrentShiftSummary(userId);
-    return res.status(200).json({
-      status: 'success',
-      data: summary
-    });
-  } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'GET_SHIFT_SUMMARY_FAILED'
-    });
-  }
+export async function getCurrentShiftController(req, res) {
+  try { return res.status(200).json({ status: 'success', data: await shiftsService.getCurrentShift(req.user.id) }); }
+  catch (error) { return failure(res, error, 'GET_SHIFT_FAILED'); }
 }
 
-export async function requestCloseShiftController(req, res, next) {
-  try {
-    const userId = req.user.id;
-    const { actualClosingCash } = req.body;
-
-    if (actualClosingCash === undefined || actualClosingCash === null) {
-      return res.status(400).json({
-        error: 'مبلغ العهدة الفعلية مطلوب لتقديم طلب إغلاق الوردية.',
-        code: 'SHIFT_CLOSE_REQUEST_FAILED'
-      });
-    }
-
-    const shift = await shiftsService.requestCloseShift(userId, actualClosingCash);
-    return res.status(200).json({
-      status: 'success',
-      data: shift
-    });
-  } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'SHIFT_CLOSE_REQUEST_FAILED'
-    });
-  }
+export async function getCurrentShiftSummaryController(req, res) {
+  try { return res.status(200).json({ status: 'success', data: await shiftsService.getCurrentShiftSummary(req.user.id) }); }
+  catch (error) { return failure(res, error, 'GET_SHIFT_SUMMARY_FAILED'); }
 }
 
-export async function getPendingReviewShiftsController(req, res, next) {
-  try {
-    const shifts = await shiftsService.getPendingReviewShifts();
-    return res.status(200).json({
-      status: 'success',
-      data: shifts
-    });
-  } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'GET_PENDING_SHIFTS_FAILED'
-    });
-  }
+export async function requestCloseShiftController(req, res) {
+  try { return res.status(200).json({ status: 'success', data: await shiftsService.requestCloseShift(req.user.id, req.body) }); }
+  catch (error) { return failure(res, error, 'SHIFT_CLOSE_REQUEST_FAILED'); }
 }
 
-export async function approveShiftCloseController(req, res, next) {
-  try {
-    const adminId = req.user.id;
-    const { id } = req.params;
-    const { adminNotes } = req.body;
-
-    const shift = await shiftsService.approveShiftClose(adminId, parseInt(id), adminNotes);
-    return res.status(200).json({
-      status: 'success',
-      data: shift
-    });
-  } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'SHIFT_APPROVE_FAILED'
-    });
-  }
+export async function getPendingReviewShiftsController(req, res) {
+  try { return res.status(200).json({ status: 'success', data: await shiftsService.getPendingReviewShifts() }); }
+  catch (error) { return failure(res, error, 'GET_PENDING_SHIFTS_FAILED'); }
 }
 
-export async function rejectShiftCloseController(req, res, next) {
-  try {
-    const adminId = req.user.id;
-    const { id } = req.params;
-    const { adminNotes } = req.body;
-
-    const shift = await shiftsService.rejectShiftClose(adminId, parseInt(id), adminNotes);
-    return res.status(200).json({
-      status: 'success',
-      data: shift
-    });
-  } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'SHIFT_REJECT_FAILED'
-    });
-  }
+export async function approveShiftCloseController(req, res) {
+  try { return res.status(200).json({ status: 'success', data: await shiftsService.approveShiftClose(req.user.id, req.params.id, req.body.adminNotes) }); }
+  catch (error) { return failure(res, error, 'SHIFT_APPROVE_FAILED'); }
 }
 
-export async function registerCashMovementController(req, res, next) {
-  try {
-    const userId = req.user.id;
-    const { type, amount, notes } = req.body;
+export async function rejectShiftCloseController(req, res) {
+  try { return res.status(200).json({ status: 'success', data: await shiftsService.rejectShiftClose(req.user.id, req.params.id, req.body.adminNotes || req.body.reason) }); }
+  catch (error) { return failure(res, error, 'SHIFT_REJECT_FAILED'); }
+}
 
-    if (!type || amount === undefined || amount === null) {
-      return res.status(400).json({
-        error: 'نوع الحركة والمبلغ مطلوبان لتسجيل الحركة النقدية.',
-        code: 'CASH_MOVEMENT_FAILED'
-      });
-    }
+export async function registerCashMovementController(req, res) {
+  try { return res.status(200).json({ status: 'success', data: await shiftsService.registerCashMovement(req.user.id, req.body) }); }
+  catch (error) { return failure(res, error, 'CASH_MOVEMENT_FAILED'); }
+}
 
-    const result = await shiftsService.registerCashMovement(userId, { type, amountEgp: amount, notes });
-    return res.status(200).json({
-      status: 'success',
-      data: result
-    });
-  } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'CASH_MOVEMENT_FAILED'
-    });
-  }
+export async function listAllShiftsController(req, res) {
+  try { return res.status(200).json({ status: 'success', data: await shiftsService.listAllShifts(req.query) }); }
+  catch (error) { return failure(res, error, 'SHIFT_LIST_FAILED'); }
+}
+
+export async function getShiftDetailsController(req, res) {
+  try { return res.status(200).json({ status: 'success', data: await shiftsService.getShiftDetails(req.params.id) }); }
+  catch (error) { return failure(res, error, 'SHIFT_DETAILS_FAILED'); }
 }

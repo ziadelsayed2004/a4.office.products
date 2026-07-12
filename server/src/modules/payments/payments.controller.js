@@ -31,3 +31,21 @@ export async function updatePaymentMethodsController(req, res, next) {
     });
   }
 }
+
+export async function createPaymentMethodController(req, res) {
+  try {
+    const method = await paymentsService.createPaymentMethod(req.body, req.user.id);
+    return res.status(201).json({ status: 'success', data: method });
+  } catch (error) {
+    return res.status(error.status || 400).json({ error: error.message, code: error.code || 'CREATE_PAYMENT_METHOD_FAILED' });
+  }
+}
+
+export async function updatePaymentMethodController(req, res) {
+  try {
+    const method = await paymentsService.updatePaymentMethod(req.params.id, req.body, req.user.id);
+    return res.status(200).json({ status: 'success', data: method });
+  } catch (error) {
+    return res.status(error.status || 400).json({ error: error.message, code: error.code || 'UPDATE_PAYMENT_METHOD_FAILED' });
+  }
+}
