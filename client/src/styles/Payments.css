@@ -1,6 +1,7 @@
 .metric-card__copy--fill {
   flex: 1;
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
 }
 
