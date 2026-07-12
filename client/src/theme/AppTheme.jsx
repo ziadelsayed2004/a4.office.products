@@ -6,9 +6,10 @@ import createCache from '@emotion/cache';
 import { prefixer } from 'stylis';
 
 // Create Emotion cache for RTL
+const rtlPluginFunc = typeof rtlPlugin === 'function' ? rtlPlugin : (rtlPlugin.default || rtlPlugin);
 const cacheRtl = createCache({
   key: 'muirtl',
-  stylisPlugins: [rtlPlugin.default || rtlPlugin],
+  stylisPlugins: [prefixer, rtlPluginFunc],
   prepend: true,
 });
 
@@ -112,7 +113,20 @@ export function AppTheme({ children }) {
     components: {
       MuiCssBaseline: {
         styleOverrides: {
-          html: { direction: 'rtl' },
+          html: {
+            direction: 'rtl',
+            '--a4-field-bg': c.paper,
+            '--a4-field-bg-hover': c.paper,
+            '--a4-field-bg-disabled': mode === 'light' ? '#edf1f5' : '#1d2a39',
+            '--a4-field-border': c.border,
+            '--a4-field-border-hover': c.muted,
+            '--a4-field-label-bg': c.paper,
+            '--a4-field-text': c.text,
+            '--a4-field-placeholder': c.muted,
+            '--a4-field-focus': c.primary,
+            '--a4-field-focus-ring': `0 0 0 3px ${alpha(c.primary, mode === 'light' ? 0.1 : 0.16)}`,
+            '--a4-field-error': '#d64242',
+          },
           body: {
             direction: 'rtl',
             textAlign: 'right',
@@ -161,53 +175,53 @@ export function AppTheme({ children }) {
       MuiOutlinedInput: {
         styleOverrides: {
           root: {
-            minHeight: 46,
-            borderRadius: 4,
-            backgroundColor: c.paper,
+            minHeight: 'var(--a4-field-height, 46px)',
+            borderRadius: 'var(--a4-field-radius, 4px)',
+            backgroundColor: 'var(--a4-field-bg)',
             transition: 'background-color 160ms ease, box-shadow 180ms ease, transform 180ms ease',
             '& .MuiOutlinedInput-notchedOutline': {
-              borderColor: c.border,
+              borderColor: 'var(--a4-field-border)',
               transition: 'border-color 160ms ease, border-width 160ms ease',
             },
-            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: c.strong },
+            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--a4-field-border-hover)' },
             '&.Mui-focused': {
-              boxShadow: `0 0 0 3px ${alpha(c.primary, mode === 'light' ? 0.1 : 0.16)}`,
+              boxShadow: 'var(--a4-field-focus-ring)', // 0 0 0 3px
             },
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: c.primary,
+              borderColor: 'var(--a4-field-focus)',
               borderWidth: 2,
             },
-            '&.Mui-error .MuiOutlinedInput-notchedOutline': { borderColor: '#d64242' },
-            '&.Mui-disabled': { backgroundColor: c.alt },
+            '&.Mui-error .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--a4-field-error)' },
+            '&.Mui-disabled': { backgroundColor: 'var(--a4-field-bg-disabled)' },
           },
           input: {
-            padding: '11px 14px',
+            padding: 'var(--a4-field-padding-y, 11px) var(--a4-field-padding-x, 14px)',
             minWidth: 0,
           },
-          inputSizeSmall: { padding: '11px 14px' },
+          inputSizeSmall: { padding: 'var(--a4-field-padding-y, 11px) var(--a4-field-padding-x, 14px)' },
           multiline: { minHeight: 'auto', padding: '10px 14px' },
         },
       },
       MuiInputLabel: {
         styleOverrides: {
           root: {
-            color: c.muted,
+            color: 'var(--a4-field-placeholder)',
             fontFamily,
-            fontSize: '.84rem',
+            fontSize: 'var(--a4-field-label-size, .84rem)',
             fontWeight: 600,
             lineHeight: 1.5,
             transition: 'color 160ms ease, transform 180ms cubic-bezier(.4,0,.2,1), max-width 180ms ease',
-            '&.Mui-focused': { color: c.primary, fontWeight: 700 },
-            '&.Mui-error': { color: '#d64242' },
-            '&.Mui-disabled': { color: c.muted },
+            '&.Mui-focused': { color: 'var(--a4-field-focus)', fontWeight: 700 },
+            '&.Mui-error': { color: 'var(--a4-field-error)' },
+            '&.Mui-disabled': { color: 'var(--a4-field-placeholder)' },
             '&.MuiInputLabel-shrink': {
-              backgroundColor: c.paper,
+              backgroundColor: 'var(--a4-field-label-bg)',
               padding: '0 6px',
               marginInlineStart: -4,
               zIndex: 1,
             },
           },
-          asterisk: { color: '#d64242', marginInlineStart: 3 },
+          asterisk: { color: 'var(--a4-field-error)', marginInlineStart: 3 },
         },
       },
       MuiFormLabel: {

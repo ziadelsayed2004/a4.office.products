@@ -15,74 +15,7 @@
 .metric-card__hint { display: block; margin-top: 3px; color: var(--a4-muted); font-size: .65rem; }
 
 
-.field {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding-top: 2px;
-}
 
-.field > .MuiTextField-root,
-.field > .MuiFormControl-root {
-  width: 100%;
-  min-width: 0;
-}
-
-.field__external-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 20px;
-  margin-bottom: 7px;
-  color: var(--a4-text);
-  font-size: .78rem;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-.field__required,
-.MuiFormLabel-asterisk {
-  color: #d64242;
-}
-
-.field__hint,
-.field__error {
-  display: block;
-  margin-top: 6px;
-  padding-inline: 2px;
-  font-size: .68rem;
-  line-height: 1.6;
-}
-
-.field__hint { color: var(--a4-muted); }
-.field__error { color: #d64242; }
-
-/* Native MUI notch, mirrored for Arabic RTL. */
-.field .MuiInputLabel-root {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: calc(100% - 48px);
-}
-
-.field .MuiInputLabel-root.MuiInputLabel-shrink {
-  max-width: calc(133% - 48px);
-}
-
-.field .MuiOutlinedInput-notchedOutline legend,
-.field .MuiOutlinedInput-notchedOutline legend > span {
-  white-space: nowrap;
-}
-
-.field .MuiOutlinedInput-notchedOutline legend > span {
-  padding-inline: 5px;
-}
-
-.field .MuiFormHelperText-root {
-  margin: 5px 2px 0;
-  text-align: right;
-  line-height: 1.55;
-}
 
 
 .filter-panel { border: 1px solid var(--a4-border); border-radius: 9px; background: var(--a4-paper); overflow: visible; }
@@ -107,7 +40,7 @@
 .mobile-record-card__item span { display: block; color: var(--a4-muted); font-size: .65rem; }
 .mobile-record-card__item strong { display: block; margin-top: 2px; font-size: .76rem; word-break: break-word; }
 
-.entity-drawer .MuiDrawer-paper { width: min(620px, 96vw); max-width: 100%; border-inline-start: 1px solid var(--a4-border); }
+.entity-drawer .MuiDrawer-paper { width: min(620px, 96vw); max-width: 100%; border-left: 1px solid var(--a4-border); }
 .entity-drawer__header { min-height: 66px; padding: 13px 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--a4-border); }
 .entity-drawer__title { min-width: 0; }
 .entity-drawer__title strong { display: block; font-size: .95rem; }
@@ -203,32 +136,7 @@
   .receipt-paper * { color: #000 !important; }
 }
 
-/* Final form and action polish. */
-.field {
-  position: relative;
-  gap: 0;
-}
 
-.field .MuiTextField-root,
-.field .MuiFormControl-root {
-  margin: 0;
-}
-
-.field .MuiOutlinedInput-root {
-  width: 100%;
-}
-
-.field .MuiInputLabel-root {
-  max-width: calc(100% - 48px);
-}
-
-.field .MuiInputLabel-root.MuiInputLabel-shrink {
-  max-width: calc(133% - 48px);
-}
-
-.field .MuiOutlinedInput-root.Mui-focused {
-  z-index: 1;
-}
 
 .page-header__actions .MuiButton-root,
 .filter-panel__actions .MuiButton-root,
