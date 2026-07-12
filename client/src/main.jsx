@@ -4,4 +4,14 @@ import App from './App.jsx';
 import { ErrorBoundary } from './components/feedback/ErrorBoundary.jsx';
 import './styles/index.css';
 
-createRoot(document.getElementById('root')).render(<StrictMode><ErrorBoundary><App /></ErrorBoundary></StrictMode>);
+document.documentElement.lang = 'ar';
+document.documentElement.dir = 'rtl';
+document.body.dir = 'rtl';
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  </StrictMode>,
+);

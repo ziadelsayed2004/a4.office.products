@@ -9,11 +9,11 @@ function isMuiTextField(child) {
 }
 
 /**
- * Shared A4 field wrapper.
+ * Canonical A4 field wrapper.
  *
- * MUI TextField children use the native outlined label/notch animation.
- * Custom controls keep an external label. MUI v9 slotProps are used so no
- * implementation props leak to native DOM elements.
+ * TextField children keep the native MUI outlined label, fieldset and legend.
+ * The component only supplies product defaults and MUI v9 slotProps; it never
+ * draws or manually transforms the notch.
  */
 export function Field({
   label,
@@ -27,49 +27,49 @@ export function Field({
 }) {
   const generatedId = useId().replace(/:/g, '');
   const densityClass = density === 'compact' ? 'field--compact' : 'field--comfortable';
-  const ltrClass = ltr ? 'field--ltr' : '';
-  const fieldClassName = `field ${densityClass} ${ltrClass} ${className}`.trim();
+  const fieldClassName = `field ${densityClass} ${ltr ? 'field--ltr' : ''} ${className}`.trim();
 
   if (isMuiTextField(children)) {
-    const existingSlots = children.props.slotProps || {};
-    const inputLabelSlot = existingSlots.inputLabel || {};
-    const htmlInputSlot = existingSlots.htmlInput || {};
+    const existingSlots = children.props.slotProps ?? {};
+    const existingInputLabel = existingSlots.inputLabel ?? {};
+    const existingHtmlInput = existingSlots.htmlInput ?? {};
+    const type = children.props.type;
+    const localLtr = ltr
+      || type === 'number'
+      || type === 'tel'
+      || existingHtmlInput.dir === 'ltr';
+    const forceShrink = ALWAYS_SHRINK_TYPES.has(type) || existingInputLabel.shrink === true;
 
-    const mustStayShrunk = Boolean(
-      children.props.select
-      || ALWAYS_SHRINK_TYPES.has(children.props.type)
-      || inputLabelSlot.shrink,
+    return (
+      <div className={fieldClassName}>
+        {cloneElement(children, {
+          id: children.props.id || `a4-field-${generatedId}`,
+          label: label ?? children.props.label,
+          required: required || children.props.required,
+          error: Boolean(error) || Boolean(children.props.error),
+          helperText: error || hint || children.props.helperText,
+          fullWidth: children.props.fullWidth ?? true,
+          size: children.props.size || (density === 'compact' ? 'small' : 'medium'),
+          variant: children.props.variant || 'outlined',
+          slotProps: {
+            ...existingSlots,
+            inputLabel: {
+              ...existingInputLabel,
+              ...(forceShrink ? { shrink: true } : {}),
+            },
+            htmlInput: {
+              ...existingHtmlInput,
+              ...(localLtr
+                ? {
+                    dir: 'ltr',
+                    className: `${existingHtmlInput.className || ''} a4-ltr-value`.trim(),
+                  }
+                : { dir: 'rtl' }),
+            },
+          },
+        })}
+      </div>
     );
-
-    const isLtrField = ltr
-      || children.props.type === 'number'
-      || children.props.type === 'tel'
-      || htmlInputSlot.dir === 'ltr'
-      || children.props.slotProps?.htmlInput?.dir === 'ltr';
-
-    const control = cloneElement(children, {
-      id: children.props.id || `a4-field-${generatedId}`,
-      label: label || children.props.label,
-      required: required || children.props.required,
-      error: Boolean(error) || Boolean(children.props.error),
-      helperText: error || hint || children.props.helperText,
-      fullWidth: children.props.fullWidth ?? true,
-      size: children.props.size || (density === 'compact' ? 'small' : 'medium'),
-      variant: children.props.variant || 'outlined',
-      slotProps: {
-        ...existingSlots,
-        inputLabel: {
-          ...inputLabelSlot,
-          ...(mustStayShrunk ? { shrink: true } : {}),
-        },
-        htmlInput: {
-          ...htmlInputSlot,
-          ...(isLtrField ? { dir: 'ltr', className: `${htmlInputSlot.className || ''} a4-ltr-value`.trim() } : {}),
-        },
-      },
-    });
-
-    return <div className={fieldClassName}>{control}</div>;
   }
 
   return (

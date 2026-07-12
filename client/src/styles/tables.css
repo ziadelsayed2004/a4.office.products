@@ -1,0 +1,109 @@
+.desktop-table {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  background: var(--a4-paper);
+  border: 1px solid var(--a4-border);
+  border-radius: var(--radius-xs);
+  scrollbar-width: thin;
+}
+
+.desktop-table .MuiTable-root {
+  min-width: 100%;
+  table-layout: auto;
+}
+
+.desktop-table .MuiTableHead-root {
+  background: var(--a4-alt);
+}
+
+.desktop-table .MuiTableCell-head {
+  color: var(--a4-text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--a4-border);
+}
+
+.desktop-table .MuiTableCell-body {
+  color: var(--a4-text);
+  font-size: 0.84rem;
+  vertical-align: middle;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--a4-border);
+}
+
+.desktop-table .MuiTableRow-root:last-child .MuiTableCell-body {
+  border-bottom: 0;
+}
+
+.desktop-table .MuiTableRow-hover:hover {
+  background: var(--a4-alt);
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+}
+
+.data-table-empty {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  text-align: center;
+}
+
+.mobile-record-list {
+  display: none;
+  gap: 10px;
+}
+
+.mobile-record-card {
+  padding: 14px;
+  border: 1px solid var(--a4-border);
+  border-radius: var(--radius-xs);
+  background: var(--a4-paper);
+  box-shadow: none;
+  text-align: right;
+}
+
+.mobile-record-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.mobile-record-card__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.mobile-record-card__item {
+  min-width: 0;
+}
+
+.mobile-record-card__item span {
+  display: block;
+  color: var(--a4-muted);
+  font-size: 0.7rem;
+}
+
+.mobile-record-card__item strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--a4-text);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .desktop-table { display: none; }
+  .mobile-record-list { display: grid; }
+  .mobile-record-card__grid { grid-template-columns: 1fr; }
+}

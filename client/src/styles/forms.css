@@ -1,59 +1,11 @@
-/* A4 Office Products Form System Stylesheet */
-
-:root {
-  --a4-field-bg: var(--a4-paper);
-  --a4-field-bg-hover: var(--a4-paper);
-  --a4-field-bg-disabled: #edf1f5;
-  --a4-field-border: var(--a4-border);
-  --a4-field-border-hover: var(--a4-muted);
-  --a4-field-label-bg: var(--a4-field-bg);
-  --a4-field-text: var(--a4-text);
-  --a4-field-placeholder: var(--a4-muted);
-  --a4-field-focus: var(--a4-primary);
-  --a4-field-focus-ring: 0 0 0 3px rgba(15, 95, 166, 0.1);
-  --a4-field-error: #d64242;
-}
-
-[data-theme="dark"] {
-  --a4-field-bg: var(--a4-paper);
-  --a4-field-bg-hover: var(--a4-paper);
-  --a4-field-bg-disabled: #1d2a39;
-  --a4-field-border: var(--a4-border);
-  --a4-field-border-hover: var(--a4-muted);
-  --a4-field-label-bg: var(--a4-field-bg);
-  --a4-field-text: var(--a4-text);
-  --a4-field-placeholder: var(--a4-muted);
-  --a4-field-focus: var(--a4-primary);
-  --a4-field-focus-ring: 0 0 0 3px rgba(112, 180, 245, 0.16);
-  --a4-field-error: #d64242;
-}
-
-/* Densities setup */
-.field--comfortable {
-  --a4-field-height: 54px;
-  --a4-field-padding-x: 16px;
-  --a4-field-padding-y: 14px;
-  --a4-field-radius: 6px;
-  --a4-field-input-size: 0.9rem;
-  --a4-field-label-size: 0.84rem;
-}
-
-.field--compact {
-  --a4-field-height: 44px;
-  --a4-field-padding-x: 12px;
-  --a4-field-padding-y: 10px;
-  --a4-field-radius: 4px;
-  --a4-field-input-size: 0.82rem;
-  --a4-field-label-size: 0.78rem;
-}
-
-/* Standard Field Wrapper style */
+/* Canonical A4 Google-Material form system. Native MUI outlined notches only. */
 .field {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  position: relative;
-  gap: 0;
+  width: 100%;
+  direction: rtl;
+  text-align: right;
 }
 
 .field .MuiTextField-root,
@@ -63,225 +15,250 @@
   margin: 0;
 }
 
-.field .MuiOutlinedInput-root {
-  width: 100%;
-  min-height: var(--a4-field-height, 46px);
-  border-radius: var(--a4-field-radius, 4px) !important;
-  background-color: var(--a4-field-bg) !important;
-  color: var(--a4-field-text) !important;
-  transition: background-color 160ms ease, box-shadow 180ms ease, border-color 160ms ease, transform 180ms ease;
+.field--comfortable .MuiOutlinedInput-root {
+  min-height: 56px;
 }
 
-.field .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
-  border-color: var(--a4-field-border);
+.field--compact .MuiOutlinedInput-root {
+  min-height: 44px;
+}
+
+.field--compact .MuiInputBase-input,
+.field--compact .MuiSelect-select {
+  font-size: 0.84rem;
+}
+
+.MuiOutlinedInput-root {
+  width: 100%;
+  min-width: 0;
+  background-color: var(--a4-field-bg);
+  transition: background-color 160ms ease, box-shadow 180ms ease;
+}
+
+.MuiOutlinedInput-root:hover {
+  background-color: var(--a4-field-bg);
+}
+
+.MuiOutlinedInput-root.Mui-focused {
+  box-shadow: var(--a4-focus-ring);
+}
+
+.MuiOutlinedInput-root.Mui-disabled {
+  background-color: var(--a4-field-disabled);
+}
+
+.MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+  border-color: var(--a4-border);
   transition: border-color 160ms ease, border-width 160ms ease;
 }
 
-.field .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
-  border-color: var(--a4-field-border-hover);
+.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: var(--a4-border-strong);
 }
 
-.field .MuiOutlinedInput-root.Mui-focused {
-  box-shadow: var(--a4-field-focus-ring) !important;
-  z-index: 1;
+.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--a4-primary);
+  border-width: 2px;
 }
 
-.field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
-  border-color: var(--a4-field-focus) !important;
-  border-width: 2px !important;
+.MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline {
+  border-color: var(--a4-danger);
 }
 
-.field .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline {
-  border-color: var(--a4-field-error) !important;
+.MuiInputBase-input,
+.MuiSelect-select {
+  color: var(--a4-text);
+  caret-color: var(--a4-primary);
 }
 
-.field .MuiOutlinedInput-root.Mui-disabled {
-  background-color: var(--a4-field-bg-disabled) !important;
+.MuiInputBase-input::placeholder,
+textarea.MuiInputBase-input::placeholder {
+  color: var(--a4-muted);
+  opacity: 0;
+  transition: opacity 150ms ease;
 }
 
-/* Field input text */
-.field .MuiInputBase-input {
-  padding: var(--a4-field-padding-y, 11px) var(--a4-field-padding-x, 14px) !important;
-  font-size: var(--a4-field-input-size, 0.84rem) !important;
-  color: var(--a4-field-text) !important;
+.MuiInputBase-root.Mui-focused .MuiInputBase-input::placeholder,
+.MuiInputBase-root.Mui-focused textarea.MuiInputBase-input::placeholder {
+  opacity: 0.72;
 }
 
-/* Hide placeholder when label is NOT shrunk (unfocused and empty) to prevent collision */
-.MuiFormControl-root:has(.MuiInputLabel-root:not(.MuiInputLabel-shrink)) .MuiInputBase-input::placeholder {
-  opacity: 0 !important;
+.MuiInputLabel-root {
+  max-width: calc(100% - 34px);
+  color: var(--a4-muted);
+  font-family: var(--app-font-family);
+  font-weight: 500;
+  transform-origin: top right;
+  transition: color 160ms ease, transform 180ms cubic-bezier(0.4, 0, 0.2, 1), max-width 180ms ease;
 }
 
-/* If the label is forced to shrink, or field is focused, show placeholder */
-.MuiFormControl-root:has(.MuiInputLabel-root.MuiInputLabel-shrink) .MuiInputBase-input::placeholder,
-.MuiOutlinedInput-root.Mui-focused .MuiInputBase-input::placeholder {
-  opacity: 0.78 !important;
+.MuiInputLabel-root.Mui-focused {
+  color: var(--a4-primary);
+  font-weight: 600;
 }
 
-/* External Labels */
+.MuiInputLabel-root.Mui-error,
+.MuiInputLabel-asterisk {
+  color: var(--a4-danger);
+}
+
+.MuiInputLabel-asterisk {
+  margin-inline-start: 3px;
+}
+
+/* Never fake or manually transform the notch. MUI fieldset/legend owns it. */
+.MuiOutlinedInput-notchedOutline legend,
+.MuiOutlinedInput-notchedOutline legend > span {
+  white-space: nowrap;
+}
+
+.MuiOutlinedInput-notchedOutline legend > span {
+  padding-inline: 5px;
+}
+
+.MuiFormHelperText-root {
+  margin: 5px 2px 0;
+  color: var(--a4-muted);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.MuiFormHelperText-root.Mui-error {
+  color: var(--a4-danger);
+}
+
+.MuiInputAdornment-root {
+  color: var(--a4-muted);
+  flex: 0 0 auto;
+}
+
+.MuiInputAdornment-root .MuiSvgIcon-root {
+  font-size: 1.2rem;
+}
+
+.MuiInputAdornment-positionStart {
+  margin-inline-start: 0;
+  margin-inline-end: 8px;
+}
+
+.MuiInputAdornment-positionEnd {
+  margin-inline-start: 8px;
+  margin-inline-end: 0;
+}
+
+.MuiSelect-select {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding-inline-end: 38px !important;
+}
+
+.MuiMenu-list,
+.MuiAutocomplete-listbox {
+  direction: rtl;
+  text-align: right;
+}
+
+.MuiMenuItem-root,
+.MuiAutocomplete-option {
+  justify-content: flex-start;
+  text-align: right;
+}
+
+.MuiAutocomplete-endAdornment {
+  inset-inline-end: 8px;
+}
+
+input[type='date'],
+input[type='datetime-local'],
+input[type='time'],
+input[type='month'],
+input[type='week'] {
+  direction: ltr;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+input[type='number'],
+input[type='tel'] {
+  font-variant-numeric: tabular-nums;
+}
+
 .field__external-label {
   display: flex;
   align-items: center;
   gap: 4px;
-  min-height: 20px;
-  margin-bottom: 7px;
+  margin-bottom: 8px;
   color: var(--a4-text);
-  font-size: 0.78rem;
-  font-weight: 700;
-  line-height: 1.45;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
-.field__required {
-  color: var(--a4-field-error);
-}
-
+.field__required { color: var(--a4-danger); }
 .field__hint,
 .field__error {
   display: block;
-  margin-top: 6px;
+  margin-top: 5px;
   padding-inline: 2px;
-  font-size: 0.68rem;
-  line-height: 1.6;
+  font-size: 0.72rem;
+  line-height: 1.55;
 }
+.field__hint { color: var(--a4-muted); }
+.field__error { color: var(--a4-danger); }
 
-.field__hint {
-  color: var(--a4-muted);
-}
-
-.field__error {
-  color: var(--a4-field-error);
-}
-
-/* Input label overrides */
-.field .MuiInputLabel-root {
-  color: var(--a4-field-placeholder) !important;
-  font-size: var(--a4-field-label-size, 0.84rem) !important;
-  font-weight: 600 !important;
-  line-height: 1.5 !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  max-width: calc(100% - 48px) !important;
-  transition: color 160ms ease, transform 180ms cubic-bezier(0.4, 0, 0.2, 1), max-width 180ms ease !important;
-}
-
-.field .MuiInputLabel-root.MuiInputLabel-shrink {
-  color: var(--a4-field-placeholder) !important;
-  background-color: var(--a4-field-label-bg) !important;
-  padding: 0 6px !important;
-  margin-inline-start: -4px !important;
-  z-index: 1 !important;
-  max-width: calc(133% - 48px) !important;
-  transform: translate(-14px, -9px) scale(0.75) !important;
-}
-
-.field .MuiInputLabel-root.Mui-focused {
-  color: var(--a4-field-focus) !important;
-  font-weight: 700 !important;
-}
-
-.field .MuiInputLabel-root.Mui-error {
-  color: var(--a4-field-error) !important;
-}
-
-/* Required asterisk spacing in MUI labels */
-.MuiInputLabel-asterisk {
-  color: var(--a4-field-error) !important;
-  margin-inline-start: 3px !important;
-}
-
-/* Arabic RTL notched outline adjustments */
-.MuiOutlinedInput-notchedOutline legend,
-.MuiOutlinedInput-notchedOutline legend > span {
-  white-space: nowrap !important;
-}
-
-.MuiOutlinedInput-notchedOutline legend > span {
-  padding-inline: 5px !important;
-}
-
-/* Custom alignment for select icons and arrows */
-.MuiSelect-icon {
-  right: auto !important;
-  left: 10px !important;
-  color: var(--a4-muted) !important;
-}
-
-/* Autocomplete indicator on the left in RTL */
-.MuiAutocomplete-endAdornment {
-  right: auto !important;
-  left: 9px !important;
-}
-
-/* Adornment spacing */
-.MuiInputAdornment-root {
-  color: var(--a4-muted) !important;
-  flex-shrink: 0 !important;
-  margin-inline-start: 0 !important;
-  margin-inline-end: 8px !important;
-}
-
-.MuiInputAdornment-positionStart {
-  margin-inline-start: 0 !important;
-  margin-inline-end: 8px !important;
-}
-
-.MuiInputAdornment-positionEnd {
-  margin-inline-start: 8px !important;
-  margin-inline-end: 0 !important;
-}
-
-.MuiInputAdornment-root .MuiSvgIcon-root {
-  font-size: 1.15rem !important;
-}
-
-/* Helper text */
-.MuiFormHelperText-root {
-  direction: rtl !important;
-  text-align: right !important;
-  margin: 5px 2px 0 !important;
-  font-size: 0.68rem !important;
-  line-height: 1.55 !important;
-}
-
-/* Date/time inputs alignment and styling */
-input[type="date"].MuiInputBase-input,
-input[type="datetime-local"].MuiInputBase-input,
-input[type="time"].MuiInputBase-input {
-  text-align: left !important;
-  direction: ltr !important;
-}
-
-/* Technical values direction logic */
-.a4-ltr-value {
-  direction: ltr !important;
-  unicode-bidi: plaintext !important;
-  text-align: right !important;
-}
-
-/* surface specific overlays for blending notches */
-.login-panel {
-  --a4-field-label-bg: var(--a4-paper);
+/* Local surfaces keep field and surrounding panel visually identical. */
+.login-dialog,
+.a4-page-section,
+.filter-panel,
+.form-section,
+.entity-drawer__body,
+.MuiDialog-paper,
+.MuiDrawer-paper {
   --a4-field-bg: var(--a4-paper);
+  --a4-field-label-surface: var(--a4-paper);
 }
 
-.entity-drawer__body {
-  --a4-field-label-bg: var(--a4-paper);
-  --a4-field-bg: var(--a4-paper);
+.MuiButton-root {
+  direction: rtl;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-.filter-panel__body {
-  --a4-field-label-bg: var(--a4-paper);
-  --a4-field-bg: var(--a4-paper);
+.MuiButton-root .MuiButton-startIcon,
+.MuiButton-root .MuiButton-endIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  flex: 0 0 auto;
 }
 
-.MuiDialog-paper {
-  --a4-field-label-bg: var(--a4-paper);
-  --a4-field-bg: var(--a4-paper);
+.MuiButton-root .MuiButton-startIcon > :nth-of-type(1),
+.MuiButton-root .MuiButton-endIcon > :nth-of-type(1) {
+  font-size: 1.15rem;
 }
 
-/* Responsive buttons for touch/mobile layouts */
 @media (max-width: 720px) {
+  .MuiInputBase-input,
+  .MuiSelect-select,
+  textarea.MuiInputBase-input {
+    font-size: 16px;
+  }
+
   .MuiButton-root {
-    min-height: 44px !important;
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .MuiInputLabel-root,
+  .MuiOutlinedInput-root,
+  .MuiOutlinedInput-notchedOutline,
+  .MuiOutlinedInput-notchedOutline legend,
+  .MuiSelect-icon {
+    transition: none !important;
   }
 }

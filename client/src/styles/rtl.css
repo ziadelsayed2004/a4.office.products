@@ -1,0 +1,81 @@
+html,
+body,
+#root,
+.MuiPopover-root,
+.MuiDialog-root,
+.MuiDrawer-root,
+.MuiModal-root {
+  direction: rtl;
+}
+
+.MuiTypography-root,
+.MuiDialogTitle-root,
+.MuiDialogContent-root,
+.MuiAlert-message,
+.MuiListItemText-root,
+.MuiFormHelperText-root,
+.MuiMenuItem-root,
+.MuiAutocomplete-option,
+.MuiAutocomplete-noOptions,
+.MuiAutocomplete-loading {
+  direction: rtl;
+  text-align: right;
+}
+
+.MuiInputBase-input,
+.MuiSelect-select,
+textarea.MuiInputBase-input {
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: plaintext;
+}
+
+.MuiOutlinedInput-notchedOutline,
+.MuiOutlinedInput-notchedOutline legend {
+  text-align: right;
+}
+
+.MuiTable-root {
+  direction: rtl;
+}
+
+.MuiTableCell-root {
+  direction: rtl;
+  text-align: right;
+}
+
+.a4-ltr,
+.a4-ltr-value,
+.a4-ltr input,
+.a4-ltr textarea,
+input[dir='ltr'],
+textarea[dir='ltr'] {
+  direction: ltr;
+  unicode-bidi: plaintext;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.a4-ltr-inline {
+  display: inline-block;
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
+}
+
+.a4-center,
+.empty-state,
+.loading-state,
+.fatal-error,
+.checkout-success,
+.shift-gate,
+.pickup-scanner,
+.login-dialog,
+.receipt-paper__brand,
+.receipt-qr {
+  text-align: center;
+}
+
+.text-right { text-align: right !important; }
+.text-center { text-align: center !important; }
+.text-left { text-align: left !important; }

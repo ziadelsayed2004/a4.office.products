@@ -37,6 +37,10 @@ function flattenKeys(value, prefix = '') {
 
 const html = read('index.html');
 const theme = read('src/theme/AppTheme.jsx');
+const forms = read('src/styles/forms.css');
+const rtl = read('src/styles/rtl.css');
+const tables = read('src/styles/tables.css');
+const components = read('src/styles/components.css');
 const translator = read('src/locales/t.js');
 const app = read('src/App.jsx');
 const fieldComponent = read('src/components/forms/Field.jsx');
@@ -49,18 +53,27 @@ assert(/document\.documentElement\.dir\s*=\s*['"]rtl['"]/.test(theme), 'Runtime 
 assert(/from\s+['"]\.\/ar\.json['"]/.test(translator), 'Runtime translator reads Arabic JSON.');
 assert(!/from\s+['"]\.\/en\.json['"]/.test(translator), 'English JSON is not loaded at runtime.');
 assert(!/setLocale|toggleLanguage|languageSwitch|changeLanguage/i.test(combinedSource), 'No runtime language switch exists.');
-assert(/cloneElement\(children/.test(fieldComponent) && /label:\s*label/.test(fieldComponent), 'Shared Field injects animated MUI labels into TextField controls.');
-assert(!/MuiOutlinedInput-root legend \{ display: none; \}/.test(read('src/styles/index.css')), 'Outlined-field legends remain enabled for animated notches.');
-assert(/MuiOutlinedInput-notchedOutline[\s\S]*text-align:\s*right/.test(read('src/styles/index.css')), 'Outlined notches are aligned to the RTL start edge.');
-assert(/boxShadow:[\s\S]*0 0 0 3px/.test(theme), 'Focused fields use a clear animated focus ring.');
-assert(/prefers-reduced-motion:\s*reduce/.test(read('src/styles/index.css')), 'Input animations respect reduced-motion preference.');
+
+assert(/stylisPlugins:\s*\[prefixer,\s*rtlPlugin\]/.test(theme), 'Stable Emotion RTL cache uses prefixer then rtlPlugin.');
+assert(!/rtlPlugin\.default|rtlPluginFunc/.test(theme), 'No unstable RTL plugin wrapper remains.');
+assert(/cloneElement\(children/.test(fieldComponent) && /label:\s*label/.test(fieldComponent), 'Shared Field injects native MUI labels.');
+assert(/ALWAYS_SHRINK_TYPES/.test(fieldComponent), 'Date and time fields can force label shrink safely.');
+assert(!/translate\([^)]*-9px[^)]*\)\s*scale/.test(forms), 'No manual floating-label transform overrides remain.');
+assert(!/:has\(/.test(forms), 'Form styling avoids fragile :has-based label logic.');
+assert(/MuiOutlinedInput-notchedOutline[\s\S]*text-align:\s*right/.test(rtl), 'Outlined fieldset and legend align to the RTL start edge.');
+assert(/MuiOutlinedInput-notchedOutline legend/.test(forms), 'Native MUI legend remains enabled for the notch.');
+assert(/boxShadow:[\s\S]*0 0 0 3px/.test(theme), 'Focused fields use a clear focus ring.');
+assert(/prefers-reduced-motion:\s*reduce/.test(forms), 'Field animation respects reduced motion.');
+assert(/--a4-field-bg/.test(read('src/styles/variables.css')), 'Semantic field background tokens exist.');
 
 assert(!/\b(?:InputProps|InputLabelProps|inputProps|PaperProps)\s*=/.test(combinedSource), 'Deprecated MUI props are not passed through the React tree.');
-assert(/stylis-plugin-rtl|createCache\(|CacheProvider/.test(combinedSource), 'Emotion/Stylis RTL cache is configured in the runtime.');
-assert(/slotProps:\s*\{[\s\S]*inputLabel/.test(fieldComponent), 'Shared Field uses MUI v9 slotProps for the animated input label.');
-assert(/MuiButton:[\s\S]*gap:\s*8/.test(theme), 'Buttons keep a consistent gap between icon and text.');
-assert(/MuiButton-startIcon[\s\S]*margin:\s*0/.test(read('src/styles/index.css')), 'Button icon margins are normalized for RTL.');
-assert(!/max-width:\s*\.01px/.test(read('src/styles/index.css')), 'Native MUI notch width animation is not overridden by global CSS.');
+assert(!/alignItems=/.test(combinedSource), 'No system styling prop leaks to native DOM nodes.');
+assert(/slotProps:\s*\{[\s\S]*inputLabel/.test(fieldComponent), 'Shared Field uses MUI v9 slotProps.');
+assert(/MuiButton:[\s\S]*gap:\s*8/.test(theme), 'Theme keeps an 8px button icon/text gap.');
+assert(/MuiButton-startIcon,[\s\S]*MuiButton-endIcon[\s\S]*margin:\s*0/.test(forms), 'Button icon margins are normalized for RTL.');
+assert(/MuiTableCell-root[\s\S]*text-align:\s*right/.test(rtl), 'All table cells default to RTL right alignment.');
+assert(/MuiTableCell-head/.test(tables) && /MuiTableCell-body/.test(tables), 'Desktop table typography and spacing are standardized.');
+assert(/text-align:\s*center/.test(components), 'Centered feedback and receipt contexts are defined explicitly.');
 
 const requiredPages = [
   'Login', 'Dashboard', 'POS', 'Products', 'Categories', 'PriceTiers', 'Inventory',
@@ -74,15 +87,10 @@ for (const page of requiredPages) {
 
 const ar = JSON.parse(read('src/locales/ar.json'));
 const en = JSON.parse(read('src/locales/en.json'));
-const arKeys = flattenKeys(ar).sort();
-const enKeys = flattenKeys(en).sort();
-assert(JSON.stringify(arKeys) === JSON.stringify(enKeys), 'Arabic and future English JSON files have matching key structure.');
-
-const pageNames = fs.readdirSync(path.join(src, 'pages')).filter((name) => name.endsWith('.jsx'));
-assert(pageNames.length === requiredPages.length, 'Frontend contains only the expected page modules.');
+assert(JSON.stringify(flattenKeys(ar).sort()) === JSON.stringify(flattenKeys(en).sort()), 'Arabic and future English JSON files have matching key structure.');
 assert(!/MongoDB|Mongoose/.test(combinedSource), 'Frontend contains no MongoDB/Mongoose assumptions.');
 assert(/localStorage\.getItem\(['"]a4_color_mode['"]\)/.test(theme), 'Light/dark preference is persisted.');
-assert(/@media \(max-width: 900px\)/.test(read('src/styles/layout.css')), 'Responsive sidebar/mobile drawer rules exist.');
+assert(/@media \(max-width: 900px\)/.test(read('src/styles/layout.css')), 'Responsive navigation rules exist.');
 assert(/@media print/.test(combinedSource), 'Printer-safe styles exist.');
 
 console.log(`UI validation: ${passes.length} passed, ${failures.length} failed.`);

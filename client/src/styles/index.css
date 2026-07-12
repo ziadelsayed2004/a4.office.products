@@ -1,23 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap');
-@import "./forms.css";
-
-:root {
-  font-family: Cairo, "Segoe UI", Tahoma, Arial, sans-serif;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  --sidebar-width: 282px;
-  --sidebar-collapsed: 76px;
-  --topbar-height: 64px;
-  --content-max: 1680px;
-}
-
-* { box-sizing: border-box; }
-html, body, #root { min-width: 320px; min-height: 100%; margin: 0; }
-html { scroll-behavior: smooth; }
-body { overflow-x: hidden; }
-button, input, select, textarea { font: inherit; }
-a { color: inherit; text-decoration: none; }
-img { max-width: 100%; }
+@import './variables.css';
+@import './reset.css';
+@import './rtl.css';
+@import './forms.css';
+@import './tables.css';
+@import './dialogs.css';
+@import './drawers.css';
 
 .a4-page {
   width: min(100%, var(--content-max));
@@ -25,265 +13,81 @@ img { max-width: 100%; }
   display: grid;
   gap: 18px;
   min-width: 0;
+  direction: rtl;
+  text-align: right;
 }
 
 .a4-page-section {
   min-width: 0;
-  padding: 18px;
+  padding: 20px;
   border: 1px solid var(--a4-border);
-  border-radius: 10px;
+  border-radius: var(--radius-xs);
   background: var(--a4-paper);
+  box-shadow: none;
+  text-align: right;
 }
 
 .a4-grid { display: grid; gap: 16px; min-width: 0; }
 .a4-grid--metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .a4-grid--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .a4-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.a4-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; align-items: end; }
-.a4-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+.a4-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; align-items: end; }
+.a4-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .a4-form-grid .full { grid-column: 1 / -1; }
-.a4-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
-.a4-actions--end { justify-content: flex-end; }
-.a4-ltr { direction: ltr; text-align: left; unicode-bidi: isolate; }
+.a4-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.a4-actions--end { justify-content: flex-start; }
 .a4-muted { color: var(--a4-muted); }
 .a4-number { font-variant-numeric: tabular-nums; }
 .a4-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.a4-section-title { margin: 0; font-size: 1rem; font-weight: 800; }
-.a4-section-subtitle { margin: 4px 0 0; color: var(--a4-muted); font-size: .78rem; }
-.a4-scroll-x { overflow-x: auto; min-width: 0; }
-.a4-sticky-actions { position: sticky; bottom: 0; z-index: 3; margin: 18px -20px -20px; padding: 14px 20px; border-top: 1px solid var(--a4-border); background: color-mix(in srgb, var(--a4-paper) 94%, transparent); backdrop-filter: blur(8px); }
+.a4-section-title { margin: 0; color: var(--a4-text); font-size: 1rem; font-weight: 700; text-align: right; }
+.a4-section-subtitle { margin: 4px 0 0; color: var(--a4-muted); font-size: 0.8rem; text-align: right; }
+.a4-scroll-x { min-width: 0; overflow-x: auto; }
+.a4-sticky-actions { position: sticky; bottom: 0; z-index: 3; margin: 18px -20px -20px; padding: 14px 20px; border-top: 1px solid var(--a4-border); background: var(--a4-paper); }
 
-:root,
-[data-theme="light"] {
-  --a4-bg: #f5f7fb;
-  --a4-paper: #ffffff;
-  --a4-alt: #f8fafc;
-  --a4-text: #172033;
-  --a4-muted: #687386;
-  --a4-border: #dce3ec;
-  --a4-primary: #0f5fa6;
-  --a4-primary-soft: #e8f2fb;
-  --a4-shadow: 0 8px 24px rgba(12, 31, 54, .08);
-}
-[data-theme="dark"] {
-  --a4-bg: #0d1520;
-  --a4-paper: #14202e;
-  --a4-alt: #101b28;
-  --a4-text: #eef5ff;
-  --a4-muted: #9cacc0;
-  --a4-border: #2b3b4e;
-  --a4-primary: #70b4f5;
-  --a4-primary-soft: rgba(112,180,245,.13);
-  --a4-shadow: 0 14px 34px rgba(0, 0, 0, .22);
-}
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--a4-muted) 42%, transparent); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--a4-muted) 66%, transparent); }
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--a4-muted) 42%, transparent) transparent; }
+::selection { background: color-mix(in srgb, var(--a4-primary) 24%, transparent); }
 
 @media (max-width: 1180px) {
   .a4-grid--metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .a4-grid--three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
 @media (max-width: 720px) {
   :root { --topbar-height: 58px; }
-  .a4-page { gap: 13px; }
-  .a4-page-section { padding: 14px; border-radius: 8px; }
-  .a4-grid--metrics, .a4-grid--two, .a4-grid--three, .a4-form-grid { grid-template-columns: 1fr; }
+  .a4-page { gap: 14px; }
+  .a4-page-section { padding: 14px; }
+  .a4-grid--metrics,
+  .a4-grid--two,
+  .a4-grid--three,
+  .a4-form-grid { grid-template-columns: 1fr; }
   .a4-filter-grid { grid-template-columns: 1fr; }
   .a4-actions > .MuiButton-root { flex: 1 1 auto; }
   .a4-sticky-actions { margin-inline: -14px; padding-inline: 14px; }
 }
 
 @media print {
-  .no-print, .app-sidebar, .app-topbar { display: none !important; }
+  .no-print,
+  .app-sidebar,
+  .app-topbar { display: none !important; }
   .app-main { margin: 0 !important; padding: 0 !important; }
-  body { background: white !important; color: black !important; }
-}
-
-/* Arabic-only fixed-direction UI. Technical identifiers opt into .a4-ltr explicitly. */
-html, body, #root, .MuiPopover-root, .MuiDialog-root, .MuiDrawer-root { direction: rtl; }
-.MuiMenuItem-root, .MuiListItem-root { text-align: right; }
-/* RTL input system: real animated MUI notches, right-aligned Arabic content, and isolated technical values. */
-.MuiFormControl-root,
-.MuiTextField-root,
-.MuiInputBase-root,
-.MuiOutlinedInput-root {
-  min-width: 0;
-}
-
-.MuiOutlinedInput-notchedOutline {
-  text-align: right;
-}
-
-
-
-
-.MuiInputBase-input,
-.MuiSelect-select,
-textarea.MuiInputBase-input {
-  direction: rtl;
-  text-align: right;
-  unicode-bidi: plaintext;
-}
-
-.MuiInputBase-input[dir="ltr"],
-.a4-ltr .MuiInputBase-input,
-.a4-ltr.MuiInputBase-input,
-input.a4-ltr,
-textarea.a4-ltr {
-  direction: ltr;
-  text-align: left;
-  unicode-bidi: plaintext;
-}
-
-input::placeholder,
-textarea::placeholder {
-  text-align: inherit;
-}
-
-input[type="date"],
-input[type="datetime-local"],
-input[type="time"],
-input[type="month"],
-input[type="week"] {
-  direction: ltr;
-  text-align: left;
-  font-variant-numeric: tabular-nums;
-}
-
-input[type="number"],
-input[type="tel"] {
-  font-variant-numeric: tabular-nums;
-}
-
-.MuiSelect-icon {
-  right: auto;
-  left: 10px;
-}
-
-.MuiMenu-list,
-.MuiMenuItem-root,
-.MuiAutocomplete-listbox,
-.MuiAutocomplete-option {
-  direction: rtl;
-  text-align: right;
-}
-
-@media (max-width: 720px) {
-  .MuiInputBase-input,
-  .MuiSelect-select,
-  textarea.MuiInputBase-input {
-    font-size: 16px;
-  }
+  body { background: #fff !important; color: #000 !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .MuiInputLabel-root,
-  .MuiOutlinedInput-root,
-  .MuiOutlinedInput-notchedOutline,
-  .MuiOutlinedInput-notchedOutline legend,
-  .MuiSelect-icon {
-    transition: none !important;
-  }
+  *, *::before, *::after { scroll-behavior: auto !important; }
 }
 
-/* Final Arabic RTL interaction contract (MUI v9). */
-.MuiButton-root,
-.MuiIconButton-root,
-.MuiTab-root,
-.MuiMenuItem-root {
-  font-family: Cairo, "Segoe UI", Tahoma, Arial, sans-serif;
-}
-
-.MuiButton-root {
-  direction: rtl;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.MuiButton-root .MuiButton-startIcon,
-.MuiButton-root .MuiButton-endIcon {
-  margin: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-}
-
-.MuiButton-root .MuiButton-startIcon > :nth-of-type(1),
-.MuiButton-root .MuiButton-endIcon > :nth-of-type(1) {
-  font-size: 1.12rem;
-}
-
-.MuiDialogActions-root {
-  direction: rtl;
-  gap: 8px;
-  padding: 12px 16px;
-}
-
-
-/* Technical values remain readable without changing the surrounding RTL layout. */
-.a4-ltr,
-.a4-ltr input,
-input[dir="ltr"],
-textarea[dir="ltr"] {
-  direction: ltr;
-  text-align: left;
-  unicode-bidi: plaintext;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Premium card, list, and interactive hover transitions & micro-animations */
-.MuiCard-root,
-.MuiPaper-outlined,
-.pos-product-card,
-.app-profile-card,
-.app-nav-item {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-@media (hover: hover) {
-  .MuiButton-root:not(.Mui-disabled):hover,
-  .MuiIconButton-root:not(.Mui-disabled):hover {
-    transform: translateY(-1.5px) scale(1.015);
-  }
-  
-  .MuiCard-root:hover,
-  .MuiPaper-outlined:not(.pos-mode-tabs):hover {
-    transform: translateY(-2px);
-    box-shadow: var(--a4-shadow);
-    border-color: var(--a4-primary) !important;
-  }
-
-  .app-nav-item:not(.is-active):hover {
-    transform: translateX(-3px);
-  }
-}
-
-@media (max-width: 600px) {
-  .MuiDialogActions-root {
-    flex-wrap: wrap;
-  }
-
-  .MuiDialogActions-root .MuiButton-root {
-    flex: 1 1 140px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-  }
-
-  .MuiButton-root,
-  .MuiIconButton-root,
-  .MuiInputLabel-root,
-  .MuiOutlinedInput-root,
-  .MuiOutlinedInput-notchedOutline,
-  .MuiOutlinedInput-notchedOutline > legend {
-    transition: none !important;
-  }
-}
+/* Small reusable layout utilities replacing page-level inline styling. */
+.a4-form-grid--spaced { margin-top: 12px; }
+.a4-toolbar--section { margin-bottom: 15px; }
+.a4-grid--section-gap { margin-bottom: 16px; }
+.a4-section-title--spaced { margin-bottom: 14px; }
+.a4-list-row { padding-block: 10px; border-bottom: 1px solid var(--a4-border); }
+.a4-product-sku { margin-top: 2px; font-size: 0.68rem; }
+.a4-wrap-cell { display: block; min-width: 260px; white-space: normal; overflow-wrap: anywhere; text-align: right; }
+.metric-card__icon--small { width: 38px; height: 38px; margin-inline-end: 10px; }
+.metric-card__copy--fill { flex: 1; }

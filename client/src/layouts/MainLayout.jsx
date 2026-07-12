@@ -111,7 +111,7 @@ export function MainLayout() {
           <Tooltip title="الحساب"><IconButton onClick={(e) => setProfileAnchor(e.currentTarget)}><Badge color="success" variant="dot" overlap="circular"><Avatar sx={{ width: 34, height: 34, bgcolor: 'primary.main', fontSize: '.78rem' }}>{user?.name?.slice(0, 1) || 'A'}</Avatar></Badge></IconButton></Tooltip>
           <Menu anchorEl={profileAnchor} open={Boolean(profileAnchor)} onClose={() => setProfileAnchor(null)} transformOrigin={{ horizontal: 'left', vertical: 'top' }} anchorOrigin={{ horizontal: 'left', vertical: 'bottom' }}>
             <Box sx={{ px: 2, py: 1.1, minWidth: 210 }}><Typography fontWeight={800} fontSize=".8rem">{user?.name}</Typography><Typography color="text.secondary" fontSize=".68rem">@{user?.username} · {user?.role === 'Admin' ? 'مدير النظام' : 'كاشير'}</Typography></Box>
-            <MenuItem onClick={async () => { setProfileAnchor(null); await logout(); navigate('/login'); }}><LogoutRounded fontSize="small" sx={{ ml: 1 }}/><span>تسجيل الخروج</span></MenuItem>
+            <MenuItem onClick={async () => { setProfileAnchor(null); await logout(); navigate('/login'); }}><LogoutRounded fontSize="small" sx={{ marginInlineEnd: 1 }}/><span>تسجيل الخروج</span></MenuItem>
           </Menu>
         </div>
       </div>

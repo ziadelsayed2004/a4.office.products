@@ -19,7 +19,7 @@ export default function Dashboard() {
       <MetricCard icon={<SwapHorizRounded/>} label="شيفتات للمراجعة" value={number(data.pendingShiftsCount)} hint="طلبات تقفيل معلقة"/>
     </div>
     <section className="a4-page-section"><div className="a4-toolbar"><div><h2 className="a4-section-title">الأكثر مبيعاً</h2><p className="a4-section-subtitle">أفضل المنتجات حسب الكمية المباعة.</p></div></div>
-      <List disablePadding>{(data.topProducts || []).length ? data.topProducts.map((item, i) => <ListItem divider key={item.id} sx={{ px: 0 }}><div className="metric-card__icon" style={{ width: 38, height: 38, marginInlineEnd: 10 }}><PointOfSaleRounded fontSize="small"/></div><ListItemText primary={`${i + 1}. ${item.name}`} secondary={`SKU: ${item.sku}`}/><strong>{number(item.total_qty)} قطعة</strong></ListItem>) : <Alert severity="info">لا توجد مبيعات مسجلة حتى الآن.</Alert>}</List>
+      <List disablePadding>{(data.topProducts || []).length ? data.topProducts.map((item, i) => <ListItem divider key={item.id} sx={{ px: 0 }}><div className="metric-card__icon metric-card__icon--small"><PointOfSaleRounded fontSize="small"/></div><ListItemText primary={`${i + 1}. ${item.name}`} secondary={`SKU: ${item.sku}`}/><strong>{number(item.total_qty)} قطعة</strong></ListItem>) : <Alert severity="info">لا توجد مبيعات مسجلة حتى الآن.</Alert>}</List>
     </section>
   </>}</div>;
 }

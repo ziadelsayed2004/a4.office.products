@@ -1,0 +1,66 @@
+:root,
+[data-theme='light'] {
+  --app-font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+
+  --a4-bg: #f8f9fa;
+  --a4-paper: #ffffff;
+  --a4-elevated: #ffffff;
+  --a4-alt: #f1f3f4;
+  --a4-text: #202124;
+  --a4-muted: #5f6368;
+  --a4-border: #dadce0;
+  --a4-border-strong: #bdc1c6;
+  --a4-primary: #0f5fa6;
+  --a4-primary-hover: #0b4d88;
+  --a4-primary-soft: #e8f2fb;
+  --a4-success: #188038;
+  --a4-warning: #e37400;
+  --a4-danger: #d93025;
+  --a4-info: #0f5fa6;
+  --a4-shadow-sm: 0 1px 2px rgba(32, 33, 36, 0.08);
+  --a4-shadow-md: 0 8px 24px rgba(32, 33, 36, 0.1);
+  --a4-field-bg: #ffffff;
+  --a4-field-disabled: #f1f3f4;
+  --a4-field-label-surface: #ffffff;
+  --a4-focus-ring: 0 0 0 3px rgba(15, 95, 166, 0.14);
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --sidebar-width: 288px;
+  --sidebar-collapsed: 76px;
+  --topbar-height: 64px;
+  --content-max: 1600px;
+}
+
+[data-theme='dark'] {
+  --a4-bg: #121212;
+  --a4-paper: #1e1e1e;
+  --a4-elevated: #242424;
+  --a4-alt: #2a2a2a;
+  --a4-text: #e8eaed;
+  --a4-muted: #9aa0a6;
+  --a4-border: #3c4043;
+  --a4-border-strong: #5f6368;
+  --a4-primary: #8ab4f8;
+  --a4-primary-hover: #aecbfa;
+  --a4-primary-soft: rgba(138, 180, 248, 0.12);
+  --a4-success: #81c995;
+  --a4-warning: #fdd663;
+  --a4-danger: #f28b82;
+  --a4-info: #8ab4f8;
+  --a4-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --a4-shadow-md: 0 10px 30px rgba(0, 0, 0, 0.32);
+  --a4-field-bg: #1e1e1e;
+  --a4-field-disabled: #252525;
+  --a4-field-label-surface: #1e1e1e;
+  --a4-focus-ring: 0 0 0 3px rgba(138, 180, 248, 0.18);
+}

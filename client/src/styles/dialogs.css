@@ -1,0 +1,48 @@
+.MuiDialog-paper {
+  direction: rtl;
+  text-align: right;
+  border: 1px solid var(--a4-border);
+  border-radius: var(--radius-xs) !important;
+  background: var(--a4-paper);
+  background-image: none;
+}
+
+.MuiDialogTitle-root {
+  padding: 18px 20px 12px;
+  color: var(--a4-text);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.MuiDialogContent-root {
+  color: var(--a4-text);
+  text-align: right;
+}
+
+.MuiDialogActions-root {
+  direction: rtl;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 12px 20px 18px;
+}
+
+.MuiDialogActions-root .MuiButton-root {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .MuiDialog-paper {
+    margin: 12px;
+    width: calc(100% - 24px);
+    max-height: calc(100% - 24px);
+  }
+
+  .MuiDialogActions-root {
+    flex-wrap: wrap;
+  }
+
+  .MuiDialogActions-root .MuiButton-root {
+    flex: 1 1 140px;
+  }
+}
