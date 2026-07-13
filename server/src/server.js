@@ -48,12 +48,12 @@ async function startServer() {
   try {
     await runMigrations();
     await new Promise((resolve, reject) => {
-      httpServer = app.listen(config.port, resolve);
+      httpServer = app.listen(config.port, config.host, resolve);
       httpServer.once('error', reject);
     });
 
     console.log('========================================');
-    console.log(` A4 POS Backend running on port ${config.port}`);
+    console.log(` A4 POS Backend running on ${config.host}:${config.port}`);
     console.log(` Environment: ${config.env}`);
     console.log(` Timezone: ${config.timezone}`);
     console.log(' Database: SQLite');

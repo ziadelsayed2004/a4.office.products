@@ -11,6 +11,9 @@ const roots = {
 const productionEnvironment = {
   NODE_ENV: 'production',
   PORT: '5000',
+  HOST: '127.0.0.1',
+  APP_DOMAIN: 'pos.example.com',
+  APP_URL: 'https://pos.example.com',
   JWT_SECRET: 'a-production-secret-that-is-longer-than-thirty-two-characters',
   RETURN_QR_SECRET: 'a-distinct-production-return-qr-secret-longer-than-thirty-two',
   JWT_EXPIRES_IN: '8h',
@@ -27,11 +30,18 @@ const productionEnvironment = {
   BACKUP_DIR: './backups',
   BACKUP_RETENTION: '10',
   SHUTDOWN_TIMEOUT_MS: '10000',
+  CHROMIUM_EXECUTABLE_PATH: '/usr/bin/chromium',
+  PDF_TIMEOUT_MS: '30000',
+  PDF_MAX_CONCURRENCY: '2',
+  PDF_MAX_RECORDS: '100',
 };
 
 const productionConfig = createConfig(productionEnvironment, roots);
 assert.equal(productionConfig.env, 'production');
 assert.equal(productionConfig.port, 5000);
+assert.equal(productionConfig.host, '127.0.0.1');
+assert.equal(productionConfig.app.domain, 'pos.example.com');
+assert.equal(productionConfig.pdf.maxConcurrency, 2);
 assert.deepEqual(productionConfig.cors.origin, [
   'https://pos.example.com',
   'https://admin.example.com',
@@ -47,6 +57,22 @@ assert.throws(() => createConfig({ ...productionEnvironment, PORT: '70000' }, ro
 assert.throws(
   () => createConfig({ ...productionEnvironment, JWT_SECRET: 'too-short' }, roots),
   /32 characters/
+);
+assert.throws(
+  () =>
+    createConfig(
+      { ...productionEnvironment, RETURN_QR_SECRET: productionEnvironment.JWT_SECRET },
+      roots
+    ),
+  /must be different/
+);
+assert.throws(
+  () => createConfig({ ...productionEnvironment, HOST: '0.0.0.0' }, roots),
+  /HOST=127.0.0.1/
+);
+assert.throws(
+  () => createConfig({ ...productionEnvironment, APP_URL: 'http://pos.example.com' }, roots),
+  /HTTPS APP_URL/
 );
 assert.throws(
   () => createConfig({ ...productionEnvironment, RETURN_QR_SECRET: 'too-short' }, roots),

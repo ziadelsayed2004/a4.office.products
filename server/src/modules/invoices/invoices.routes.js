@@ -18,6 +18,11 @@ adminRouter.get(
   invoicesController.listAdminInvoicesController
 );
 adminRouter.get(
+  '/:id/pdf',
+  validate({ params: idParams }),
+  invoicesController.getAdminInvoicePdfController
+);
+adminRouter.get(
   '/:id',
   validate({ params: idParams }),
   invoicesController.getAdminInvoiceController
@@ -29,6 +34,11 @@ posRouter.get(
   '/lookup',
   validate({ query: invoiceLookupQuery }),
   invoicesController.lookupCashierInvoicesController
+);
+posRouter.get(
+  '/:id/pdf',
+  validate({ params: idParams, query: invoiceCredentialQuery }),
+  invoicesController.getCashierInvoicePdfController
 );
 posRouter.get(
   '/:id',

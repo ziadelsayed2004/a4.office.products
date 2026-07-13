@@ -171,7 +171,7 @@ export const reportQuery = dateRange(reportQueryBase);
 export const reportExportQuery = dateRange(
   reportQueryBase.extend({
     type: z.enum(['sales', 'invoices', 'preorders', 'inventory', 'payments', 'shifts', 'cashiers']),
-    format: z.literal('csv').optional(),
+    format: z.enum(['csv', 'pdf']).optional(),
   })
 );
 

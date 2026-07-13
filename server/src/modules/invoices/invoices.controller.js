@@ -1,4 +1,6 @@
 import * as invoicesService from './invoices.service.js';
+import { generateInvoicePdf } from './invoicePdf.service.js';
+import { writeAuditLog } from '../../utils/auditLogger.js';
 
 function adminFilters(query) {
   return {
@@ -37,6 +39,40 @@ export async function getAdminInvoiceController(req, res, next) {
     return next(error);
   }
 }
+
+async function sendInvoicePdf(req, res, next, options = {}) {
+  try {
+    const { buffer, invoice } = await generateInvoicePdf(req.params.id, req.user, options);
+    await writeAuditLog({
+      userId: req.user.id,
+      actionType: 'INVOICE_PDF_EXPORT',
+      entityType: 'invoice',
+      entityId: invoice.id,
+      notes: `Invoice PDF exported for ${invoice.invoice_number}.`,
+    });
+    const safeNumber = String(invoice.invoice_number || invoice.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="invoice_${safeNumber}.pdf"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.status(200).send(buffer);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export const getAdminInvoicePdfController = (req, res, next) => sendInvoicePdf(req, res, next);
+
+export const getCashierInvoicePdfController = (req, res, next) => {
+  const credential =
+    req.query.token || req.query.invoiceNumber || req.query.receiptNumber
+      ? {
+          token: req.query.token,
+          invoiceNumber: req.query.invoiceNumber,
+          receiptNumber: req.query.receiptNumber,
+        }
+      : null;
+  return sendInvoicePdf(req, res, next, { credential });
+};
 
 export async function lookupCashierInvoicesController(req, res, next) {
   try {

@@ -33,6 +33,7 @@ import {
   adminReturnAuthorizationRoutes,
   posReturnAuthorizationRoutes,
 } from './modules/returnAuthorizations/returnAuthorizations.routes.js';
+import { isChromiumAvailable } from './utils/pdf.js';
 
 const app = express();
 app.set('trust proxy', config.trustProxy);
@@ -81,6 +82,7 @@ app.get('/api/health', async (req, res) => {
     const result = await db.get('SELECT 1 AS result;');
     const journal = await db.get('PRAGMA journal_mode;');
     const foreignKeys = await db.get('PRAGMA foreign_keys;');
+    const migrations = await db.get('SELECT COUNT(*) AS count FROM schema_migrations;');
     return res.status(200).json({
       status: result?.result === 1 ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
@@ -90,6 +92,8 @@ app.get('/api/health', async (req, res) => {
         journalMode: journal?.journal_mode,
         foreignKeys: foreignKeys?.foreign_keys === 1,
       },
+      migrations: { ready: Number(migrations?.count || 0) >= 2 },
+      pdf: { available: isChromiumAvailable() },
     });
   } catch (error) {
     console.error(error?.stack || error);

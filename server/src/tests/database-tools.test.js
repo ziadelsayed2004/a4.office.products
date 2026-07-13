@@ -409,6 +409,9 @@ try {
       cwd: projectRoot,
       env: resetEnvironment(restorePartialPath, {
         NODE_ENV: 'production',
+        HOST: '127.0.0.1',
+        APP_DOMAIN: 'staging.example.test',
+        APP_URL: 'https://staging.example.test',
         SQLITE_DB_PATH: restorePartialPath,
         PRODUCTION_SQLITE_DB_PATH: restorePartialPath,
         ALLOW_DATABASE_RESET: 'false',

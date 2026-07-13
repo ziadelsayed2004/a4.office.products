@@ -50,7 +50,6 @@ for (const forbidden of [
   /ALLOW_DATABASE_RESET=true/,
   /pm2 startup systemd -u root/,
   /usermod[^\n]*www-data/,
-  /systemctl reload nginx/,
 ]) {
   assert.doesNotMatch(deploy, forbidden, `Unsafe deployment pattern found: ${forbidden}`);
 }
@@ -65,6 +64,12 @@ for (const required of [
   'RETURN_QR_SECRET=$EXISTING_RETURN_QR_SECRET',
   'RETURN_AUTHORIZATION_TTL_HOURS=24',
   'VITE_API_BASE_URL=',
+  'HOST=127.0.0.1',
+  'APP_DOMAIN=$DOMAIN_NAME',
+  'APP_URL=https://$DOMAIN_NAME',
+  'CORS_ORIGIN=https://$DOMAIN_NAME',
+  'CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium',
+  "fail 'Chromium was installed but /usr/bin/chromium is unavailable.'",
   'ALLOW_DATABASE_RESET=false',
   'SEED_DEMO_USERS=false',
   'BACKUP_DIR=./backups',
@@ -82,12 +87,19 @@ for (const required of [
   'sudo -u www-data test -r "$APP_DIR/.env"',
   'APP_GROUP_GID=',
   '/proc/$nginx_pid/status',
+  'certbot --nginx',
+  'certbot.timer',
+  'PDF_MAX_CONCURRENCY=2',
+  'Pre-deployment SQLite backup failed integrity verification.',
+  'Public HTTPS health check failed.',
+  '\"available\":true',
 ]) {
   assert.ok(deploy.includes(required), `Deployment script is missing: ${required}`);
 }
 
 assert.match(ecosystem, /NODE_ENV:\s*'production'/);
 assert.match(ecosystem, /PORT:\s*5000/);
+assert.match(ecosystem, /HOST:\s*'127\.0\.0\.1'/);
 assert.doesNotMatch(ecosystem, /ALLOW_DATABASE_RESET/);
 
 function selectDeploymentJwt(candidate, environment) {

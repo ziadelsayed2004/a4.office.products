@@ -1,5 +1,7 @@
 import * as reportsService from './reports.service.js';
 import { AppError } from '../../utils/errors.js';
+import { generateReportPdf } from './reportPdf.service.js';
+import { writeAuditLog } from '../../utils/auditLogger.js';
 
 function send(res, next, operation) {
   return operation.then((data) => res.status(200).json({ status: 'success', data })).catch(next);
@@ -103,6 +105,19 @@ export async function exportReportController(req, res, next) {
     }
     const rows =
       report.rows || report.orders || report.preorders || report.products || report.shifts || [];
+    if (req.query.format === 'pdf') {
+      const buffer = await generateReportPdf({ type, rows, headers });
+      await writeAuditLog({
+        userId: req.user.id,
+        actionType: 'REPORT_PDF_EXPORT',
+        entityType: 'report',
+        notes: `PDF report exported: ${type} (${rows.length} records).`,
+      });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="report_${type}.pdf"`);
+      res.setHeader('Cache-Control', 'private, no-store');
+      return res.status(200).send(buffer);
+    }
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename=report_${type}_${Date.now()}.csv`);
     return res.status(200).send(reportsService.toCsv(headers, rows));

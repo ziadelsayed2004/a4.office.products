@@ -1,4 +1,5 @@
 import path from 'node:path';
+import fs from 'node:fs';
 import { isIP } from 'node:net';
 import { z } from 'zod';
 import { PROJECT_ROOT, SERVER_ROOT } from './env.js';
@@ -40,6 +41,9 @@ const environmentSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: integerString('PORT', 1, 65535, 5000),
+    HOST: z.string().min(1).default('127.0.0.1'),
+    APP_DOMAIN: z.string().min(1).default('localhost'),
+    APP_URL: z.string().url().default('http://localhost:5173'),
     JWT_SECRET: z.string().min(1).optional(),
     JWT_EXPIRES_IN: z
       .string()
@@ -65,6 +69,10 @@ const environmentSchema = z
     BACKUP_DIR: z.string().min(1).default('./backups'),
     BACKUP_RETENTION: integerString('BACKUP_RETENTION', 1, 365, 10),
     SHUTDOWN_TIMEOUT_MS: integerString('SHUTDOWN_TIMEOUT_MS', 1000, 120_000, 10_000),
+    CHROMIUM_EXECUTABLE_PATH: z.string().min(1).default('/usr/bin/chromium'),
+    PDF_TIMEOUT_MS: integerString('PDF_TIMEOUT_MS', 1000, 120_000, 30_000),
+    PDF_MAX_CONCURRENCY: integerString('PDF_MAX_CONCURRENCY', 1, 8, 2),
+    PDF_MAX_RECORDS: integerString('PDF_MAX_RECORDS', 1, 500, 100),
   })
   .passthrough();
 
@@ -170,6 +178,32 @@ export function createConfig(
   if (isProduction && (!values.RETURN_QR_SECRET || values.RETURN_QR_SECRET.length < 32)) {
     configurationErrors.push('RETURN_QR_SECRET must contain at least 32 characters in production.');
   }
+  const placeholderSecret = (value) =>
+    /development|change[_-]?me|placeholder|example/i.test(value || '');
+  if (isProduction && placeholderSecret(values.JWT_SECRET)) {
+    configurationErrors.push('JWT_SECRET contains a development placeholder.');
+  }
+  if (isProduction && placeholderSecret(values.RETURN_QR_SECRET)) {
+    configurationErrors.push('RETURN_QR_SECRET contains a development placeholder.');
+  }
+  if (isProduction && values.JWT_SECRET === values.RETURN_QR_SECRET) {
+    configurationErrors.push('JWT_SECRET and RETURN_QR_SECRET must be different.');
+  }
+  let appUrl;
+  try {
+    appUrl = new URL(values.APP_URL);
+    if (appUrl.pathname !== '/' || appUrl.search || appUrl.hash) {
+      configurationErrors.push('APP_URL must be an HTTP(S) origin without a path.');
+    }
+  } catch {
+    configurationErrors.push('APP_URL must be a valid URL.');
+  }
+  if (isProduction && (values.HOST !== '127.0.0.1' || appUrl?.protocol !== 'https:')) {
+    configurationErrors.push('Production requires HOST=127.0.0.1 and an HTTPS APP_URL.');
+  }
+  if (isProduction && appUrl?.hostname !== values.APP_DOMAIN) {
+    configurationErrors.push('APP_URL hostname must match APP_DOMAIN in production.');
+  }
   if (
     isProduction &&
     values.CORS_ORIGIN.split(',')
@@ -215,6 +249,8 @@ export function createConfig(
     env: values.NODE_ENV,
     isProduction,
     port: values.PORT,
+    host: values.HOST,
+    app: { domain: values.APP_DOMAIN, url: values.APP_URL },
     jwt: {
       secret: jwtSecret,
       expiresIn: values.JWT_EXPIRES_IN,
@@ -248,6 +284,20 @@ export function createConfig(
       enabled: seedDemoUsers,
     },
     shutdownTimeoutMs: values.SHUTDOWN_TIMEOUT_MS,
+    pdf: {
+      chromiumExecutablePath: path.resolve(values.CHROMIUM_EXECUTABLE_PATH),
+      timeoutMs: values.PDF_TIMEOUT_MS,
+      maxConcurrency: values.PDF_MAX_CONCURRENCY,
+      maxRecords: values.PDF_MAX_RECORDS,
+      chromiumAvailable: () => {
+        try {
+          fs.accessSync(path.resolve(values.CHROMIUM_EXECUTABLE_PATH), fs.constants.X_OK);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    },
   };
 
   return Object.freeze(config);

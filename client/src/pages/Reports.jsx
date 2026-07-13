@@ -4,6 +4,7 @@ import {
   AssessmentRounded,
   BadgeRounded,
   DownloadRounded,
+  PictureAsPdfRounded,
   GroupsRounded,
   Inventory2Rounded,
   PaymentsRounded,
@@ -133,13 +134,13 @@ export default function Reports() {
     load(tab, initialFilters);
   };
 
-  const exportCsv = async () => {
+  const exportReport = async (format) => {
     setExporting(true);
     try {
       const query = buildQuery(filters);
       await api.download(
-        `/api/admin/reports/export?type=${tab}${query ? `&${query}` : ''}`,
-        `تقرير_${tab}_${new Date().toISOString().slice(0, 10)}.csv`
+        `/api/admin/reports/export?type=${tab}&format=${format}${query ? `&${query}` : ''}`,
+        `report_${tab}_${new Date().toISOString().slice(0, 10)}.${format}`
       );
       setToast({ message: 'تم تجهيز ملف التقرير للتنزيل.' });
     } catch (err) {
@@ -422,12 +423,20 @@ export default function Reports() {
               تحديث
             </Button>
             <Button
-              variant="contained"
-              startIcon={<DownloadRounded />}
-              onClick={exportCsv}
+              variant="outlined"
+              startIcon={<PictureAsPdfRounded />}
+              onClick={() => exportReport('pdf')}
               disabled={exporting || loading}
             >
-              {exporting ? 'جاري التصدير...' : 'تصدير التقرير'}
+              PDF
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<DownloadRounded />}
+              onClick={() => exportReport('csv')}
+              disabled={exporting || loading}
+            >
+              {exporting ? 'جاري التصدير...' : 'CSV'}
             </Button>
           </>
         }

@@ -30,7 +30,22 @@ export const loginRateLimiter = rateLimit({
 });
 
 // helmet: secure HTTP headers
-export const helmetSecurityHeaders = helmet();
+export const helmetSecurityHeaders = helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      baseUri: ["'self'"],
+      frameAncestors: ["'none'"],
+      objectSrc: ["'none'"],
+      imgSrc: ["'self'", 'data:', 'blob:'],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", 'data:'],
+    },
+  },
+  crossOriginResourcePolicy: { policy: 'same-origin' },
+});
 
 // corsMiddleware: CORS security filters based on environment configurations
 export const customCorsOptions = {

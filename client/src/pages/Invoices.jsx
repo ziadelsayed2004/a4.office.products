@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import {
   AssignmentReturnRounded,
+  PictureAsPdfRounded,
   PrintRounded,
   QrCodeScannerRounded,
   RefreshRounded,
@@ -135,6 +136,7 @@ export default function Invoices() {
   const [selectedReceiptId, setSelectedReceiptId] = useState('');
   const [printReason, setPrintReason] = useState('');
   const [printing, setPrinting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [toast, setToast] = useState(null);
 
   const hasOpenShift = currentShift?.status === 'OPEN';
@@ -256,6 +258,24 @@ export default function Invoices() {
       return Promise.resolve(row);
     }
     return fetchDetail(row);
+  };
+
+  const downloadInvoicePdf = async () => {
+    const id = invoiceId(selected);
+    if (!id) return;
+    setExportingPdf(true);
+    try {
+      let endpoint = isAdmin ? `/api/admin/invoices/${id}/pdf` : `/api/pos/invoices/${id}/pdf`;
+      if (!isAdmin && cashierMode === 'exact' && lookup.value.trim()) {
+        endpoint += `?${new URLSearchParams({ [lookup.type]: lookup.value.trim() })}`;
+      }
+      await api.download(endpoint, `invoice_${invoiceNumber(selected)}.pdf`);
+      setToast({ message: 'تم تجهيز ملف PDF للتنزيل.' });
+    } catch (err) {
+      setToast({ severity: 'error', message: err.message });
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   const printSelectedReceipt = async () => {
@@ -663,7 +683,7 @@ export default function Invoices() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDetailOpen(false)} disabled={printing}>
+          <Button onClick={() => setDetailOpen(false)} disabled={printing || exportingPdf}>
             إغلاق
           </Button>
           {isAdmin && selected && (
@@ -676,6 +696,16 @@ export default function Invoices() {
               }}
             >
               إصدار بطاقة مرتجع
+            </Button>
+          )}
+          {selected && (
+            <Button
+              variant="outlined"
+              startIcon={<PictureAsPdfRounded />}
+              onClick={downloadInvoicePdf}
+              disabled={exportingPdf}
+            >
+              {exportingPdf ? 'جاري إنشاء PDF...' : 'تنزيل PDF'}
             </Button>
           )}
           {receipts.length > 0 && (
