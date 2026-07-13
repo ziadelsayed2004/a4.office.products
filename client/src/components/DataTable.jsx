@@ -1,11 +1,4 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-} from '@mui/material';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import { EmptyState } from './EmptyState.jsx';
 import './DataTable.css';
 
@@ -43,7 +36,7 @@ export function DataTable({
                 <TableCell
                   key={column.key}
                   align={column.align || 'right'}
-                  sx={column.width ? { width: column.width } : undefined}
+                  className={`data-table__cell data-table__cell--${column.key}`}
                 >
                   {column.label}
                 </TableCell>
@@ -54,7 +47,11 @@ export function DataTable({
             {rows.map((row, index) => (
               <TableRow hover key={row[rowKey] ?? index}>
                 {columns.map((column) => (
-                  <TableCell key={column.key} align={column.align || 'right'}>
+                  <TableCell
+                    key={column.key}
+                    align={column.align || 'right'}
+                    className={`data-table__cell data-table__cell--${column.key}`}
+                  >
                     {getCellContent(column, row, index)}
                   </TableCell>
                 ))}
@@ -69,9 +66,7 @@ export function DataTable({
           <article className="mobile-record-card" key={row[rowKey] ?? index}>
             <div className="mobile-record-card__head">
               <strong>
-                {mobilePrimary
-                  ? mobilePrimary(row)
-                  : row.name || row.title || `سجل ${index + 1}`}
+                {mobilePrimary ? mobilePrimary(row) : row.name || row.title || `سجل ${index + 1}`}
               </strong>
               {actionColumn?.render?.(row, index)}
             </div>

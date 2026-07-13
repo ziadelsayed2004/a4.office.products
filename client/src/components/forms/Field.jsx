@@ -1,25 +1,16 @@
-import { cloneElement, isValidElement, useId } from "react";
-import { FormLabel, TextField } from "@mui/material";
-import "./Field.css";
+import { cloneElement, isValidElement, useId } from 'react';
+import { FormLabel, TextField } from '@mui/material';
+import './Field.css';
 
-const ALWAYS_SHRINK_TYPES = new Set([
-  "date",
-  "datetime-local",
-  "time",
-  "month",
-  "week",
-]);
+const ALWAYS_SHRINK_TYPES = new Set(['date', 'datetime-local', 'time', 'month', 'week']);
 
 function isMuiTextField(child) {
-  return (
-    isValidElement(child) &&
-    (child.type === TextField || child.type?.muiName === "TextField")
-  );
+  return isValidElement(child) && (child.type === TextField || child.type?.muiName === 'TextField');
 }
 
 function mergeInputLabelSlot(slot, forceShrink) {
   if (!forceShrink) return slot;
-  if (typeof slot === "function") {
+  if (typeof slot === 'function') {
     return (ownerState) => ({ ...slot(ownerState), shrink: true });
   }
   return { ...slot, shrink: true };
@@ -30,19 +21,19 @@ function mergeHtmlInputSlot(slot, { ltr, type }) {
     const useLtr =
       ltr ||
       ALWAYS_SHRINK_TYPES.has(type) ||
-      type === "number" ||
-      type === "tel" ||
-      resolvedSlot.dir === "ltr";
-    const ltrClassName = useLtr ? "a4-ltr-value" : "";
+      type === 'number' ||
+      type === 'tel' ||
+      resolvedSlot.dir === 'ltr';
+    const ltrClassName = useLtr ? 'a4-ltr-value' : '';
 
     return {
       ...resolvedSlot,
-      dir: useLtr ? "ltr" : "rtl",
-      className: `${resolvedSlot.className || ""} ${ltrClassName}`.trim(),
+      dir: useLtr ? 'ltr' : 'rtl',
+      className: `${resolvedSlot.className || ''} ${ltrClassName}`.trim(),
     };
   };
 
-  if (typeof slot === "function") {
+  if (typeof slot === 'function') {
     return (ownerState) => applyDefaults(slot(ownerState));
   }
 
@@ -62,20 +53,15 @@ export function Field({
   hint,
   error,
   children,
-  className = "",
-  density = "normal",
+  className = '',
+  density = 'normal',
   ltr = false,
 }) {
-  const generatedId = useId().replace(/:/g, "");
+  const generatedId = useId().replace(/:/g, '');
   const normalizedDensity =
-    density === "comfortable"
-      ? "comfortable"
-      : density === "compact"
-        ? "compact"
-        : "normal";
+    density === 'comfortable' ? 'comfortable' : density === 'compact' ? 'compact' : 'normal';
   const densityClass = `field--${normalizedDensity}`;
-  const fieldClassName =
-    `field ${densityClass} ${ltr ? "field--ltr" : ""} ${className}`.trim();
+  const fieldClassName = `field ${densityClass} ${ltr ? 'field--ltr' : ''} ${className}`.trim();
 
   if (isMuiTextField(children)) {
     const existingSlots = children.props.slotProps ?? {};
@@ -85,8 +71,7 @@ export function Field({
     const effectiveLabel = label ?? children.props.label;
     const forceShrink =
       ALWAYS_SHRINK_TYPES.has(type) ||
-      (typeof existingInputLabel !== "function" &&
-        existingInputLabel.shrink === true);
+      (typeof existingInputLabel !== 'function' && existingInputLabel.shrink === true);
 
     return (
       <div className={fieldClassName}>
@@ -101,10 +86,8 @@ export function Field({
           error: Boolean(error) || Boolean(children.props.error),
           helperText: error || hint || children.props.helperText,
           fullWidth: children.props.fullWidth ?? true,
-          size:
-            children.props.size ||
-            (normalizedDensity === "comfortable" ? "medium" : "small"),
-          variant: children.props.variant || "outlined",
+          size: children.props.size || (normalizedDensity === 'comfortable' ? 'medium' : 'small'),
+          variant: children.props.variant || 'outlined',
           slotProps: {
             ...existingSlots,
             inputLabel: mergeInputLabelSlot(existingInputLabel, forceShrink),

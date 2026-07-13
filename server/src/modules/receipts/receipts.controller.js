@@ -1,18 +1,11 @@
 import * as receiptsService from './receipts.service.js';
 
-function sendError(res, error, fallbackCode) {
-  return res.status(error.status || 500).json({
-    error: error.message,
-    code: error.code || fallbackCode
-  });
-}
-
-export async function getReceiptDetailsController(req, res) {
+export async function getReceiptDetailsController(req, res, next) {
   try {
-    const details = await receiptsService.getReceiptDetails(req.params.id, req.user);
-    return res.status(200).json({ status: 'success', data: details });
+    const data = await receiptsService.getReceiptDetails(req.params.id, req.user);
+    return res.status(200).json({ status: 'success', data });
   } catch (error) {
-    return sendError(res, error, 'RECEIPT_LOOKUP_FAILED');
+    return next(error);
   }
 }
 
@@ -21,30 +14,35 @@ function printInput(req, isReprintOverride = null) {
     requestKey: req.body?.requestKey || req.body?.request_key || req.get('Idempotency-Key'),
     copies: req.body?.copies,
     reason: req.body?.reason,
-    isReprint: isReprintOverride ?? req.body?.isReprint ?? false
+    isReprint: isReprintOverride ?? req.body?.isReprint ?? false,
   };
 }
 
-export async function requestReceiptPrintController(req, res) {
+async function sendPrintRequest(req, res, next, isReprint) {
   try {
-    const result = await receiptsService.requestReceiptPrint(req.params.id, printInput(req), req.user);
+    const result = await receiptsService.requestReceiptPrint(
+      req.params.id,
+      printInput(req, isReprint),
+      req.user
+    );
     res.setHeader('Idempotency-Replayed', String(result.replayed));
-    const { replayed, ...data } = result;
-    return res.status(200).json({ status: 'success', data });
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        request_id: result.request_id,
+        print_count: result.print_count,
+        copies: result.copies,
+      },
+    });
   } catch (error) {
-    return sendError(res, error, 'RECEIPT_PRINT_REQUEST_FAILED');
+    return next(error);
   }
 }
 
-// Compatibility adapter: old clients may keep the /reprint path, but it now
-// records an idempotent browser print request instead of claiming output.
-export async function reprintReceiptController(req, res) {
-  try {
-    const result = await receiptsService.requestReceiptPrint(req.params.id, printInput(req, true), req.user);
-    res.setHeader('Idempotency-Replayed', String(result.replayed));
-    const { replayed, ...data } = result;
-    return res.status(200).json({ status: 'success', data });
-  } catch (error) {
-    return sendError(res, error, 'RECEIPT_REPRINT_FAILED');
-  }
+export function requestReceiptPrintController(req, res, next) {
+  return sendPrintRequest(req, res, next, null);
+}
+
+export function reprintReceiptController(req, res, next) {
+  return sendPrintRequest(req, res, next, true);
 }

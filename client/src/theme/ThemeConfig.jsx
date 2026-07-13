@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState } from 'react';
 import { CacheProvider } from '@emotion/react';
 import createCache from '@emotion/cache';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -109,7 +109,7 @@ function buildTheme(mode, colors) {
       info: { main: colors.primary },
       action: {
         hover: alpha(colors.primary, mode === 'light' ? 0.05 : 0.08),
-        selected: alpha(colors.primary, mode === 'light' ? 0.10 : 0.14),
+        selected: alpha(colors.primary, mode === 'light' ? 0.1 : 0.14),
         disabledBackground: colors.fieldDisabled,
       },
     },
@@ -198,7 +198,8 @@ function buildTheme(mode, colors) {
             color: colors.textMuted,
             fontFamily,
             fontWeight: 500,
-            transition: 'color 160ms ease, transform 180ms cubic-bezier(0.4, 0, 0.2, 1), max-width 180ms ease',
+            transition:
+              'color 160ms ease, transform 180ms cubic-bezier(0.4, 0, 0.2, 1), max-width 180ms ease',
             '&.Mui-focused': { color: colors.primary, fontWeight: 600 },
             '&.Mui-error': { color: colors.danger },
           },
@@ -207,7 +208,13 @@ function buildTheme(mode, colors) {
       },
       MuiFormLabel: {
         styleOverrides: {
-          root: { direction: 'rtl', textAlign: 'right', fontFamily, color: colors.text, fontWeight: 600 },
+          root: {
+            direction: 'rtl',
+            textAlign: 'right',
+            fontFamily,
+            color: colors.text,
+            fontWeight: 600,
+          },
           asterisk: { color: colors.danger, marginInlineStart: 3 },
         },
       },
@@ -275,7 +282,10 @@ function buildTheme(mode, colors) {
       },
       MuiIconButton: {
         styleOverrides: {
-          root: { borderRadius: '50%', transition: 'background-color 150ms ease, color 150ms ease' },
+          root: {
+            borderRadius: '50%',
+            transition: 'background-color 150ms ease, color 150ms ease',
+          },
         },
       },
       MuiPaper: {
@@ -464,7 +474,7 @@ export function ThemeConfig({ children }) {
   const [mode, setMode] = useState(getInitialMode);
   const colors = palettes[mode];
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     try {
       window.localStorage.setItem(COLOR_MODE_STORAGE_KEY, mode);
     } catch {
@@ -474,7 +484,6 @@ export function ThemeConfig({ children }) {
     document.documentElement.lang = 'ar';
     document.documentElement.dir = 'rtl';
     document.documentElement.dataset.theme = mode;
-    document.documentElement.style.colorScheme = mode;
     document.body.dir = 'rtl';
   }, [mode]);
 
@@ -482,11 +491,14 @@ export function ThemeConfig({ children }) {
     setMode((currentMode) => (currentMode === 'light' ? 'dark' : 'light'));
   }, []);
 
-  const colorMode = useMemo(() => ({
-    mode,
-    toggleColorMode,
-    toggleMode: toggleColorMode,
-  }), [mode, toggleColorMode]);
+  const colorMode = useMemo(
+    () => ({
+      mode,
+      toggleColorMode,
+      toggleMode: toggleColorMode,
+    }),
+    [mode, toggleColorMode]
+  );
 
   const theme = useMemo(() => buildTheme(mode, colors), [colors, mode]);
 

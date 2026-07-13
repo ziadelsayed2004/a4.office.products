@@ -1,131 +1,128 @@
-# دليل تشغيل ورفع المنصة — A4 POS Platform
+# دليل نشر A4 Office POS
 
-هذا الدليل يشرح كيفية تشغيل منصة A4 POS محلياً للتطوير، وكيفية رفعها إلى خادم إنتاجي (VPS/Hostinger/Node.js).
+هذا الدليل خاص ببيئة staging أو production على Ubuntu 22.04/24.04. لا تُشغّل `deploy.sh` على VPS حي قبل تحديد الدومين، مراجعة النسخة الاحتياطية، والحصول على صلاحية صريحة.
 
----
+## المتطلبات والهيكل
 
-## 1. التشغيل المحلي (Local Setup)
+- Node.js 20.19 أو أحدث.
+- checkout داخل `/opt/a4-office` أو `/var/www/a4-office`، وليس تحت `/root`.
+- Nginx أمام Express، والمنفذ الداخلي الثابت `5000`.
+- مستخدم خدمة محدود باسم `a4pos`، وليس root.
+- ملف env واحد في جذر المشروع بصلاحية `0600`.
+- قاعدة SQLite في `server/src/db/a4_pos.db` والنسخ في `backups/`.
 
-### المتطلبات الأساسية
-- **Node.js**: إصدار 18 أو أحدث.
-- **npm**: مدير الحزم الافتراضي لـ Node.
+لا يُضاف `www-data` عمدًا إلى مجموعة `a4pos`، ويحذف سكربت النشر أي عضوية قديمة ثم يعيد تشغيل Nginx بالكامل ويتحقق فعليًا من صلاحيات القراءة. صلاحية القراءة/المرور العامة تقتصر على مسار المشروع و`client/dist` الذي يقدمه Nginx، بينما تظل `.env` وقاعدة البيانات و`backups/` غير متاحة لمستخدم الويب.
 
-### خطوات التثبيت والتشغيل:
-1. **تثبيت الاعتماديات**:
-   قم بتشغيل الأمر التالي في المجلد الرئيسي لتثبيت حزم السيرفر والواجهة الأمامية معاً:
-   ```bash
-   npm run install:all
-   ```
-2. **إعداد البيئة (.env)**:
-   اذهب إلى مجلد `server/` وتأكد من وجود ملف `.env` يحتوي على القيم التالية:
-   ```env
-   PORT=5000
-   NODE_ENV=development
-   JWT_SECRET=your_jwt_secret_key_here
-   JWT_EXPIRES_IN=7d
-   SQLITE_DB_PATH=./src/db/a4_pos.db
-   ```
-3. **التشغيل التجريبي**:
-   قم بتشغيل الأمر التالي في المجلد الرئيسي للمشروع لتشغيل السيرفر والواجهة الأمامية بالتزامن:
-   ```bash
-   npm run dev
-   ```
-   - **الواجهة الأمامية (Client)**: ستعمل على الرابط `http://localhost:5173`.
-   - **الخلفية (Server API)**: ستعمل على الرابط `http://localhost:5000`.
+## إعداد production
 
-### حسابات التجربة الافتراضية (Default Demo Accounts)
-عند تهيئة قاعدة البيانات لأول مرة، يتم إنشاء الحسابات التالية تلقائياً لتسهيل التجربة:
-* **حساب مدير النظام (Admin)**:
-  * **اسم المستخدم**: `admin`
-  * **كلمة المرور**: `admin123`
-* **حساب الكاشير (Cashier)**:
-  * **اسم المستخدم**: `cashier`
-  * **كلمة المرور**: `cashier123`
+القيم الإلزامية موضحة في `.env.production.example`. أهم الضوابط:
 
----
+- `NODE_ENV=production` و`ALLOW_DATABASE_RESET=false`.
+- `JWT_SECRET` و`RETURN_QR_SECRET` قيمتان عشوائيتان مختلفتان، كل منهما بطول 32 حرفاً على الأقل.
+- `CORS_ORIGIN` يحتوي origins صريحة فقط ولا يقبل `*`.
+- `SEED_DEMO_USERS=false`؛ لا توجد كلمات مرور افتراضية في production.
+- `TRUST_PROXY=loopback` عند وجود Nginx محلي.
+- `VITE_API_BASE_URL=` فارغ لبناء same-origin.
+- `BACKUP_DIR=./backups` و`BACKUP_RETENTION=10`.
 
-## 2. الرفع إلى الخادم الإنتاجي (Production Deployment on VPS)
+يفشل السيرفر مبكراً إذا كانت القيم غير صحيحة أو غير آمنة.
 
-تعتمد المنصة على قاعدة بيانات SQLite مدمجة وخفيفة الوزن، وواجهة React مبنية وجاهزة للتقديم كملفات استاتيكية.
+## النشر الآلي المراجع
 
-### الخطوة 1: تهيئة خادم VPS (أوبونتو/Ubuntu)
-قم بالاتصال بالخادم عبر SSH وتثبيت البرمجيات المطلوبة:
+من مجلد المشروع:
+
 ```bash
-sudo apt update && sudo apt upgrade -y
-# تثبيت Node.js
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
-# تثبيت مدير العمليات PM2 ومخدم Nginx
-sudo npm install -g pm2
-sudo apt install nginx -y
+chmod +x deploy.sh
+sudo ./deploy.sh
 ```
 
-### الخطوة 2: رفع الكود وبناء الواجهة الأمامية
-1. قم بسحب الكود من مستودع Git الخاص بك على الخادم.
-2. قم بتثبيت الحزم وبناء الواجهة الأمامية:
-   ```bash
-   npm run install:all
-   npm run build
-   ```
-   هذا سينتج مجلد البناء `client/dist` الذي يحتوي على ملفات الواجهة الاستاتيكية الجاهزة للتقديم.
+السكريبت يثبت Node 20 وNginx وPM2، ينشئ مستخدم الخدمة، يولد أو يحتفظ بسر JWT قوي، يشغل `npm ci` وبوابة `npm run check`، يبني الواجهة same-origin، يهيئ Nginx وPM2، ويجدول نسخة يومية في `backups/`. لا يستخدم `chmod 777` ولا يشغّل التطبيق كـroot.
 
-### الخطوة 3: تشغيل الخلفية (Backend) عبر PM2
-1. تأكد من إعداد ملف `.env` الخاص ببيئة الإنتاج في المجلد `server/` وضبط `NODE_ENV=production`.
-2. قم بتشغيل الخلفية كعملية مستمرة في الخلفية:
-   ```bash
-   cd server
-   pm2 start src/server.js --name "a4-pos-server"
-   pm2 save
-   pm2 startup
-   ```
+السكريبت يعرض اختيار إنشاء أول Admin. كلمة المرور تمر في بيئة العملية مؤقتاً ثم تُحذف ولا تُكتب في `.env`. يمكن تنفيذ الخطوة يدوياً مرة واحدة:
 
-### الخطوة 4: إعداد Nginx كمخدم وكيل (Reverse Proxy)
-قم بإنشاء ملف إعدادات جديد لموقعك في Nginx:
 ```bash
-sudo nano /etc/nginx/sites-available/a4-pos
+sudo -u a4pos -H env \
+  BOOTSTRAP_ADMIN_USERNAME=admin \
+  BOOTSTRAP_ADMIN_NAME='System Administrator' \
+  BOOTSTRAP_ADMIN_PASSWORD='temporary-strong-password' \
+  npm --prefix /opt/a4-office/server run admin:bootstrap
 ```
-أضف الإعدادات التالية (مع استبدال `yourdomain.com` بنطاقك أو عنوان IP الخاص بالخادم):
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
 
-    # تقديم ملفات الواجهة الأمامية للـ React مباشرة
-    location / {
-        root /var/www/a4-office/client/dist;
-        index index.html;
-        try_files $uri $uri/ /index.html;
-    }
+يرفض الأمر الإنشاء إذا كان هناك Admin بالفعل. يجب تغيير كلمة المرور المؤقتة بعد أول دخول.
 
-    # تمرير طلبات الـ API إلى خادم الـ Node.js
-    location /api {
-        proxy_pass http://localhost:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-تفعيل الموقع وإعادة تشغيل Nginx:
+## TLS وCORS
+
+بعد تأكيد DNS، ثبّت شهادة TLS (مثلاً Certbot)، ثم احذف origin الخاص بـHTTP من `CORS_ORIGIN` وأعد تشغيل العملية:
+
 ```bash
-sudo ln -s /etc/nginx/sites-available/a4-pos /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
+sudo -u a4pos -H env PM2_HOME=/var/lib/a4pos/.pm2 pm2 restart a4-pos-server --update-env
 ```
 
----
+## أسرار المرتجعات
 
-## 3. الأتمتة والنسخ الاحتياطي الدوري (Cron Backups)
+اضبط `RETURN_QR_SECRET` في production بقيمة عشوائية قوية لا تقل عن 32 حرفًا ولا تستخدم قيمة التطوير أو المثال. يحدد `RETURN_AUTHORIZATION_TTL_HOURS` الصلاحية الافتراضية (`24`، والحد الأقصى داخل التطبيق 7 أيام). تغيير السر يبطل كل بطاقات المرتجع الفعالة، لذلك دوّره فقط ضمن إجراء معلن يتضمن إلغاء/إعادة إصدار البطاقات المفتوحة.
 
-لحماية قاعدة البيانات، يوصى بجدولة عملية النسخ الاحتياطي التي تم إعدادها مسبقاً لتعمل بشكل دوري (مثال: كل يوم الساعة 12 منتصف الليل بتوقيت القاهرة).
+قبل قبول المرتجعات في staging اختبر دفعًا مختلطًا: يجب أن ينخفض النقد مرة واحدة فقط، وألا تغير البطاقة/المحفظة عهدة الدرج، وأن يظل التصريح فعالًا عند رفض التنفيذ بسبب نقص النقد.
 
-لتعديل المهام المجدولة على الخادم:
+## النسخ والاسترجاع
+
 ```bash
-crontab -e
+npm run db:backup
 ```
-أضف السطر التالي للجدولة اليومية (مع استبدال المسارات بالمسار المطلق لمشروعك على الخادم):
-```cron
-0 0 * * * cd /var/www/a4-office && /usr/bin/npm run db:backup >> /var/log/a4_backup.log 2>&1
+
+النسخ Online SQLite تشمل صفحات WAL الملتزمة. تُكتب كل نسخة أولًا إلى ملف `.partial` فريد، ويُفحص بـ`integrity_check` و`foreign_key_check`، ثم يُنشر باسم `.db` فريد عبر rename ذري داخل مجلد `backups/`. يحتفظ النظام بآخر 10 نسخ سليمة فقط، وينظف ملفات العمل والنسخ غير السليمة بدل اعتبارها صالحة.
+
+اختبر الاسترجاع أولًا على staging: انسخ backup إلى مسار مؤقت، وجّه `SQLITE_DB_PATH` إليه، شغّل `npm run db:verify` ثم smoke tests وكتابة تجريبية على النسخة فقط. لا تُجرّب الكتابة على قاعدة التشغيل الأصلية.
+
+للاسترجاع الفعلي، خذ نسخة Online أخيرة وتحقق من backup المختار قبل إيقاف الخدمة. جهّز نسخة staging باسم ينتهي بـ`.partial.db` على نفس filesystem الخاص بالوجهة وتحقق منها أولًا. بعد ذلك أوقف PM2 وانتظر إغلاق اتصال SQLite، ثم دوّر أو احذف **ملف القاعدة وكل sidecars** القديمة (`-wal` و`-shm` و`-journal`)؛ تركيب ملف `.db` مع WAL قديم يمكن أن يعيد بيانات غير مقصودة أو يتلف الاسترجاع. انقل النسخة الموثقة إلى اسم القاعدة بعملية rename ذرية:
+
+```bash
+set -euo pipefail
+APP_DIR=/opt/a4-office
+DB="$APP_DIR/server/src/db/a4_pos.db"
+BACKUP="$APP_DIR/backups/a4_pos_CHOOSE_VERIFIED_BACKUP.db"
+STAMP="$(date +%Y%m%d_%H%M%S)"
+
+cd "$APP_DIR"
+sudo -u a4pos -H env \
+  SQLITE_DB_PATH="$BACKUP" \
+  PRODUCTION_SQLITE_DB_PATH="$BACKUP" \
+  npm --prefix server run db:verify
+
+PARTIAL="${DB%.db}.restore-$STAMP.partial.db"
+install -o a4pos -g a4pos -m 0640 -- "$BACKUP" "$PARTIAL"
+sudo -u a4pos -H env \
+  SQLITE_DB_PATH="$PARTIAL" \
+  PRODUCTION_SQLITE_DB_PATH="$PARTIAL" \
+  npm --prefix server run db:verify
+rm -f -- "$PARTIAL-wal" "$PARTIAL-shm" "$PARTIAL-journal"
+
+sudo -u a4pos -H env PM2_HOME=/var/lib/a4pos/.pm2 pm2 stop a4-pos-server
+for artifact in "$DB" "$DB-wal" "$DB-shm" "$DB-journal"; do
+  if [ -e "$artifact" ]; then
+    mv -- "$artifact" "$artifact.pre-restore-$STAMP"
+  fi
+done
+
+mv -- "$PARTIAL" "$DB"
+sudo -u a4pos -H env \
+  SQLITE_DB_PATH="$DB" \
+  PRODUCTION_SQLITE_DB_PATH="$DB" \
+  npm --prefix server run db:verify
+
+sudo -u a4pos -H env PM2_HOME=/var/lib/a4pos/.pm2 pm2 restart a4-pos-server --update-env
+curl --fail --silent http://127.0.0.1:5000/api/health
 ```
+
+لا تحذف الملفات ذات اللاحقة `pre-restore-*` إلا بعد نجاح التشغيل وفحص السيناريوهات الأساسية على النسخة المسترجعة.
+
+## قائمة القبول
+
+```bash
+npm run check
+npm run security:audit
+npm run deploy:check
+npm run db:verify
+```
+
+ثم اختبر على staging: تسجيل Admin وCashier، بيع، حجز واستلام، مرتجع، شيفت، تقارير، إيصالات وملصقات، الوضعين الفاتح والداكن، والأحجام المستهدفة. لا تعتبر النشر مكتملًا قبل فحص Nginx وPM2 والنسخ والاسترجاع على staging.

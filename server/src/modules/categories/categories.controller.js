@@ -2,69 +2,51 @@ import * as categoriesService from './categories.service.js';
 
 export async function getCategoriesController(req, res, next) {
   try {
-    // Cashiers see only active categories. Admins see all unless specified.
-    const isCashier = req.user.role === 'Cashier';
-    const activeOnly = isCashier || req.query.activeOnly === 'true';
-
-    const categories = await categoriesService.getAllCategories(activeOnly);
-
+    const activeOnly = req.user.role === 'Cashier' || req.query.activeOnly === 'true';
     return res.status(200).json({
       status: 'success',
-      data: categories
+      data: await categoriesService.getAllCategories(activeOnly),
     });
   } catch (error) {
-    return res.status(500).json({
-      error: 'حدث خطأ أثناء تحميل التصنيفات.',
-      code: 'SERVER_ERROR'
-    });
+    return next(error);
   }
 }
 
 export async function createCategoryController(req, res, next) {
   try {
-    const { name } = req.body;
-    if (!name) {
-      return res.status(400).json({
-        error: 'اسم التصنيف مطلوب.',
-        code: 'VALIDATION_ERROR'
-      });
-    }
-
-    const newCategory = await categoriesService.createCategory(name, req.user.id);
-
+    const category = await categoriesService.createCategory(req.body.name, req.user.id);
     return res.status(201).json({
       status: 'success',
-      message: 'تم إنشاء التصنيف بنجاح.',
-      data: newCategory
+      message: 'Category created successfully.',
+      data: category,
     });
   } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'CREATE_CATEGORY_FAILED'
-    });
+    return next(error);
   }
 }
 
 export async function updateCategoryController(req, res, next) {
   try {
-    const { id } = req.params;
-    const { name, is_active } = req.body;
-
-    const updated = await categoriesService.updateCategory(
-      parseInt(id, 10),
-      { name, is_active },
-      req.user.id
-    );
-
+    const category = await categoriesService.updateCategory(req.params.id, req.body, req.user.id);
     return res.status(200).json({
       status: 'success',
-      message: 'تم تحديث التصنيف بنجاح.',
-      data: updated
+      message: 'Category updated successfully.',
+      data: category,
     });
   } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'UPDATE_CATEGORY_FAILED'
+    return next(error);
+  }
+}
+
+export async function deleteCategoryController(req, res, next) {
+  try {
+    const data = await categoriesService.deleteCategory(req.params.id, req.user.id);
+    return res.status(200).json({
+      status: 'success',
+      message: 'Category deleted successfully.',
+      data,
     });
+  } catch (error) {
+    return next(error);
   }
 }

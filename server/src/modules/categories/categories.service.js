@@ -1,129 +1,168 @@
-import db from '../../db/index.js';
+import db, { withTransaction } from '../../db/index.js';
 import { writeAuditLog } from '../../utils/auditLogger.js';
+import { AppError } from '../../utils/errors.js';
 
-/**
- * Retrieve all categories.
- * If activeOnly is true, returns only categories where is_active = 1.
- */
-export async function getAllCategories(activeOnly = false) {
-  let query = 'SELECT id, name, is_active, created_at, updated_at FROM categories';
-  const params = [];
-
-  if (activeOnly) {
-    query += ' WHERE is_active = 1';
-  }
-
-  query += ' ORDER BY name ASC;';
-  return await db.all(query, params);
+function categoryName(value) {
+  const name = String(value || '').trim();
+  if (!name) throw new AppError('Category name is required.', 400, 'CATEGORY_NAME_REQUIRED');
+  if (name.length > 150)
+    throw new AppError('Category name is too long.', 400, 'CATEGORY_NAME_INVALID');
+  return name;
 }
 
-/**
- * Retrieve category by ID.
- */
-export async function getCategoryById(id) {
-  return await db.get(
-    'SELECT id, name, is_active, created_at, updated_at FROM categories WHERE id = ?;',
+export async function getAllCategories(activeOnly = false, connection = db) {
+  let query = `SELECT c.id, c.name, c.is_active, c.created_at, c.updated_at,
+    (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count,
+    (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = 1)
+      AS active_product_count,
+    (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = 0)
+      AS inactive_product_count
+    FROM categories c`;
+  if (activeOnly) query += ' WHERE c.is_active = 1';
+  query += ' ORDER BY c.name ASC;';
+  return (await connection.all(query)).map(decorateCategoryDependencies);
+}
+
+export async function getCategoryById(id, connection = db) {
+  const category = await connection.get(
+    `SELECT c.id, c.name, c.is_active, c.created_at, c.updated_at,
+      (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count,
+      (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = 1)
+        AS active_product_count,
+      (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = 0)
+        AS inactive_product_count
+     FROM categories c WHERE c.id = ?;`,
     [id]
   );
+  return category ? decorateCategoryDependencies(category) : null;
 }
 
-/**
- * Create a new category.
- */
-export async function createCategory(name, adminUserId) {
-  if (!name || name.trim().length === 0) {
-    throw new Error('اسم التصنيف مطلوب.');
-  }
-
-  const cleanName = name.trim();
-
-  // Check unique category name
-  const existing = await db.get('SELECT id FROM categories WHERE name = ?;', [cleanName]);
-  if (existing) {
-    throw new Error('هذا التصنيف موجود بالفعل.');
-  }
-
-  const result = await db.run(
-    'INSERT INTO categories (name) VALUES (?);',
-    [cleanName]
-  );
-
-  const newId = result.lastID;
-
-  // Log audit trail
-  await writeAuditLog({
-    userId: adminUserId,
-    actionType: 'CATEGORY_CREATE',
-    entityType: 'categories',
-    entityId: newId,
-    afterValues: { name: cleanName },
-    notes: `تم إنشاء تصنيف جديد: ${cleanName}`
-  });
-
-  return await getCategoryById(newId);
+function decorateCategoryDependencies(category) {
+  const {
+    product_count: productCount = 0,
+    active_product_count: activeProductCount = 0,
+    inactive_product_count: inactiveProductCount = 0,
+    ...data
+  } = category;
+  const dependencyCounts = {
+    products: Number(productCount),
+    active_products: Number(activeProductCount),
+    inactive_products: Number(inactiveProductCount),
+  };
+  return {
+    ...data,
+    can_delete: dependencyCounts.products === 0,
+    dependency_counts: dependencyCounts,
+  };
 }
 
-/**
- * Update category details (name, status active/disabled).
- */
-export async function updateCategory(id, { name, is_active }, adminUserId) {
-  const oldCategory = await getCategoryById(id);
-  if (!oldCategory) {
-    throw new Error('التصنيف غير موجود.');
-  }
-
-  const updates = {};
-  const queryParts = [];
-  const params = [];
-
-  if (name !== undefined) {
-    const cleanName = name.trim();
-    if (cleanName.length === 0) {
-      throw new Error('اسم التصنيف لا يمكن أن يكون فارغاً.');
-    }
-    // Check uniqueness if renaming
-    if (cleanName !== oldCategory.name) {
-      const existing = await db.get('SELECT id FROM categories WHERE name = ?;', [cleanName]);
-      if (existing) {
-        throw new Error('هناك تصنيف آخر بهذا الاسم بالفعل.');
+export async function createCategory(value, adminUserId) {
+  const name = categoryName(value);
+  return withTransaction(async (connection) => {
+    const existing = await connection.get('SELECT id FROM categories WHERE name = ?;', [name]);
+    if (existing) throw new AppError('Category name already exists.', 409, 'CATEGORY_CONFLICT');
+    let result;
+    try {
+      result = await connection.run('INSERT INTO categories (name) VALUES (?);', [name]);
+    } catch (error) {
+      if (error.code === 'SQLITE_CONSTRAINT') {
+        throw new AppError('Category name already exists.', 409, 'CATEGORY_CONFLICT');
       }
+      throw error;
     }
-    updates.name = cleanName;
-    queryParts.push('name = ?');
-    params.push(cleanName);
-  }
-
-  if (is_active !== undefined) {
-    const statusVal = is_active ? 1 : 0;
-    updates.is_active = statusVal;
-    queryParts.push('is_active = ?');
-    params.push(statusVal);
-  }
-
-  if (queryParts.length === 0) {
-    return oldCategory; // No changes requested
-  }
-
-  queryParts.push('updated_at = CURRENT_TIMESTAMP');
-  params.push(id); // For WHERE clause
-
-  await db.run(
-    `UPDATE categories SET ${queryParts.join(', ')} WHERE id = ?;`,
-    params
-  );
-
-  const updatedCategory = await getCategoryById(id);
-
-  // Log audit trail
-  await writeAuditLog({
-    userId: adminUserId,
-    actionType: 'CATEGORY_UPDATE',
-    entityType: 'categories',
-    entityId: id,
-    beforeValues: oldCategory,
-    afterValues: updates,
-    notes: `تم تحديث التصنيف ذو المعرف (${id}) إلى: ${JSON.stringify(updates)}`
+    await writeAuditLog({
+      userId: adminUserId,
+      actionType: 'CATEGORY_CREATE',
+      entityType: 'categories',
+      entityId: result.lastID,
+      afterValues: { name },
+      notes: `Category created: ${name}`,
+      connection,
+    });
+    return getCategoryById(result.lastID, connection);
   });
+}
 
-  return updatedCategory;
+export async function updateCategory(id, { name, is_active }, adminUserId) {
+  return withTransaction(async (connection) => {
+    const oldCategory = await getCategoryById(id, connection);
+    if (!oldCategory) throw new AppError('Category not found.', 404, 'CATEGORY_NOT_FOUND');
+
+    const updates = {};
+    const fields = [];
+    const params = [];
+    if (name !== undefined) {
+      const cleanName = categoryName(name);
+      if (cleanName !== oldCategory.name) {
+        const existing = await connection.get(
+          'SELECT id FROM categories WHERE name = ? AND id != ?;',
+          [cleanName, id]
+        );
+        if (existing) throw new AppError('Category name already exists.', 409, 'CATEGORY_CONFLICT');
+      }
+      updates.name = cleanName;
+      fields.push('name = ?');
+      params.push(cleanName);
+    }
+    if (is_active !== undefined) {
+      updates.is_active = is_active ? 1 : 0;
+      fields.push('is_active = ?');
+      params.push(updates.is_active);
+    }
+    if (fields.length === 0) return oldCategory;
+
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    params.push(id);
+    try {
+      await connection.run(`UPDATE categories SET ${fields.join(', ')} WHERE id = ?;`, params);
+    } catch (error) {
+      if (error.code === 'SQLITE_CONSTRAINT') {
+        throw new AppError('Category name already exists.', 409, 'CATEGORY_CONFLICT');
+      }
+      throw error;
+    }
+    const updatedCategory = await getCategoryById(id, connection);
+    await writeAuditLog({
+      userId: adminUserId,
+      actionType: 'CATEGORY_UPDATE',
+      entityType: 'categories',
+      entityId: id,
+      beforeValues: oldCategory,
+      afterValues: updatedCategory,
+      notes: `Category ${id} updated`,
+      connection,
+    });
+    return updatedCategory;
+  });
+}
+
+export async function deleteCategory(id, adminUserId) {
+  return withTransaction(async (connection) => {
+    const category = await getCategoryById(id, connection);
+    if (!category) throw new AppError('Category not found.', 404, 'CATEGORY_NOT_FOUND');
+
+    if (!category.can_delete) {
+      throw new AppError(
+        'Category is linked to products and cannot be deleted. Move every linked product first.',
+        409,
+        'CATEGORY_IN_USE',
+        category.dependency_counts
+      );
+    }
+
+    const result = await connection.run('DELETE FROM categories WHERE id = ?;', [id]);
+    if (result.changes !== 1) throw new AppError('Category not found.', 404, 'CATEGORY_NOT_FOUND');
+
+    await writeAuditLog({
+      userId: adminUserId,
+      actionType: 'CATEGORY_DELETE',
+      entityType: 'categories',
+      entityId: Number(id),
+      beforeValues: category,
+      afterValues: { id: Number(id), deleted: true },
+      notes: `Category deleted: ${category.name}`,
+      connection,
+    });
+    return { id: Number(id) };
+  });
 }

@@ -7,6 +7,10 @@ yarn-error.log*
 # Build outputs
 client/dist/
 client/dist-ssr/
+coverage/
+.coverage/
+.cache/
+**/.vite/
 
 # Environment files
 .env
@@ -22,6 +26,18 @@ server/src/db/*.db
 server/src/db/*.db-journal
 server/src/db/*.db-wal
 server/src/db/*.db-shm
+server/src/db/*.sqlite
+server/src/db/*.sqlite-journal
+server/src/db/*.sqlite-wal
+server/src/db/*.sqlite-shm
+server/src/db/*.sqlite3
+server/src/db/*.sqlite3-journal
+server/src/db/*.sqlite3-wal
+server/src/db/*.sqlite3-shm
+server/.tmp/
+tmp/
+temp/
+*.tmp
 
 # Backups and log files
 backups/

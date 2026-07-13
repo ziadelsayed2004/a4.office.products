@@ -22,17 +22,19 @@ export function paymentRowsToPayload(methods, rows, due) {
       method: code,
       amount,
       referenceNumber: row.referenceNumber?.trim() || null,
-      note: row.note?.trim() || null
+      note: row.note?.trim() || null,
     };
     if (method.accepts_cash_received) {
       payment.cashReceived = parsePiasters(row.cashReceived);
-      if (payment.cashReceived < amount) throw new Error('المبلغ النقدي المستلم أقل من المبلغ المطبق.');
+      if (payment.cashReceived < amount)
+        throw new Error('المبلغ النقدي المستلم أقل من المبلغ المطبق.');
     }
     payload.push(payment);
     total += amount;
   }
   if (Number(due) === 0 && payload.length === 0) return [];
-  if (total !== Number(due)) throw new Error(`إجمالي الدفعات ${money(total)} لا يساوي المطلوب ${money(due)}.`);
+  if (total !== Number(due))
+    throw new Error(`إجمالي الدفعات ${money(total)} لا يساوي المطلوب ${money(due)}.`);
   return payload;
 }
 
@@ -40,19 +42,22 @@ export function PaymentEntry({ methods, due, value, onChange }) {
   const set = (code, key, nextValue) => {
     onChange({ ...value, [code]: { ...value[code], [key]: nextValue } });
   };
-  const preview = methods.reduce((result, method) => {
-    const code = methodCode(method);
-    const row = value[code] || {};
-    try {
-      const amount = row.amount ? parsePiasters(row.amount) : 0;
-      const received = row.cashReceived ? parsePiasters(row.cashReceived) : 0;
-      result.applied += amount;
-      if (method.accepts_cash_received && received >= amount) result.change += received - amount;
-    } catch {
-      result.invalid = true;
-    }
-    return result;
-  }, { applied: 0, change: 0, invalid: false });
+  const preview = methods.reduce(
+    (result, method) => {
+      const code = methodCode(method);
+      const row = value[code] || {};
+      try {
+        const amount = row.amount ? parsePiasters(row.amount) : 0;
+        const received = row.cashReceived ? parsePiasters(row.cashReceived) : 0;
+        result.applied += amount;
+        if (method.accepts_cash_received && received >= amount) result.change += received - amount;
+      } catch {
+        result.invalid = true;
+      }
+      return result;
+    },
+    { applied: 0, change: 0, invalid: false }
+  );
 
   return (
     <div className="payment-entry">
@@ -68,10 +73,38 @@ export function PaymentEntry({ methods, due, value, onChange }) {
             <section className="payment-entry__method" key={code}>
               <strong>{method.name_ar || method.name || code}</strong>
               <FieldGrid>
-                <Field label="المبلغ المطبق" ltr><TextField value={row.amount || ''} onChange={(event) => set(code, 'amount', event.target.value)} placeholder="0.00" inputMode="decimal" /></Field>
-                {Boolean(method.accepts_cash_received) && <Field label="النقد المستلم" ltr><TextField value={row.cashReceived || ''} onChange={(event) => set(code, 'cashReceived', event.target.value)} placeholder="0.00" inputMode="decimal" /></Field>}
-                {!method.accepts_cash_received && <Field label="رقم المرجع" ltr><TextField value={row.referenceNumber || ''} onChange={(event) => set(code, 'referenceNumber', event.target.value)} /></Field>}
-                <Field className="full" label="ملاحظة اختيارية"><TextField value={row.note || ''} onChange={(event) => set(code, 'note', event.target.value)} /></Field>
+                <Field label="المبلغ المطبق" ltr>
+                  <TextField
+                    value={row.amount || ''}
+                    onChange={(event) => set(code, 'amount', event.target.value)}
+                    placeholder="0.00"
+                    inputMode="decimal"
+                  />
+                </Field>
+                {Boolean(method.accepts_cash_received) && (
+                  <Field label="النقد المستلم" ltr>
+                    <TextField
+                      value={row.cashReceived || ''}
+                      onChange={(event) => set(code, 'cashReceived', event.target.value)}
+                      placeholder="0.00"
+                      inputMode="decimal"
+                    />
+                  </Field>
+                )}
+                {!method.accepts_cash_received && (
+                  <Field label="رقم المرجع" ltr>
+                    <TextField
+                      value={row.referenceNumber || ''}
+                      onChange={(event) => set(code, 'referenceNumber', event.target.value)}
+                    />
+                  </Field>
+                )}
+                <Field className="full" label="ملاحظة اختيارية">
+                  <TextField
+                    value={row.note || ''}
+                    onChange={(event) => set(code, 'note', event.target.value)}
+                  />
+                </Field>
               </FieldGrid>
             </section>
           );

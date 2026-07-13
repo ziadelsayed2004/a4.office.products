@@ -4,7 +4,7 @@ import {
   closeTestServer,
   createTestEnvironment,
   disposeTestEnvironment,
-  seedCatalogFixture
+  seedCatalogFixture,
 } from './test-environment.js';
 
 let server;
@@ -19,10 +19,14 @@ async function runTests() {
   const [{ default: app }, dbModule, migrationModule] = await Promise.all([
     import('../app.js'),
     import('../db/index.js'),
-    import('../db/migrate.js')
+    import('../db/migrate.js'),
   ]);
   db = dbModule.default;
-  assert.strictEqual(dbModule.dbPath, testEnvironment.databasePath, 'smoke test must use its isolated database');
+  assert.strictEqual(
+    dbModule.dbPath,
+    testEnvironment.databasePath,
+    'smoke test must use its isolated database'
+  );
   await migrationModule.runMigrations();
   await seedCatalogFixture(db);
   console.log(`✔ Fresh isolated database created at ${testEnvironment.databasePath}.`);
@@ -45,7 +49,7 @@ async function runTests() {
     const loginRes = await fetch(`${BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'admin', password: 'admin123' })
+      body: JSON.stringify({ username: 'admin', password: 'admin123' }),
     });
     assert.strictEqual(loginRes.status, 200, 'Admin login should succeed');
     const loginData = await loginRes.json();
@@ -59,12 +63,16 @@ async function runTests() {
     const cashierLoginRes = await fetch(`${BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'cashier', password: 'cashier123' })
+      body: JSON.stringify({ username: 'cashier', password: 'cashier123' }),
     });
     assert.strictEqual(cashierLoginRes.status, 200, 'Cashier login should succeed');
     const cashierLoginData = await cashierLoginRes.json();
     assert.ok(cashierLoginData.data.accessToken, 'Should return accessToken');
-    assert.strictEqual(cashierLoginData.data.user.role, 'Cashier', 'Logged in user should be Cashier');
+    assert.strictEqual(
+      cashierLoginData.data.user.role,
+      'Cashier',
+      'Logged in user should be Cashier'
+    );
     cashierToken = cashierLoginData.data.accessToken;
     console.log('✔ Passed');
 
@@ -73,15 +81,18 @@ async function runTests() {
     const invalidLoginRes = await fetch(`${BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'admin', password: 'wrongpassword' })
+      body: JSON.stringify({ username: 'admin', password: 'wrongpassword' }),
     });
-    assert.ok(invalidLoginRes.status === 400 || invalidLoginRes.status === 401, 'Should fail with 400 or 401');
+    assert.ok(
+      invalidLoginRes.status === 400 || invalidLoginRes.status === 401,
+      'Should fail with 400 or 401'
+    );
     console.log('✔ Passed');
 
     // Test 4: Auth me endpoint (Admin)
     console.log('\nRunning: GET /api/auth/me (Admin)...');
     const meRes = await fetch(`${BASE_URL}/api/auth/me`, {
-      headers: { 'Authorization': `Bearer ${adminToken}` }
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
     assert.strictEqual(meRes.status, 200, 'GET me should succeed');
     const meData = await meRes.json();
@@ -91,7 +102,7 @@ async function runTests() {
     // Test 5: Get Catalog Categories
     console.log('\nRunning: GET /api/categories...');
     const catRes = await fetch(`${BASE_URL}/api/categories`, {
-      headers: { 'Authorization': `Bearer ${adminToken}` }
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
     assert.strictEqual(catRes.status, 200, 'GET categories should succeed');
     const catData = await catRes.json();
@@ -101,27 +112,27 @@ async function runTests() {
     // Test 5b: Get Price Tiers Catalog
     console.log('\nRunning: GET /api/admin/price-tiers...');
     const ptRes = await fetch(`${BASE_URL}/api/admin/price-tiers`, {
-      headers: { 'Authorization': `Bearer ${cashierToken}` }
+      headers: { Authorization: `Bearer ${cashierToken}` },
     });
     assert.strictEqual(ptRes.status, 200, 'GET price-tiers should succeed');
     const ptData = await ptRes.json();
     console.log('Available Price Tiers:', ptData.data);
     assert.ok(Array.isArray(ptData.data), 'Response data should be an array');
     assert.ok(ptData.data.length > 0, 'Price tiers list should not be empty');
-    targetPriceTierId = ptData.data.find(pt => pt.id === 1)?.id || ptData.data[0].id;
+    targetPriceTierId = ptData.data.find((pt) => pt.id === 1)?.id || ptData.data[0].id;
     console.log('✔ Passed');
 
     // Test 6: Get Products Catalog
     console.log('\nRunning: GET /api/products...');
     const prodRes = await fetch(`${BASE_URL}/api/products`, {
-      headers: { 'Authorization': `Bearer ${adminToken}` }
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
     assert.strictEqual(prodRes.status, 200, 'GET products should succeed');
     const prodData = await prodRes.json();
     assert.ok(Array.isArray(prodData.data), 'Response data should be an array');
     assert.ok(prodData.data.length > 0, 'Catalog should not be empty');
     targetProductId = prodData.data[0].id;
-    
+
     // Pick price tier dynamically from the selected product prices to guarantee validity
     const productPrices = prodData.data[0].prices || [];
     targetPriceTierId = productPrices.length > 0 ? productPrices[0].price_tier_id : 1;
@@ -130,7 +141,7 @@ async function runTests() {
     // Test 7: POS Scan Product search
     console.log('\nRunning: GET /api/pos/products/search...');
     const searchRes = await fetch(`${BASE_URL}/api/pos/products/search?q=NOTE`, {
-      headers: { 'Authorization': `Bearer ${cashierToken}` }
+      headers: { Authorization: `Bearer ${cashierToken}` },
     });
     assert.strictEqual(searchRes.status, 200, 'POS search should succeed');
     const searchData = await searchRes.json();
@@ -140,7 +151,7 @@ async function runTests() {
     // Test 8: Get Shifts check
     console.log('\nRunning: GET /api/shifts/current...');
     const shiftRes = await fetch(`${BASE_URL}/api/shifts/current`, {
-      headers: { 'Authorization': `Bearer ${cashierToken}` }
+      headers: { Authorization: `Bearer ${cashierToken}` },
     });
     assert.strictEqual(shiftRes.status, 200, 'GET current shift should succeed');
     console.log('✔ Passed');
@@ -148,7 +159,7 @@ async function runTests() {
     // Test 9: RBAC Authorization Check (Admin KPIs - Admin)
     console.log('\nRunning: RBAC Check: GET /api/admin/kpis (Admin)...');
     const kpisRes = await fetch(`${BASE_URL}/api/admin/kpis`, {
-      headers: { 'Authorization': `Bearer ${adminToken}` }
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
     assert.strictEqual(kpisRes.status, 200, 'Admin should access KPIs');
     console.log('✔ Passed');
@@ -156,7 +167,7 @@ async function runTests() {
     // Test 10: RBAC Authorization Check (Admin KPIs - Cashier restriction)
     console.log('\nRunning: RBAC Check: GET /api/admin/kpis (Cashier - restricted)...');
     const kpisCashierRes = await fetch(`${BASE_URL}/api/admin/kpis`, {
-      headers: { 'Authorization': `Bearer ${cashierToken}` }
+      headers: { Authorization: `Bearer ${cashierToken}` },
     });
     assert.strictEqual(kpisCashierRes.status, 403, 'Cashier should be blocked with 403 Forbidden');
     console.log('✔ Passed');
@@ -165,11 +176,11 @@ async function runTests() {
     console.log(`\nRunning: POST /api/admin/products/${targetProductId}/qr-labels (Admin)...`);
     const qrRes = await fetch(`${BASE_URL}/api/admin/products/${targetProductId}/qr-labels`, {
       method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${adminToken}`,
-        'Content-Type': 'application/json'
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ quantity: 5, label_size: '50x25' })
+      body: JSON.stringify({ quantity: 5, label_size: '50x25' }),
     });
     if (qrRes.status !== 200) {
       const errBody = await qrRes.json().catch(() => ({}));
@@ -185,11 +196,11 @@ async function runTests() {
     console.log('\nRunning: POST /api/shifts/open...');
     const openShiftRes = await fetch(`${BASE_URL}/api/shifts/open`, {
       method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${cashierToken}`,
-        'Content-Type': 'application/json'
+      headers: {
+        Authorization: `Bearer ${cashierToken}`,
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ openingCash: 250.00 })
+      body: JSON.stringify({ openingCash: 250.0 }),
     });
     assert.strictEqual(openShiftRes.status, 200, 'Opening cashier shift should succeed');
     console.log('✔ Passed');
@@ -197,11 +208,14 @@ async function runTests() {
     // Test 13: Preorder creation returning a pickup QR code/token
     console.log('\nRunning: POST /api/pos/preorders (Cashier)...');
     const detailRes = await fetch(`${BASE_URL}/api/products/${targetProductId}`, {
-      headers: { 'Authorization': `Bearer ${adminToken}` }
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
     const detailData = await detailRes.json();
     const targetProduct = detailData.data;
-    const targetPriceObj = (targetProduct.prices || []).find(pr => pr.price_tier_id === targetPriceTierId) || (targetProduct.prices || []).find(pr => pr.price > 0) || (targetProduct.prices || [])[0];
+    const targetPriceObj =
+      (targetProduct.prices || []).find((pr) => pr.price_tier_id === targetPriceTierId) ||
+      (targetProduct.prices || []).find((pr) => pr.price > 0) ||
+      (targetProduct.prices || [])[0];
     const targetUnitPrice = targetPriceObj ? targetPriceObj.price : 10000;
     const targetTotalAmount = targetUnitPrice * 2;
     const targetDepositPaid = targetTotalAmount;
@@ -211,17 +225,17 @@ async function runTests() {
     const preorderRes = await fetch(`${BASE_URL}/api/pos/preorders`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${cashierToken}`,
+        Authorization: `Bearer ${cashierToken}`,
         'Content-Type': 'application/json',
-        'Idempotency-Key': 'smoke-preorder-create-001'
+        'Idempotency-Key': 'smoke-preorder-create-001',
       },
       body: JSON.stringify({
         customerName: 'محمد أحمد',
         customerPhone: '01122334455',
         items: [{ product_id: targetProductId, quantity: 2, price_tier_id: actualPriceTierId }],
         depositPaid: targetDepositPaid,
-        payments: [{ method: 'Cash', amount: targetDepositPaid, cashReceived: targetDepositPaid }]
-      })
+        payments: [{ method: 'Cash', amount: targetDepositPaid, cashReceived: targetDepositPaid }],
+      }),
     });
     if (preorderRes.status !== 201) {
       const errBody = await preorderRes.json().catch(() => ({}));
@@ -239,15 +253,19 @@ async function runTests() {
     const reprintRes = await fetch(`${BASE_URL}/api/pos/receipts/${createdReceiptId}/reprint`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${cashierToken}`,
+        Authorization: `Bearer ${cashierToken}`,
         'Content-Type': 'application/json',
-        'Idempotency-Key': 'smoke-receipt-reprint-001'
+        'Idempotency-Key': 'smoke-receipt-reprint-001',
       },
-      body: JSON.stringify({ reason: 'نسخة مكررة للعميل' })
+      body: JSON.stringify({ reason: 'نسخة مكررة للعميل' }),
     });
     assert.strictEqual(reprintRes.status, 200, 'Reprinting receipt should succeed');
     const reprintData = await reprintRes.json();
-    assert.strictEqual(reprintData.data.print_count, 2, 'Receipt print counter should increment to 2');
+    assert.strictEqual(
+      reprintData.data.print_count,
+      2,
+      'Receipt print counter should increment to 2'
+    );
     console.log('✔ Passed');
 
     console.log('\n========================================');

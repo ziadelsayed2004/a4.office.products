@@ -88,6 +88,23 @@
   background: var(--color-surface);
 }
 
+.data-pagination {
+  padding-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 520px) {
+  .data-pagination {
+    display: grid;
+    justify-items: center;
+  }
+}
+
 .main-table-paper {
   width: 100%;
   overflow: hidden;

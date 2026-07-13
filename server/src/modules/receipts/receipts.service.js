@@ -21,7 +21,7 @@ function normalizeItem(item) {
     price_tier_name: item.price_tier_name ?? item.priceTierName ?? null,
     availability_policy: item.availability_policy ?? item.availabilityPolicy ?? null,
     unit_price: item.unit_price ?? item.unitPrice,
-    total_price: item.total_price ?? item.totalPrice
+    total_price: item.total_price ?? item.totalPrice,
   };
 }
 
@@ -32,7 +32,7 @@ function normalizePayment(payment) {
     amount: payment.amount ?? payment.applied_amount ?? payment.appliedAmount,
     cash_received: payment.cash_received ?? payment.cashReceived ?? null,
     change_amount: payment.change_amount ?? payment.changeAmount ?? 0,
-    reference_number: payment.reference_number ?? payment.referenceNumber ?? null
+    reference_number: payment.reference_number ?? payment.referenceNumber ?? null,
   };
 }
 
@@ -63,7 +63,10 @@ async function cashierOwnsReceipt(receipt, cashierId, connection) {
     return Boolean(row);
   }
 
-  if (receipt.reference_type === 'preorder_deposit' || receipt.reference_type === 'preorder_pickup') {
+  if (
+    receipt.reference_type === 'preorder_deposit' ||
+    receipt.reference_type === 'preorder_pickup'
+  ) {
     const row = await connection.get(
       `SELECT 1 AS allowed
          FROM preorders p
@@ -78,22 +81,43 @@ async function cashierOwnsReceipt(receipt, cashierId, connection) {
     );
     return Boolean(row);
   }
+  if (receipt.reference_type === 'order_return') {
+    const row = await connection.get(
+      `SELECT 1 AS allowed FROM returns r
+        WHERE r.id = ? AND r.cashier_id = ?;`,
+      [receipt.reference_id, cashierId]
+    );
+    return Boolean(row);
+  }
   return false;
 }
 
-async function assertReceiptAccess(receipt, actor, { exactReceiptNumber = false, connection = db } = {}) {
+async function assertReceiptAccess(
+  receipt,
+  actor,
+  { exactReceiptNumber = false, connection = db } = {}
+) {
   if (actor?.role === 'Admin') return;
-  if (actor?.role !== 'Cashier') throw new AppError('Receipt access is forbidden.', 403, 'FORBIDDEN');
+  if (actor?.role !== 'Cashier')
+    throw new AppError('Receipt access is forbidden.', 403, 'FORBIDDEN');
   // An exact receipt number is an explicitly supported customer-service lookup.
   if (exactReceiptNumber) return;
   if (await cashierOwnsReceipt(receipt, actor.id, connection)) return;
-  throw new AppError('This receipt is outside the cashier\'s permitted scope.', 403, 'RECEIPT_SCOPE_FORBIDDEN');
+  throw new AppError(
+    "This receipt is outside the cashier's permitted scope.",
+    403,
+    'RECEIPT_SCOPE_FORBIDDEN'
+  );
 }
 
 function flattenReceipt(receipt) {
   const snapshot = parseSnapshot(receipt.snapshot_json);
   if (!snapshot) {
-    throw new AppError('The immutable receipt snapshot is unavailable.', 409, 'RECEIPT_SNAPSHOT_MISSING');
+    throw new AppError(
+      'The immutable receipt snapshot is unavailable.',
+      409,
+      'RECEIPT_SNAPSHOT_MISSING'
+    );
   }
 
   return {
@@ -111,6 +135,9 @@ function flattenReceipt(receipt) {
     invoice_number: snapshot.invoiceNumber ?? snapshot.invoice_number ?? null,
     preorder_id: snapshot.preorderId ?? snapshot.preorder_id ?? null,
     preorder_number: snapshot.preorderNumber ?? snapshot.preorder_number ?? null,
+    return_id: snapshot.returnId ?? snapshot.return_id ?? null,
+    return_number: snapshot.returnNumber ?? snapshot.return_number ?? null,
+    authorization_number: snapshot.authorizationNumber ?? snapshot.authorization_number ?? null,
     qr_token: receipt.qr_token || snapshot.qrToken || snapshot.qr_token || null,
     origin: snapshot.origin || null,
     status: snapshot.status || null,
@@ -130,7 +157,7 @@ function flattenReceipt(receipt) {
     pickup_method: snapshot.pickupMethod ?? snapshot.pickup_method ?? null,
     items: Array.isArray(snapshot.items) ? snapshot.items.map(normalizeItem) : [],
     payments: Array.isArray(snapshot.payments) ? snapshot.payments.map(normalizePayment) : [],
-    snapshot
+    snapshot,
   };
 }
 
@@ -138,11 +165,22 @@ function flattenReceipt(receipt) {
  * Receipt creation helper for financial workflows. Callers should pass their
  * transaction connection so the immutable snapshot commits with the workflow.
  */
-export async function createReceipt({ referenceType, referenceId, printedBy, snapshot, qrToken = null, connection = null }) {
+export async function createReceipt({
+  referenceType,
+  referenceId,
+  printedBy,
+  snapshot,
+  qrToken = null,
+  connection = null,
+}) {
   if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
-    throw new AppError('An immutable receipt snapshot is required.', 500, 'RECEIPT_SNAPSHOT_REQUIRED');
+    throw new AppError(
+      'An immutable receipt snapshot is required.',
+      500,
+      'RECEIPT_SNAPSHOT_REQUIRED'
+    );
   }
-  const allowedTypes = ['order_sale', 'preorder_deposit', 'preorder_pickup'];
+  const allowedTypes = ['order_sale', 'preorder_deposit', 'preorder_pickup', 'order_return'];
   if (!allowedTypes.includes(referenceType)) {
     throw new AppError('Unsupported receipt reference type.', 400, 'INVALID_RECEIPT_TYPE');
   }
@@ -153,14 +191,21 @@ export async function createReceipt({ referenceType, referenceId, printedBy, sna
       version: snapshot.version || 1,
       ...snapshot,
       receiptNumber,
-      referenceType
+      referenceType,
     };
     const result = await tx.run(
       `INSERT INTO receipts
        (receipt_number, reference_type, reference_id, printed_by, print_count,
         last_printed_at, snapshot_json, qr_token, created_at)
        VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, ?, ?, CURRENT_TIMESTAMP);`,
-      [receiptNumber, referenceType, referenceId, printedBy, JSON.stringify(persistedSnapshot), qrToken]
+      [
+        receiptNumber,
+        referenceType,
+        referenceId,
+        printedBy,
+        JSON.stringify(persistedSnapshot),
+        qrToken,
+      ]
     );
     return { id: result.lastID, receipt_number: receiptNumber, snapshot: persistedSnapshot };
   };
@@ -177,14 +222,19 @@ export async function getReceiptDetails(receiptIdOrNumber, actor, connection = d
 function normalizePrintInput(input = {}) {
   const requestKey = typeof input.requestKey === 'string' ? input.requestKey.trim() : '';
   if (requestKey.length < 8 || requestKey.length > 200) {
-    throw new AppError('requestKey is required (8-200 characters).', 400, 'PRINT_REQUEST_KEY_REQUIRED');
+    throw new AppError(
+      'requestKey is required (8-200 characters).',
+      400,
+      'PRINT_REQUEST_KEY_REQUIRED'
+    );
   }
   const copies = input.copies === undefined ? 1 : Number(input.copies);
   requireInteger(copies, 'copies', { min: 1, max: 20 });
   if (input.isReprint !== undefined && typeof input.isReprint !== 'boolean') {
     throw new AppError('isReprint must be a boolean.', 400, 'INVALID_PRINT_REQUEST');
   }
-  const reason = input.reason === undefined || input.reason === null ? null : String(input.reason).trim();
+  const reason =
+    input.reason === undefined || input.reason === null ? null : String(input.reason).trim();
   if (reason && reason.length > 500) {
     throw new AppError('Print reason cannot exceed 500 characters.', 400, 'INVALID_PRINT_REASON');
   }
@@ -204,18 +254,23 @@ export async function requestReceiptPrint(receiptIdOrNumber, input, actor) {
       [actor.id, normalized.requestKey]
     );
     if (existing) {
-      const sameInput = existing.receipt_id === receipt.id
-        && existing.copies === normalized.copies
-        && existing.is_reprint === (normalized.isReprint ? 1 : 0)
-        && (existing.reason || null) === normalized.reason;
+      const sameInput =
+        existing.receipt_id === receipt.id &&
+        existing.copies === normalized.copies &&
+        existing.is_reprint === (normalized.isReprint ? 1 : 0) &&
+        (existing.reason || null) === normalized.reason;
       if (!sameInput) {
-        throw new AppError('requestKey was already used with different print input.', 409, 'PRINT_REQUEST_KEY_CONFLICT');
+        throw new AppError(
+          'requestKey was already used with different print input.',
+          409,
+          'PRINT_REQUEST_KEY_CONFLICT'
+        );
       }
       return {
         request_id: existing.id,
         print_count: existing.print_count,
         copies: existing.copies,
-        replayed: true
+        replayed: true,
       };
     }
 
@@ -224,7 +279,11 @@ export async function requestReceiptPrint(receiptIdOrNumber, input, actor) {
       [actor.id]
     );
     if (!shift) {
-      throw new AppError('An OPEN shift owned by the acting user is required to print.', 409, 'OPEN_OWN_SHIFT_REQUIRED');
+      throw new AppError(
+        'An OPEN shift owned by the acting user is required to print.',
+        409,
+        'OPEN_OWN_SHIFT_REQUIRED'
+      );
     }
 
     const result = await connection.run(
@@ -232,8 +291,13 @@ export async function requestReceiptPrint(receiptIdOrNumber, input, actor) {
        (receipt_id, user_id, shift_id, request_key, is_reprint, reason, copies, requested_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`,
       [
-        receipt.id, actor.id, shift.id, normalized.requestKey,
-        normalized.isReprint ? 1 : 0, normalized.reason, normalized.copies
+        receipt.id,
+        actor.id,
+        shift.id,
+        normalized.requestKey,
+        normalized.isReprint ? 1 : 0,
+        normalized.reason,
+        normalized.copies,
       ]
     );
     const printCount = receipt.print_count + (normalized.isReprint ? 1 : 0);
@@ -253,17 +317,17 @@ export async function requestReceiptPrint(receiptIdOrNumber, input, actor) {
         print_count: printCount,
         request_id: result.lastID,
         copies: normalized.copies,
-        request_key: normalized.requestKey
+        request_key: normalized.requestKey,
       },
       notes: `Browser print requested for receipt ${receipt.receipt_number}; physical output is not observable.`,
-      connection
+      connection,
     });
 
     return {
       request_id: result.lastID,
       print_count: printCount,
       copies: normalized.copies,
-      replayed: false
+      replayed: false,
     };
   });
 }

@@ -154,13 +154,13 @@
   inset-inline-end: 8px;
 }
 
-input[type="date"],
-input[type="datetime-local"],
-input[type="time"],
-input[type="month"],
-input[type="week"],
-input[type="number"],
-input[type="tel"] {
+input[type='date'],
+input[type='datetime-local'],
+input[type='time'],
+input[type='month'],
+input[type='week'],
+input[type='number'],
+input[type='tel'] {
   font-variant-numeric: tabular-nums;
 }
 

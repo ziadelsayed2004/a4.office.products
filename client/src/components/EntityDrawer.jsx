@@ -52,10 +52,7 @@ export function EntityDrawer({
       </header>
 
       {loading && (
-        <LinearProgress
-          className="entity-drawer__progress"
-          aria-label="جاري تنفيذ العملية"
-        />
+        <LinearProgress className="entity-drawer__progress" aria-label="جاري تنفيذ العملية" />
       )}
 
       <div className="entity-drawer__body">{children}</div>

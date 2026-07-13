@@ -8,12 +8,11 @@ const serverRoot = path.resolve(scriptDirectory, '..');
 const roots = [path.join(serverRoot, 'src'), path.join(serverRoot, 'scripts')];
 
 function collectJavaScriptFiles(directory) {
-  return fs.readdirSync(directory, { withFileTypes: true })
-    .flatMap((entry) => {
-      const candidate = path.join(directory, entry.name);
-      if (entry.isDirectory()) return collectJavaScriptFiles(candidate);
-      return /\.(?:js|mjs|cjs)$/.test(entry.name) ? [candidate] : [];
-    });
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const candidate = path.join(directory, entry.name);
+    if (entry.isDirectory()) return collectJavaScriptFiles(candidate);
+    return /\.(?:js|mjs|cjs)$/.test(entry.name) ? [candidate] : [];
+  });
 }
 
 const files = roots.flatMap((root) => collectJavaScriptFiles(root)).sort();

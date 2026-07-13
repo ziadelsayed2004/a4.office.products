@@ -1,40 +1,47 @@
-# A4 Office Products — Handoff
+# A4 Office POS — Handoff
 
-## الحالة الحالية
+## العقود الثابتة
 
-- واجهة React/Vite/MUI عربية فقط مع RTL ثابت.
-- `ThemeConfig` هو مصدر الثيم، ويستخدم Emotion cache واحداً ثابتاً مع `prefixer` ثم `rtlPlugin`.
-- الوضعان الفاتح والداكن يحتفظان بمفتاح التخزين `a4_color_mode` وبألوان وهوية A4.
-- الـSidebar بعرض 270px أو 72px، والـTopbar بارتفاع 64px، والتحول للموبايل عند 900px.
-- ترتيب CSS العام هو: `variables → reset → rtl → layout → forms → tables → drawers → dialogs → material-overrides`.
-- كل مكوّن مشترك وكل صفحة يملك ملف CSS ملاصقاً له، بدون ملف `components.css` تجميعي.
-- `api` موجود في `src/services/apiClient.js` مع نفس JWT/Bearer وعقود التنزيل السابقة.
-- صفحات الأدمن والكاشير وRoutes والحراس والصلاحيات وعقود Express/SQLite لم تتغير.
+- Node.js 20.19+، Express على `5000`، Vite على `5173` في التطوير، وتوقيت `Africa/Cairo`.
+- ملف `.env` موحد في جذر المشروع، مع validation صارم قبل بدء السيرفر أو أدوات DB.
+- `npm run db:reset` يعمل فقط لقاعدة development/test معزولة عند `ALLOW_DATABASE_RESET=true`. الاستدعاء المباشر يحتاج `--confirm-reset`.
+- `npm run db:verify` فحص read-only. كل اختبارات الكتابة تستخدم نسخة مؤقتة.
+- لا توجد حسابات production افتراضية؛ `admin:bootstrap` ينشئ أول Admin مرة واحدة بكلمة مرور مؤقتة.
+- response errors العامة بالشكل `{ error, code, details? }` ولا تكشف stack أو SQL.
+- Inventory يحتفظ بـ`ledger` و`total` ويضيف `pagination: { limit, offset }`. Audit يحتفظ بـ`logs` و`pagination` وحد `limit` من 1 إلى 100.
+- تعديلات المخزون والحركات النقدية تتطلب `Idempotency-Key` وتدعم replay الآمن ورفض التعارض.
+- تعطيل مستخدم أو تغيير كلمة مروره يلغي جلساته، ولا يمكن تعطيل آخر Admin نشط.
+- الحذف الفعلي محصور في البيانات المرجعية غير المستخدمة، مع `can_delete` و`dependency_counts` وإعادة فحص داخل `BEGIN IMMEDIATE`. التاريخ المالي لا يُحذف.
+- المرتجع يتطلب تصريح Admin موقّعًا بـHMAC ومرة استخدام واحدة. المسح read-only، والتنفيذ يحتاج شيفتًا مفتوحًا و`Idempotency-Key`.
+- النقد المرتجع يسجل دفعة `REFUND/OUT` واحدة دون `PAY_OUT` إضافي؛ غير النقدي يحتاج مرجعًا خارجيًا ولا يغير عهدة الدرج.
 
-## نظام الحقول
+## الواجهة والطباعة
 
-- `Field` يمرر الـlabel إلى MUI `TextField` ويعتمد `fieldset` و`legend` الأصليين فقط.
-- الـlabel يبدأ داخل الحقل، ثم يتحرك إلى notch أعلى اليمين عند التركيز أو وجود قيمة.
-- عرض `legend` لا يتم التحكم فيه من CSS؛ MUI يملك انتقاله من border مغلق إلى notch مفتوح.
-- عند وجود label لا يمرر `Field` placeholder ثانياً، لذلك لا يظهر نصان داخل الحقل.
-- حقول Login لا تستخدم `startAdornment` أو `autoFocus` حتى تبدأ بالـlabel داخل border مغلق، ثم تنتقل إلى الـnotch عند التفاعل.
-- قيم اسم المستخدم وكلمة المرور LTR، مع بقاء الـlabel والـfieldset والأيقونات في توزيع RTL سليم.
-- حقول التاريخ والوقت تستخدم shrink آمناً، والقيم التقنية والأرقام والهواتف LTR.
-- الارتفاعات: 40px للحقول العادية، 56px للدخول، و44px على الموبايل.
-- صفوف البحث التي تجمع field وزرار تستخدم نفس الارتفاع والمحاذاة في Receipts وCustomers وPOS والفلاتر.
+- `apiClient` ينفذ refresh واحداً مشتركاً عند انتهاء access token، يعيد الطلب مرة واحدة، ثم يمسح الجلسة عند فشل refresh.
+- reset للفلاتر والصفحات يعتمد القيم الجديدة مباشرة ولا يعيد stale state.
+- ممنوع `style=` و`sx=` داخل JSX ويُفحص ذلك آلياً. الثيم يُعرض عبر attribute/CSS.
+- الإيصال يستخدم `ThermalReceipt` للمعاينة والطباعة، وBrowser Print هو الوضع المدعوم الوحيد.
+- مقاسات الملصقات: `38×25` و`50×25` و`80×50` مم، صفحة مستقلة لكل ملصق.
+- مفاتيح نوع/عنوان الطابعة القديمة legacy غير مفعلة حتى مشروع Direct Printer لاحق.
+- السايدبار يثبت اللوجو وكارت المستخدم أعلى منطقة القائمة القابلة للتمرير، وغلاف اللوجو أبيض صريح في الوضعين.
+- POS Scanner-first بأوضاع البيع والحجز والاستلام والمرتجع، ومسودات session مرتبطة بالمستخدم والشيفت، ودفع سريع بلا طريقة افتراضية.
+- بطاقة المرتجع وإيصال `order_return` يطبعان بعرض `80mm` ويعيدان استخدام مكونات الطباعة الرسمية.
 
-## المكوّنات والاستجابة
+## التشغيل والجودة
 
-- `FieldGrid`, `FormActions`, `FormSection`, و`Field` داخل `components/forms`، وبقية المكوّنات المشتركة مسطحة داخل `components`.
-- `EntityDrawer` بعرض 820px افتراضياً و920px مع `wide`، ويصل إلى 100vw على الهاتف.
-- `ConfirmDialog` بعرض أقصى 480px، بينما Dialogs التشغيلية في POS تحتفظ بسلوك full-screen.
-- الجداول تتحول إلى Mobile Cards تحت 720px.
-- POS والـscanner والـsticky cart و80mm receipts وطباعة QR labels احتفظت بسلوكها السابق.
+```bash
+npm run ci:all
+npm run check
+npm run security:audit
+npm run db:verify
+git diff --check
+```
 
-## نتائج التحقق
+`TEMPLETE-PROJECT` محفوظ كمرجع ومُستبعد من lint/format/tests. قاعدة البيانات وWAL والنسخ السليمة ليست أهداف تنظيف. المساران المتتبعان القديمان داخل `server/.tmp` محذوفان، والـcoverage/caches/.vite/tmp وSQLite sidecars متجاهلة.
 
-- Client lint: passed.
-- Static UI validation: 443/443 passed.
-- Vite production build: passed.
-- Runtime API/route smoke: passed بحسابي Admin وCashier باستخدام نسخة SQLite مؤقتة، بدون لمس قاعدة البيانات الأصلية.
-- المقارنة المرئية الآلية تحتاج إعادة تشغيل عند توفر اتصال المتصفح الداخلي؛ لم يتم استخدام بديل غير معتمد.
+## production
+
+- الخدمة تحت المستخدم المحدود `a4pos` وPM2، وNginx يقدم الواجهة ويمرر `/api/` إلى `127.0.0.1:5000`.
+- build الواجهة same-origin، reset وdemo users معطلان، وCORS صريح.
+- النسخ داخل `backups/` مع retention يساوي 10 وفحص سلامة قبل الاحتفاظ أو الاسترجاع.
+- `deploy.sh` إعداد قابل للمراجعة فقط؛ لا يُشغّل ضد VPS حي بدون بيانات الهدف وصلاحية صريحة.

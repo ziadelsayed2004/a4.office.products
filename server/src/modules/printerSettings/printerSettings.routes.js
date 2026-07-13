@@ -2,48 +2,33 @@ import { Router } from 'express';
 import * as printerSettingsService from './printerSettings.service.js';
 import { authenticate } from '../../middleware/auth.js';
 import { isAdmin } from '../../middleware/rbac.js';
+import { validate } from '../../middleware/validate.js';
+import { printerSettingsBody } from '../../validation/schemas.js';
+
+async function getSettings(req, res, next) {
+  try {
+    const data = await printerSettingsService.getSafePrinterSettings();
+    return res.status(200).json({ status: 'success', data });
+  } catch (error) {
+    return next(error);
+  }
+}
 
 const safeRouter = Router();
 safeRouter.use(authenticate);
-safeRouter.get('/', async (req, res) => {
-  try {
-    const settings = await printerSettingsService.getSafePrinterSettings();
-    return res.status(200).json({ status: 'success', data: settings });
-  } catch (error) {
-    return res.status(500).json({
-      error: 'Failed to load print settings.',
-      code: 'PRINT_SETTINGS_LOAD_FAILED'
-    });
-  }
-});
+safeRouter.get('/', getSettings);
 
 const adminRouter = Router();
 adminRouter.use(authenticate, isAdmin);
-adminRouter.get('/', async (req, res) => {
+adminRouter.get('/', getSettings);
+adminRouter.post('/', validate({ body: printerSettingsBody }), async (req, res, next) => {
   try {
-    const settings = await printerSettingsService.getPrinterSettings();
-    return res.status(200).json({ status: 'success', data: settings });
+    const data = await printerSettingsService.updatePrinterSettings(req.body, req.user.id);
+    return res
+      .status(200)
+      .json({ status: 'success', message: 'Printer settings updated successfully.', data });
   } catch (error) {
-    return res.status(500).json({
-      error: 'Failed to load printer settings.',
-      code: 'PRINT_SETTINGS_LOAD_FAILED'
-    });
-  }
-});
-
-adminRouter.post('/', async (req, res) => {
-  try {
-    const updated = await printerSettingsService.updatePrinterSettings(req.body, req.user.id);
-    return res.status(200).json({
-      status: 'success',
-      message: 'Printer settings updated successfully.',
-      data: updated
-    });
-  } catch (error) {
-    return res.status(error.status || 400).json({
-      error: error.message,
-      code: error.code || 'UPDATE_SETTINGS_FAILED'
-    });
+    return next(error);
   }
 });
 

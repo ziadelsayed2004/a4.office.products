@@ -1,0 +1,103 @@
+.return-authorizations-page__pagination {
+  margin-top: var(--space-5);
+  justify-content: center;
+  display: flex;
+}
+
+.return-authorization-form,
+.return-authorization-detail,
+.return-authorization-detail__items {
+  gap: var(--space-4);
+  display: grid;
+}
+
+.return-authorization-form__lookup {
+  gap: var(--space-2);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  display: grid;
+}
+
+.return-authorization-form__lookup .MuiButton-root {
+  min-height: var(--control-height);
+}
+
+.return-authorization-items {
+  gap: var(--space-2);
+  display: grid;
+}
+
+.return-authorization-items article {
+  min-height: 72px;
+  padding: var(--space-3);
+  gap: var(--space-3);
+  grid-template-columns: auto minmax(160px, 1fr) 110px 180px;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-alt);
+  display: grid;
+}
+
+.return-authorization-items article.is-disabled {
+  opacity: 0.58;
+}
+
+.return-authorization-items__name strong,
+.return-authorization-items__name span {
+  display: block;
+}
+
+.return-authorization-items__name span {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.return-authorization-items__reason {
+  grid-column: 2 / -1;
+}
+
+.return-authorization-quote {
+  padding: var(--space-4);
+  gap: var(--space-2);
+  border: 1px solid var(--color-success);
+  border-radius: var(--radius-xs);
+  background: var(--color-success-soft);
+  display: grid;
+}
+
+.return-authorization-detail__grid {
+  gap: var(--space-2) var(--space-4);
+  grid-template-columns: max-content minmax(0, 1fr);
+  display: grid;
+}
+
+.return-authorization-detail__grid span {
+  color: var(--color-text-muted);
+}
+
+.return-authorization-detail__items > div {
+  min-height: 48px;
+  padding: var(--space-2) var(--space-3);
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  display: flex;
+}
+
+@media (max-width: 760px) {
+  .return-authorization-form__lookup,
+  .return-authorization-items article {
+    grid-template-columns: 1fr;
+  }
+
+  .return-authorization-items article > .MuiCheckbox-root {
+    justify-self: start;
+  }
+
+  .return-authorization-items__reason {
+    grid-column: auto;
+  }
+}

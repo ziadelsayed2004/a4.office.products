@@ -118,6 +118,12 @@
   flex: 0 0 auto;
 }
 
+.sidebar-mobile-close {
+  display: none !important;
+  margin-inline-start: auto !important;
+  color: var(--color-text-muted) !important;
+}
+
 .sidebar-header--collapsed {
   justify-content: center;
   padding-inline: var(--space-2);
@@ -126,11 +132,14 @@
 .sidebar-logo-box {
   width: 42px;
   height: 42px;
+  padding: 4px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
   overflow: hidden;
+  border: 1px solid #dce2ea;
   border-radius: var(--radius-md);
+  background: #fff;
 }
 
 .sidebar-logo {
@@ -231,6 +240,7 @@
 }
 
 .sidebar-profile-wrap {
+  flex: 0 0 auto;
   padding: var(--space-2);
 }
 
@@ -400,6 +410,10 @@
 
   .main-layout__mobile-drawer .sidebar-toggle-container {
     display: none;
+  }
+
+  .main-layout__mobile-drawer .sidebar-mobile-close {
+    display: inline-flex !important;
   }
 }
 

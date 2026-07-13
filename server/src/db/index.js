@@ -63,12 +63,15 @@ function closeNative(connection) {
 
 async function configureConnection(connection) {
   // These settings are connection-local except journal_mode, which is persisted.
-  await execNative(connection, `
+  await execNative(
+    connection,
+    `
     PRAGMA foreign_keys = ON;
     PRAGMA busy_timeout = 10000;
     PRAGMA journal_mode = WAL;
     PRAGMA synchronous = FULL;
-  `);
+  `
+  );
   return connection;
 }
 
@@ -79,7 +82,7 @@ function wrapConnection(connection) {
     run: (sql, params = []) => runNative(connection, sql, params),
     exec: (sql) => execNative(connection, sql),
     close: () => closeNative(connection),
-    native: connection
+    native: connection,
   };
 }
 
@@ -109,7 +112,7 @@ const db = {
   async close() {
     await globalReady;
     return closeNative(dbConn);
-  }
+  },
 };
 
 /**

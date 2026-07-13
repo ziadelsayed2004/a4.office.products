@@ -13,11 +13,11 @@ import './FilterPanel.css';
 export function FilterPanel({ children, onApply, onReset, resultCount, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
   const panelId = `filter-panel-${useId().replace(/:/g, '')}`;
-  const compactChildren = Children.map(children, (child) => (
+  const compactChildren = Children.map(children, (child) =>
     isValidElement(child) && child.type === Field
       ? cloneElement(child, { density: child.props.density || 'compact' })
       : child
-  ));
+  );
 
   return (
     <section className={`filter-panel ${open ? 'is-open' : ''}`}>
@@ -47,10 +47,20 @@ export function FilterPanel({ children, onApply, onReset, resultCount, defaultOp
           <div className="a4-filter-grid">
             {compactChildren}
             <div className="filter-panel__actions">
-              <Button type="button" variant="contained" startIcon={<SearchRounded />} onClick={onApply}>
+              <Button
+                type="button"
+                variant="contained"
+                startIcon={<SearchRounded />}
+                onClick={onApply}
+              >
                 تطبيق
               </Button>
-              <Button type="button" variant="outlined" startIcon={<RestartAltRounded />} onClick={onReset}>
+              <Button
+                type="button"
+                variant="outlined"
+                startIcon={<RestartAltRounded />}
+                onClick={onReset}
+              >
                 إعادة ضبط
               </Button>
             </div>

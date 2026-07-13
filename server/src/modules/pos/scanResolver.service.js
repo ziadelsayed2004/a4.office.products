@@ -1,6 +1,7 @@
 import db from '../../db/index.js';
 import { AppError } from '../../utils/financial.js';
 import { getInvoiceByExactCredential } from '../invoices/invoices.service.js';
+import { resolveReturnAuthorizationToken } from '../returnAuthorizations/returnAuthorizations.service.js';
 
 async function resolveProduct(productId, connection) {
   const product = await connection.get(
@@ -29,14 +30,15 @@ async function resolveProduct(productId, connection) {
   const policy = product.availability_policy || 'STOCK_ONLY';
   const active = product.is_active === 1;
   const canSellNow = active && product.can_be_sold === 1 && product.stock_on_hand > 0;
-  const canPreorderNow = active
-    && product.can_be_sold === 1
-    && policy === 'STOCK_WITH_PREORDER_WHEN_OUT_OF_STOCK'
-    && product.stock_on_hand === 0;
+  const canPreorderNow =
+    active &&
+    product.can_be_sold === 1 &&
+    policy === 'STOCK_WITH_PREORDER_WHEN_OUT_OF_STOCK' &&
+    product.stock_on_hand === 0;
 
   return {
     type: 'product',
-    action: canSellNow ? 'SALE' : (canPreorderNow ? 'PREORDER' : 'BLOCKED'),
+    action: canSellNow ? 'SALE' : canPreorderNow ? 'PREORDER' : 'BLOCKED',
     data: {
       id: product.id,
       productId: product.id,
@@ -54,8 +56,8 @@ async function resolveProduct(productId, connection) {
       defaultPreorderDepositPct: product.default_preorder_deposit_pct,
       defaultPickupMethod: product.default_pickup_method,
       preorderInstructions: product.preorder_instructions,
-      prices
-    }
+      prices,
+    },
   };
 }
 
@@ -95,14 +97,18 @@ async function resolvePreorder(preorderId, connection) {
     data: {
       preorder: { ...preorder, canPickup },
       canPickup,
-      items
-    }
+      items,
+    },
   };
 }
 
 export async function resolveScan(code, actor, connection = db) {
   const normalized = typeof code === 'string' ? code.trim() : '';
   if (!normalized) throw new AppError('Scan code is required.', 400, 'SCAN_CODE_REQUIRED');
+
+  if (normalized.startsWith('ret_')) {
+    return resolveReturnAuthorizationToken(normalized, actor, connection);
+  }
 
   const token = await connection.get(
     'SELECT token_type, reference_id FROM secure_tokens WHERE token = ?;',
@@ -115,7 +121,7 @@ export async function resolveScan(code, actor, connection = db) {
     return { type: 'invoice', action: 'READ_ONLY', data: detail };
   }
 
-  if (/^(prod_|pre_|inv_)/.test(normalized)) {
+  if (/^(prod_|pre_|inv_|ret_)/.test(normalized)) {
     throw new AppError('Secure QR token is invalid.', 404, 'INVALID_SECURE_TOKEN');
   }
 
@@ -124,5 +130,9 @@ export async function resolveScan(code, actor, connection = db) {
     [normalized, normalized]
   );
   if (product) return resolveProduct(product.id, connection);
-  throw new AppError('No supported product, preorder, or invoice matches this scan.', 404, 'SCAN_NOT_FOUND');
+  throw new AppError(
+    'No supported product, preorder, invoice, or return card matches this scan.',
+    404,
+    'SCAN_NOT_FOUND'
+  );
 }

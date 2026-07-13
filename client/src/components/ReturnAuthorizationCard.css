@@ -1,0 +1,118 @@
+.return-card {
+  width: 80mm;
+  min-height: 100mm;
+  margin: 0 auto;
+  padding: 5mm;
+  border: 0;
+  background: #fff;
+  color: #111;
+  font-family: var(--app-font-family);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.return-card__header {
+  gap: 1mm;
+  place-items: center;
+  display: grid;
+}
+
+.return-card__logo-surface {
+  width: 20mm;
+  height: 16mm;
+  padding: 1.5mm;
+  place-items: center;
+  border: 0.25mm solid #d9dfe7;
+  border-radius: 2mm;
+  background: #fff;
+  display: grid;
+  box-sizing: border-box;
+}
+
+.return-card__logo-surface img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.return-card__header strong {
+  font-size: 12pt;
+}
+
+.return-card__header span,
+.return-card p,
+.return-card footer {
+  font-size: 8pt;
+}
+
+.return-card__number {
+  margin: 4mm 0 2mm;
+  padding: 2mm;
+  border-block: 0.3mm dashed #333;
+  font-size: 11pt;
+  font-weight: 800;
+}
+
+.return-card__details {
+  margin: 0;
+  display: grid;
+}
+
+.return-card__details > div {
+  padding: 1.5mm 0;
+  justify-content: space-between;
+  gap: 3mm;
+  border-bottom: 0.2mm dotted #777;
+  display: flex;
+}
+
+.return-card__details dt,
+.return-card__details dd {
+  margin: 0;
+  font-size: 8.5pt;
+}
+
+.return-card__details dd {
+  font-weight: 700;
+}
+
+.return-card__qr {
+  min-height: 48mm;
+  place-items: center;
+  display: grid;
+}
+
+.return-card p {
+  margin: 0 0 2mm;
+  line-height: 1.6;
+}
+
+.return-card footer {
+  padding-top: 2mm;
+  border-top: 0.2mm solid #aaa;
+}
+
+@media print {
+  @page {
+    size: 80mm 110mm;
+    margin: 0;
+  }
+
+  html,
+  body,
+  #root {
+    width: 80mm !important;
+    min-width: 80mm !important;
+    height: 110mm !important;
+    min-height: 110mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #fff !important;
+  }
+
+  .return-card {
+    break-after: avoid;
+    break-inside: avoid;
+  }
+}

@@ -9,13 +9,17 @@ try {
   const migrationModule = await import('../db/migrate.js');
   db = dbModule.default;
 
-  assert.equal(dbModule.dbPath, environment.databasePath, 'schema test must use its isolated database');
+  assert.equal(
+    dbModule.dbPath,
+    environment.databasePath,
+    'schema test must use its isolated database'
+  );
   await migrationModule.runMigrations();
 
-  await db.run(
-    'INSERT INTO customers (name, phone) VALUES (?, ?);',
-    ['Schema persistence sentinel', 'schema-test-sentinel']
-  );
+  await db.run('INSERT INTO customers (name, phone) VALUES (?, ?);', [
+    'Schema persistence sentinel',
+    'schema-test-sentinel',
+  ]);
   await migrationModule.runMigrations();
   assert.ok(
     await db.get('SELECT id FROM customers WHERE phone = ?;', ['schema-test-sentinel']),
@@ -34,11 +38,15 @@ try {
   const migrationVersions = await db.get(
     'SELECT COUNT(*) AS total, COUNT(DISTINCT version) AS distinct_versions FROM schema_migrations;'
   );
-  assert.equal(migrationVersions.total, migrationVersions.distinct_versions, 'migration versions must be unique');
+  assert.equal(
+    migrationVersions.total,
+    migrationVersions.distinct_versions,
+    'migration versions must be unique'
+  );
 
   for (const table of tableNames) {
     if (table.startsWith('sqlite_')) continue;
-    const foreignKeys = await db.all(`PRAGMA foreign_key_list(\"${table.replaceAll('"', '""')}\");`);
+    const foreignKeys = await db.all(`PRAGMA foreign_key_list("${table.replaceAll('"', '""')}");`);
     for (const foreignKey of foreignKeys) {
       assert.ok(
         tableNames.has(foreignKey.table),

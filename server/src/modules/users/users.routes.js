@@ -2,6 +2,13 @@ import { Router } from 'express';
 import * as usersController from './users.controller.js';
 import { authenticate } from '../../middleware/auth.js';
 import { isAdmin } from '../../middleware/rbac.js';
+import { validate } from '../../middleware/validate.js';
+import {
+  idParams,
+  passwordBody,
+  userCreateBody,
+  userUpdateBody,
+} from '../../validation/schemas.js';
 
 const router = Router();
 
@@ -9,10 +16,18 @@ const router = Router();
 router.use(authenticate, isAdmin);
 
 router.get('/', usersController.getUsersListController);
-router.post('/', usersController.createUserController);
-router.patch('/:id', usersController.updateUserController);
-router.patch('/:id/password', usersController.updatePasswordController);
-router.patch('/:id/disable', usersController.disableUserController);
-router.patch('/:id/enable', usersController.enableUserController);
+router.post('/', validate({ body: userCreateBody }), usersController.createUserController);
+router.patch(
+  '/:id',
+  validate({ params: idParams, body: userUpdateBody }),
+  usersController.updateUserController
+);
+router.patch(
+  '/:id/password',
+  validate({ params: idParams, body: passwordBody }),
+  usersController.updatePasswordController
+);
+router.patch('/:id/disable', validate({ params: idParams }), usersController.disableUserController);
+router.patch('/:id/enable', validate({ params: idParams }), usersController.enableUserController);
 
 export default router;

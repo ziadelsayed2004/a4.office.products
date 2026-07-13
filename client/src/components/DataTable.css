@@ -38,6 +38,11 @@
   border-bottom: 1px solid var(--border-color);
 }
 
+.desktop-table .data-table__cell--actions {
+  width: 1%;
+  min-width: 90px;
+}
+
 .desktop-table .MuiTableRow-root:last-child .MuiTableCell-body {
   border-bottom: 0;
 }

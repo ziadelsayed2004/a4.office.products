@@ -4,19 +4,27 @@
   "description": "Backend API server for A4 Office Products POS Platform",
   "main": "src/server.js",
   "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "lint": "node scripts/check-syntax.mjs",
+    "lint": "oxlint src && node scripts/check-syntax.mjs",
     "check:syntax": "node scripts/check-syntax.mjs",
-    "test": "npm run lint && npm run test:unit && npm run test:schema && npm run test:smoke && npm run test:services",
-    "test:unit": "node src/tests/reset-safety.test.js",
+    "test": "npm run lint && npm run test:unit && npm run test:schema && npm run test:api-contracts && npm run test:correctness && npm run test:returns && npm run test:smoke && npm run test:services",
+    "test:unit": "node src/tests/reset-safety.test.js && node src/tests/config.test.js && node src/tests/database-tools.test.js",
     "test:schema": "node src/tests/schema.test.js",
+    "test:api-contracts": "node src/tests/api-contracts.test.js",
+    "test:correctness": "node src/tests/backend-correctness.test.js && node src/tests/safe-delete.test.js",
+    "test:returns": "node src/tests/return-authorizations.test.js",
     "test:smoke": "node src/tests/smoke.test.js",
     "test:services": "node src/tests/services.test.js",
     "db:setup": "node src/db/setup.js",
-    "db:reset": "node src/db/reset.js",
-    "db:backup": "node src/utils/run-backup.js"
+    "db:reset": "node src/db/reset.js --confirm-reset",
+    "db:verify": "node src/db/verify.js",
+    "db:backup": "node src/utils/run-backup.js",
+    "admin:bootstrap": "node src/db/bootstrap-admin.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -26,9 +34,11 @@
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.2",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^6.0.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0"
+    "nodemon": "^3.1.0",
+    "oxlint": "^1.73.0"
   }
 }

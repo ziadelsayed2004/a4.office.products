@@ -12,7 +12,7 @@ export async function writeAuditLog({
   beforeValues = null,
   afterValues = null,
   notes = null,
-  connection = db
+  connection = db,
 }) {
   const beforeStr = beforeValues === null ? null : JSON.stringify(beforeValues);
   const afterStr = afterValues === null ? null : JSON.stringify(afterValues);

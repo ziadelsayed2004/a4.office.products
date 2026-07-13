@@ -2,7 +2,10 @@ import crypto from 'crypto';
 
 export const version = '001';
 export const name = 'workflow_hardening';
-export const checksum = crypto.createHash('sha256').update(`${version}:${name}:2026-07-12-v1`).digest('hex');
+export const checksum = crypto
+  .createHash('sha256')
+  .update(`${version}:${name}:2026-07-12-v1`)
+  .digest('hex');
 
 async function hasColumn(db, table, column) {
   const rows = await db.all(`PRAGMA table_info(${table});`);
@@ -49,7 +52,7 @@ async function backfillReceiptSnapshots(db) {
       referenceType: receipt.reference_type,
       createdAt: receipt.created_at,
       items: [],
-      payments: []
+      payments: [],
     };
 
     if (receipt.reference_type === 'order_sale') {
@@ -70,7 +73,7 @@ async function backfillReceiptSnapshots(db) {
           subtotal: order.subtotal,
           discount: order.discount,
           total: order.total,
-          qrToken: order.qr_token
+          qrToken: order.qr_token,
         });
         snapshot.items = await db.all(
           `SELECT product_id, quantity, unit_price, total_price,
@@ -108,7 +111,7 @@ async function backfillReceiptSnapshots(db) {
           depositPaid: preorder.deposit_paid,
           remainingAmount: preorder.remaining_amount,
           pickupMethod: preorder.pickup_method,
-          qrToken: preorder.qr_pickup_token
+          qrToken: preorder.qr_pickup_token,
         });
         snapshot.items = await db.all(
           `SELECT product_id, quantity, unit_price, total_price,
@@ -119,7 +122,8 @@ async function backfillReceiptSnapshots(db) {
            FROM preorder_items WHERE preorder_id = ? ORDER BY id;`,
           [preorder.id]
         );
-        const stage = receipt.reference_type === 'preorder_deposit' ? 'PREORDER_DEPOSIT' : 'PREORDER_PICKUP';
+        const stage =
+          receipt.reference_type === 'preorder_deposit' ? 'PREORDER_DEPOSIT' : 'PREORDER_PICKUP';
         snapshot.payments = await db.all(
           `SELECT method_snapshot AS method, stage, direction, applied_amount AS amount,
                   cash_received, change_amount, reference_number, note, created_at
@@ -128,7 +132,10 @@ async function backfillReceiptSnapshots(db) {
         );
       }
     }
-    await db.run('UPDATE receipts SET snapshot_json = ? WHERE id = ?;', [JSON.stringify(snapshot), receipt.id]);
+    await db.run('UPDATE receipts SET snapshot_json = ? WHERE id = ?;', [
+      JSON.stringify(snapshot),
+      receipt.id,
+    ]);
   }
 }
 
@@ -227,9 +234,12 @@ export async function up(db) {
   await addColumn(db, 'orders', 'customer_phone_snapshot TEXT');
 
   for (const definition of [
-    'product_name_snapshot TEXT', 'sku_snapshot TEXT', 'price_tier_name_snapshot TEXT',
-    "availability_policy_snapshot TEXT NOT NULL DEFAULT 'STOCK_ONLY'"
-  ]) await addColumn(db, 'order_items', definition);
+    'product_name_snapshot TEXT',
+    'sku_snapshot TEXT',
+    'price_tier_name_snapshot TEXT',
+    "availability_policy_snapshot TEXT NOT NULL DEFAULT 'STOCK_ONLY'",
+  ])
+    await addColumn(db, 'order_items', definition);
 
   await addColumn(db, 'preorders', 'customer_name_snapshot TEXT');
   await addColumn(db, 'preorders', 'customer_phone_snapshot TEXT');
@@ -240,10 +250,13 @@ export async function up(db) {
   await addColumn(db, 'preorders', 'preorder_instructions_snapshot TEXT');
 
   for (const definition of [
-    'product_name_snapshot TEXT', 'sku_snapshot TEXT', 'price_tier_name_snapshot TEXT',
+    'product_name_snapshot TEXT',
+    'sku_snapshot TEXT',
+    'price_tier_name_snapshot TEXT',
     "availability_policy_snapshot TEXT NOT NULL DEFAULT 'STOCK_ONLY'",
-    'deposit_pct_snapshot INTEGER NOT NULL DEFAULT 0'
-  ]) await addColumn(db, 'preorder_items', definition);
+    'deposit_pct_snapshot INTEGER NOT NULL DEFAULT 0',
+  ])
+    await addColumn(db, 'preorder_items', definition);
 
   await addColumn(db, 'payments', 'method_id INTEGER REFERENCES payment_methods(id)');
   await addColumn(db, 'payments', "stage TEXT NOT NULL DEFAULT 'SALE'");
@@ -261,7 +274,11 @@ export async function up(db) {
   await addColumn(db, 'receipts', 'snapshot_json TEXT');
   await addColumn(db, 'receipts', 'qr_token TEXT');
   await addColumn(db, 'returns', 'payment_method_snapshot TEXT');
-  await addColumn(db, 'shifts', 'approved_close_revision_id INTEGER REFERENCES shift_close_revisions(id)');
+  await addColumn(
+    db,
+    'shifts',
+    'approved_close_revision_id INTEGER REFERENCES shift_close_revisions(id)'
+  );
 
   await db.exec(`
     INSERT OR IGNORE INTO payment_methods (code, name_ar, is_active, accepts_cash_received, sort_order) VALUES
@@ -407,9 +424,16 @@ export async function up(db) {
 
   const orders = await db.all('SELECT id, qr_token FROM orders ORDER BY id;');
   for (const order of orders) {
-    const existing = await db.get("SELECT token FROM secure_tokens WHERE token_type = 'invoice' AND reference_id = ?;", [order.id]);
+    const existing = await db.get(
+      "SELECT token FROM secure_tokens WHERE token_type = 'invoice' AND reference_id = ?;",
+      [order.id]
+    );
     const token = existing?.token || secureToken('inv_');
-    if (!existing) await db.run("INSERT INTO secure_tokens (token, token_type, reference_id) VALUES (?, 'invoice', ?);", [token, order.id]);
+    if (!existing)
+      await db.run(
+        "INSERT INTO secure_tokens (token, token_type, reference_id) VALUES (?, 'invoice', ?);",
+        [token, order.id]
+      );
     await db.run('UPDATE orders SET qr_token = ? WHERE id = ?;', [token, order.id]);
   }
 

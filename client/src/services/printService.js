@@ -1,4 +1,5 @@
 import { api } from './apiClient.js';
+import { PRINTER_SETTINGS_UNAVAILABLE_MESSAGE } from '../utils/browserPrintSettings.js';
 import './printService.css';
 
 export const PRINT_MESSAGE_SOURCE = 'a4-isolated-receipt-print';
@@ -86,7 +87,7 @@ function waitForIsolatedPrint({ receiptId, url }) {
         iframe.contentWindow?.print();
         afterPrintTimer = window.setTimeout(
           () => finish({ printed: true, afterPrintTimedOut: true }),
-          AFTER_PRINT_TIMEOUT_MS,
+          AFTER_PRINT_TIMEOUT_MS
         );
       } catch (error) {
         fail(error);
@@ -96,7 +97,7 @@ function waitForIsolatedPrint({ receiptId, url }) {
     window.addEventListener('message', onMessage);
     readyTimer = window.setTimeout(
       () => fail(new Error('انتهت مهلة تجهيز مستند الطباعة.')),
-      READY_TIMEOUT_MS,
+      READY_TIMEOUT_MS
     );
 
     iframe.src = url;
@@ -120,8 +121,8 @@ export async function printReceiptInFrame({
     try {
       const settingsResponse = await api.get('/api/printer-settings');
       safeSettings = settingsResponse?.data || settingsResponse || {};
-    } catch {
-      // Printing remains available with canonical local defaults.
+    } catch (error) {
+      throw new Error(`${PRINTER_SETTINGS_UNAVAILABLE_MESSAGE} ${error.message}`);
     }
   }
   const normalizedCopies = positiveCopies(copies ?? safeSettings.receipt_copies);
@@ -132,7 +133,7 @@ export async function printReceiptInFrame({
       copies: normalizedCopies,
       reason: reason.trim() || null,
       isReprint: Boolean(isReprint),
-    },
+    }
   );
 
   const printResult = await waitForIsolatedPrint({
@@ -178,24 +179,49 @@ export function printProductLabelsInFrame({ productId, token, quantity = 1, size
       window.removeEventListener('message', onMessage);
       iframe.remove();
     };
-    const finish = (value) => { if (!settled) { settled = true; cleanup(); resolve(value); } };
-    const fail = (error) => { if (!settled) { settled = true; cleanup(); reject(error instanceof Error ? error : new Error(String(error))); } };
+    const finish = (value) => {
+      if (!settled) {
+        settled = true;
+        cleanup();
+        resolve(value);
+      }
+    };
+    const fail = (error) => {
+      if (!settled) {
+        settled = true;
+        cleanup();
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    };
     const onMessage = (event) => {
       if (event.origin !== window.location.origin || event.source !== iframe.contentWindow) return;
-      if (event.data?.source !== LABEL_PRINT_MESSAGE_SOURCE || event.data?.labelId !== String(token)) return;
-      if (event.data.type === PRINT_ERROR) return fail(new Error(event.data.message || 'تعذر تجهيز الملصقات.'));
+      if (
+        event.data?.source !== LABEL_PRINT_MESSAGE_SOURCE ||
+        event.data?.labelId !== String(token)
+      )
+        return;
+      if (event.data.type === PRINT_ERROR)
+        return fail(new Error(event.data.message || 'تعذر تجهيز الملصقات.'));
       if (event.data.type === PRINT_COMPLETE) return finish({ printed: true });
       if (event.data.type !== PRINT_READY) return;
       window.clearTimeout(readyTimer);
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
-        completeTimer = window.setTimeout(() => finish({ printed: true, afterPrintTimedOut: true }), AFTER_PRINT_TIMEOUT_MS);
-      } catch (error) { fail(error); }
+        completeTimer = window.setTimeout(
+          () => finish({ printed: true, afterPrintTimedOut: true }),
+          AFTER_PRINT_TIMEOUT_MS
+        );
+      } catch (error) {
+        fail(error);
+      }
     };
 
     window.addEventListener('message', onMessage);
-    readyTimer = window.setTimeout(() => fail(new Error('انتهت مهلة تجهيز الملصقات.')), READY_TIMEOUT_MS);
+    readyTimer = window.setTimeout(
+      () => fail(new Error('انتهت مهلة تجهيز الملصقات.')),
+      READY_TIMEOUT_MS
+    );
     iframe.src = productLabelUrl({ productId, token, quantity, size });
     document.body.appendChild(iframe);
   });

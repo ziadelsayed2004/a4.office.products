@@ -1,0 +1,16 @@
+TEMPLETE-PROJECT/
+node_modules/
+**/node_modules/
+client/dist/
+coverage/
+.cache/
+**/.vite/
+backups/
+logs/
+.env
+.env.*
+!.env.example
+server/src/db/*.db*
+server/src/db/*.sqlite*
+server/.tmp/
+package-lock.json

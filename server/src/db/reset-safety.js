@@ -34,9 +34,10 @@ function hasDevelopmentMarker(candidate) {
 }
 
 function hasLiveMarker(candidate) {
-  return String(candidate).toLowerCase().split(/[\\/]+/).some(
-    (segment) => /(^|[._-])(prod|production|live)([._-]|$)/.test(segment)
-  );
+  return String(candidate)
+    .toLowerCase()
+    .split(/[\\/]+/)
+    .some((segment) => /(^|[._-])(prod|production|live)([._-]|$)/.test(segment));
 }
 
 export function assertSafeResetTarget({
@@ -45,10 +46,13 @@ export function assertSafeResetTarget({
   nodeEnv = process.env.NODE_ENV || 'development',
   allowReset = process.env.ALLOW_DATABASE_RESET,
   argv = process.argv.slice(2),
-  productionPath = process.env.PRODUCTION_SQLITE_DB_PATH
+  productionPath = process.env.PRODUCTION_SQLITE_DB_PATH,
 }) {
-  if (String(nodeEnv).toLowerCase() === 'production') {
-    throw new Error('Database reset is disabled when NODE_ENV=production.');
+  const normalizedNodeEnv = String(nodeEnv).trim().toLowerCase();
+  if (!['development', 'test'].includes(normalizedNodeEnv)) {
+    throw new Error(
+      `Database reset is disabled outside NODE_ENV=development or NODE_ENV=test (received ${nodeEnv}).`
+    );
   }
   if (allowReset !== 'true') {
     throw new Error('Database reset requires ALLOW_DATABASE_RESET=true.');
@@ -71,7 +75,10 @@ export function assertSafeResetTarget({
   if (isSamePath(target, defaultLivePath)) {
     throw new Error(`Refusing to reset the default application database: ${target}`);
   }
-  if (productionPath && isSamePath(target, canonicalPath(path.resolve(canonicalServerRoot, productionPath)))) {
+  if (
+    productionPath &&
+    isSamePath(target, canonicalPath(path.resolve(canonicalServerRoot, productionPath)))
+  ) {
     throw new Error(`Refusing to reset the configured production database: ${target}`);
   }
   if (hasLiveMarker(target)) {
@@ -79,7 +86,8 @@ export function assertSafeResetTarget({
   }
 
   const isTemporary = isWithin(canonicalTempRoot, target);
-  const isMarkedDevelopmentDatabase = isWithin(canonicalServerRoot, target) && hasDevelopmentMarker(target);
+  const isMarkedDevelopmentDatabase =
+    isWithin(canonicalServerRoot, target) && hasDevelopmentMarker(target);
   if (!isTemporary && !isMarkedDevelopmentDatabase) {
     throw new Error(
       'Reset targets must be inside the operating-system temp directory or use a dev/local/test marker in the filename.'

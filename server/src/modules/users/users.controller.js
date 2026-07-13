@@ -1,144 +1,64 @@
 import * as usersService from './users.service.js';
+import { AppError } from '../../utils/errors.js';
 
 export async function getUsersListController(req, res, next) {
   try {
-    const users = await usersService.getAllUsers();
-    return res.status(200).json({
-      status: 'success',
-      data: users
-    });
+    return res.status(200).json({ status: 'success', data: await usersService.getAllUsers() });
   } catch (error) {
-    return res.status(500).json({
-      error: 'حدث خطأ أثناء تحميل قائمة المستخدمين.',
-      code: 'SERVER_ERROR'
-    });
+    return next(error);
   }
 }
 
 export async function createUserController(req, res, next) {
   try {
-    const { username, password, role, name, phone } = req.body;
-    // req.user.id holds the authenticated admin user's ID
-    const newUser = await usersService.createUser(
-      { username, password, role, name, phone },
-      req.user.id
-    );
-
-    return res.status(201).json({
-      status: 'success',
-      message: 'تم إنشاء المستخدم بنجاح.',
-      data: newUser
-    });
+    const user = await usersService.createUser(req.body, req.user.id);
+    return res
+      .status(201)
+      .json({ status: 'success', message: 'User created successfully.', data: user });
   } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'CREATE_USER_FAILED'
-    });
+    return next(error);
   }
 }
 
 export async function updateUserController(req, res, next) {
   try {
-    const { id } = req.params;
-    const { role, name, phone } = req.body;
-
-    const updatedUser = await usersService.updateUser(
-      parseInt(id, 10),
-      { role, name, phone },
-      req.user.id
-    );
-
-    return res.status(200).json({
-      status: 'success',
-      message: 'تم تحديث بيانات المستخدم بنجاح.',
-      data: updatedUser
-    });
+    const user = await usersService.updateUser(req.params.id, req.body, req.user.id);
+    return res
+      .status(200)
+      .json({ status: 'success', message: 'User updated successfully.', data: user });
   } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'UPDATE_USER_FAILED'
-    });
+    return next(error);
   }
 }
 
 export async function updatePasswordController(req, res, next) {
   try {
-    const { id } = req.params;
-    const { password } = req.body;
-
-    if (!password) {
-      return res.status(400).json({
-        error: 'كلمة المرور الجديدة مطلوبة.',
-        code: 'VALIDATION_ERROR'
-      });
-    }
-
-    await usersService.updateUserPassword(
-      parseInt(id, 10),
-      password,
-      req.user.id
-    );
-
-    return res.status(200).json({
-      status: 'success',
-      message: 'تم تغيير كلمة المرور بنجاح.'
-    });
+    await usersService.updateUserPassword(req.params.id, req.body.password, req.user.id);
+    return res
+      .status(200)
+      .json({ status: 'success', message: 'Password changed and sessions revoked.' });
   } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'UPDATE_PASSWORD_FAILED'
-    });
+    return next(error);
   }
 }
 
 export async function disableUserController(req, res, next) {
   try {
-    const { id } = req.params;
-
-    // Prevent Admin from disabling themselves
-    if (parseInt(id, 10) === req.user.id) {
-      return res.status(400).json({
-        error: 'لا يمكنك تعطيل حسابك الشخصي.',
-        code: 'SELF_DISABLE_BLOCKED'
-      });
+    if (req.params.id === req.user.id) {
+      throw new AppError('You cannot disable your own account.', 409, 'SELF_DISABLE_BLOCKED');
     }
-
-    await usersService.setUserActiveStatus(
-      parseInt(id, 10),
-      false,
-      req.user.id
-    );
-
-    return res.status(200).json({
-      status: 'success',
-      message: 'تم تعطيل الحساب بنجاح.'
-    });
+    await usersService.setUserActiveStatus(req.params.id, false, req.user.id);
+    return res.status(200).json({ status: 'success', message: 'User disabled successfully.' });
   } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'DISABLE_USER_FAILED'
-    });
+    return next(error);
   }
 }
 
 export async function enableUserController(req, res, next) {
   try {
-    const { id } = req.params;
-
-    await usersService.setUserActiveStatus(
-      parseInt(id, 10),
-      true,
-      req.user.id
-    );
-
-    return res.status(200).json({
-      status: 'success',
-      message: 'تم تفعيل الحساب بنجاح.'
-    });
+    await usersService.setUserActiveStatus(req.params.id, true, req.user.id);
+    return res.status(200).json({ status: 'success', message: 'User enabled successfully.' });
   } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'ENABLE_USER_FAILED'
-    });
+    return next(error);
   }
 }

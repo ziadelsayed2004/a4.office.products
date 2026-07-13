@@ -2,8 +2,8 @@
   position: fixed;
   inset-inline-end: 100%;
   inset-block-end: 100%;
-  width: 1px;
-  height: 1px;
+  width: 90mm;
+  height: 10mm;
   border: 0;
   opacity: 0;
   pointer-events: none;

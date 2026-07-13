@@ -1,76 +1,86 @@
-# A4 Office Products POS Platform
+# A4 Office Products POS
 
-منصة كاشير وإدارة مكتبة لفرع واحد، بواجهة عربية ثابتة من اليمين إلى اليسار.
+نظام نقاط بيع وإدارة مكتبة بواجهة عربية RTL، مبني على React/Vite وExpress وSQLite، ويعمل بتوقيت `Africa/Cairo` وعلى المنفذ `5000` للخلفية.
 
-## التقنية
+## المتطلبات
 
-- Frontend: React + Vite + Material UI
-- Backend: Node.js + Express
-- Database: SQLite
-- Runtime UI: Arabic only / RTL
-- Theme: Light + Dark
-- Currency: EGP
-- Timezone: Africa/Cairo
+- Node.js 20.19 أو أحدث وnpm.
+- SQLite 3 عند التشغيل على الخادم أو عند الفحص اليدوي.
+- Chrome/Edge للطباعة من المتصفح.
 
-## الوظائف الأساسية
-
-- بيع مباشر بإدخال أو مسح رمز المنتج.
-- حجز مسبق للمنتجات غير المتاحة مع عربون وبيانات عميل إجبارية.
-- استلام الحجز بواسطة رمز آمن، تحصيل المتبقي، وخصم المخزون.
-- فتح شيفت للكاشير، ملخص وتقفيل، ثم مراجعة الأدمن.
-- إدارة المنتجات والتصنيفات وفئات الأسعار والمخزون والمستخدمين.
-- طباعة إيصالات البيع والحجز والاستلام وملصقات المنتجات.
-- تقارير وسجل عمليات كامل.
-
-## الواجهة
-
-المشروع يعمل بالعربية فقط أثناء التشغيل. الملف `client/src/locales/en.json` محفوظ كقاموس ترجمة مستقبلي وغير محمل داخل الواجهة، ولا يوجد زر لتغيير اللغة.
-
-نظام الحقول يعتمد على MUI Outlined Inputs مع:
-
-- Label متحرك إلى Notch أعلى يمين الحقل.
-- اتجاه عربي RTL للنص والقوائم.
-- اتجاه LTR محلي فقط للأكواد وأرقام الهاتف والتواريخ.
-- حالات Hover / Focus / Error / Disabled موحدة.
-- مسافات ثابتة بين أيقونة الزر والنص.
-
-## التشغيل
+## التشغيل المحلي
 
 ```bash
-npm install --prefix client
-npm install --prefix server
+copy .env.example .env
+npm run ci:all
 npm run db:setup
 npm run dev
 ```
 
-`db:setup` غير هدّام: يطبق الـ schema والـ migrations فقط ولا يمسح البيانات الموجودة.
-إعادة الضبط الكاملة مخصصة لقواعد التطوير/الاختبار المعزولة، وتُرفض في production أو على قاعدة التطبيق الافتراضية. مثال PowerShell آمن:
+- الواجهة: `http://localhost:5173`
+- API: `http://localhost:5000`
+- فحص الصحة: `http://localhost:5000/api/health`
 
-```powershell
-$env:NODE_ENV = 'development'
-$env:ALLOW_DATABASE_RESET = 'true'
-$env:SQLITE_DB_PATH = './src/db/a4_pos.local.db'
-npm.cmd run db:reset -- --confirm-reset
+يقرأ السيرفر والـCLI ملف `.env` الموحد من جذر المشروع. ويقرأ Vite نفس الملف صراحةً. القيم الكاملة والموثقة موجودة في `.env.example`.
+
+حسابا `admin/admin123` و`cashier/cashier123` للتطوير فقط عند تفعيل `SEED_DEMO_USERS=true`. لا ينشئ production أي حساب افتراضي.
+
+## قاعدة البيانات
+
+`db:setup` يطبق schema وmigrations دون حذف البيانات:
+
+```bash
+npm run db:setup
 ```
 
-واجهة التطوير: `http://localhost:5173`
+`db:verify` يفتح قاعدة التطوير الحالية بوضع read-only وينفذ `integrity_check` و`foreign_key_check`:
 
-API الافتراضي: `http://localhost:3000`
-
-الحسابات الافتراضية بعد إعداد قاعدة البيانات:
-
-```text
-admin / admin123
-cashier / cashier123
+```bash
+npm run db:verify
 ```
+
+`db:reset` مخصص فقط لقاعدة development/test معزولة واسمها يحتوي `local` أو `dev` أو `test`. يلزم `ALLOW_DATABASE_RESET=true`، ويضيف npm علم التأكيد تلقائياً:
+
+```bash
+npm run db:reset
+```
+
+أما الاستدعاء المباشر `node server/src/db/reset.js` فيُرفض بدون `--confirm-reset`. ويُرفض reset دائماً في production، لقاعدة التشغيل الافتراضية، للمسارات غير الآمنة، وللروابط الرمزية.
+
+## الطباعة
+
+الوضع المدعوم حالياً هو Browser Print فقط. تستخدم المعاينة والطباعة نفس مكوّن الإيصال، ويُضبط عرض صفحة الإيصال على المحتوى الحراري بدل ورقة A4. مقاسات الملصقات المدعومة هي `38×25` و`50×25` و`80×50` مم، وكل ملصق في صفحة منفصلة بلا صفحة أخيرة فارغة.
+
+إعدادات نوع/عنوان الطابعة القديمة تُحفظ للتوافق فقط ولا تُستخدم. الربط المباشر بطابعة حرارية مشروع مستقل لاحقاً بعد تحديد الجهاز وطريقة الاتصال.
+
+## الحذف الآمن والمرتجعات
+
+- التصنيفات وفئات السعر والمنتجات والعملاء وطرق الدفع المخصصة تُحذف فقط عند عدم وجود أي سجل تشغيلي أو مالي مرتبط؛ وإلا يعيد API خطأ `409` مع أعداد الروابط ويظل التعطيل هو الخيار الآمن.
+- المستخدمون والفواتير والإيصالات والشيفتات والحركات المالية لا تُحذف. كل حذف ناجح يُنفذ مع Audit داخل معاملة واحدة.
+- المرتجع يبدأ من بطاقة QR دقيقة ينشئها Admin لبنود وكميات محددة. البطاقة لمرة واحدة، صالحة افتراضيًا 24 ساعة، والمسح للمعاينة فقط.
+- رد المبلغ يتبع طرق الدفع الأصلية. النقد وحده يخفض عهدة الشيفت، والطرق غير النقدية تحتاج مرجع رد خارجي ولا تغيّر درج النقد.
+- بطاقة المرتجع وإيصال المرتجع يستخدمان Browser Print بعرض `80mm`. يلزم `RETURN_QR_SECRET` قوي ومختلف لكل بيئة؛ لا يُسجل الرمز الخام في Audit.
 
 ## التحقق
 
 ```bash
-npm run check --prefix client
-npm run lint --prefix server
-npm run test:schema --prefix server
-npm test --prefix server
+npm run check
+npm run security:audit
+npm run db:verify
+git diff --check
 ```
 
-اختبارات السيرفر تحتاج تثبيت Native dependency الخاصة بـ `sqlite3` بنجاح.
+`npm run check` يشغل Prettier check، فحوص الواجهة والطباعة واختبارات React الفعلية، Oxlint/syntax واختبارات السيرفر، بناء production، وفحص إعداد النشر. مجلد `TEMPLETE-PROJECT` مرجع فقط ومُستبعد من format/lint/tests/build.
+
+## production
+
+استخدم `.env.production.example` كمرجع فقط ولا تضع أسراراً في Git. أنشئ أول Admin بكلمة مرور مؤقتة غير مخزنة:
+
+```bash
+BOOTSTRAP_ADMIN_USERNAME=admin \
+BOOTSTRAP_ADMIN_NAME='System Administrator' \
+BOOTSTRAP_ADMIN_PASSWORD='temporary-strong-password' \
+npm run admin:bootstrap
+```
+
+راجع `DEPLOYMENT.md` قبل تشغيل `deploy.sh`. لا يشغّل المشروع أي deploy على خادم حي تلقائياً.

@@ -11,12 +11,10 @@
 
 .thermal-receipt--58 {
   width: 58mm;
-  page: receipt-58;
 }
 
 .thermal-receipt--80 {
   width: 80mm;
-  page: receipt-80;
 }
 
 .thermal-receipt__brand {
@@ -75,12 +73,17 @@
 
 .thermal-receipt__row > span {
   min-width: 0;
+  flex: 1 1 35%;
   overflow-wrap: anywhere;
 }
 
 .thermal-receipt__row > strong {
-  flex-shrink: 0;
+  min-width: 0;
+  max-width: 65%;
+  flex: 1 1 auto;
   text-align: end;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .thermal-receipt__item,
@@ -164,13 +167,7 @@
   margin: 0 0 1mm;
 }
 
-@page receipt-58 {
-  size: 58mm auto;
-  margin: 0;
-}
-
-@page receipt-80 {
-  size: 80mm auto;
+@page {
   margin: 0;
 }
 
@@ -189,11 +186,15 @@
     color: #000000 !important;
     background: #ffffff !important;
     box-shadow: none !important;
+    break-inside: avoid-page;
+    page-break-inside: avoid;
     break-after: page;
+    page-break-after: always;
   }
 
   .thermal-receipt:last-child {
     break-after: auto;
+    page-break-after: auto;
   }
 
   .thermal-receipt,

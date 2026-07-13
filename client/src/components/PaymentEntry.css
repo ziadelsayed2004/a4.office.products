@@ -1,4 +1,18 @@
-.payment-entry { display: grid; gap: 16px; }
-.payment-entry__methods { display: grid; gap: 12px; }
-.payment-entry__method { border: 1px solid var(--a4-border); border-radius: 14px; padding: 14px; display: grid; gap: 12px; }
-.payment-entry__method > strong { color: var(--a4-primary); }
+.payment-entry {
+  display: grid;
+  gap: 16px;
+}
+.payment-entry__methods {
+  display: grid;
+  gap: 12px;
+}
+.payment-entry__method {
+  border: 1px solid var(--a4-border);
+  border-radius: 14px;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+.payment-entry__method > strong {
+  color: var(--a4-primary);
+}

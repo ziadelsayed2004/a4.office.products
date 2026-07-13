@@ -1,230 +1,247 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# ==============================================================================
-# 🚀 A4 Office Products POS — Unified Management System Ubuntu Deploy Script
-# ==============================================================================
-# This script automates the installation and deployment of the application on a
-# clean Hostinger VPS running Ubuntu Linux.
-#
-# Requirements: Ubuntu 20.04 LTS or newer
-# Run as: root (sudo)
-# ==============================================================================
+set -Eeuo pipefail
 
-# Ensure script is run as root
-if [ "$EUID" -ne 0 ]; then
-  echo "❌ Error: Please run this script with root privileges (sudo):"
-  echo "sudo ./deploy.sh"
-  exit 1
-fi
+# Production bootstrap for Ubuntu 22.04/24.04.
+# Run from a checkout located outside /root (for example /opt/a4-office):
+#   sudo ./deploy.sh
 
-# Set working directory to project root
+APP_USER="${APP_USER:-a4pos}"
+APP_GROUP="${APP_GROUP:-a4pos}"
+APP_HOME="${APP_HOME:-/var/lib/a4pos}"
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$APP_DIR"
+PM2_HOME="$APP_HOME/.pm2"
+NGINX_SITE="/etc/nginx/sites-available/a4-pos"
 
-echo "------------------------------------------------------------"
-echo "🌟 A4 Office Products POS — Production Deployment Starting"
-echo "Project Path: $APP_DIR"
-echo "------------------------------------------------------------"
+fail() {
+  printf 'ERROR: %s\n' "$*" >&2
+  exit 1
+}
 
-# 1. Update system packages
-echo "⏳ Updating system packages..."
-apt update && apt install -y curl git build-essential sqlite3 nginx ufw libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libasound2t64 libx11-6 libx11-xcb1 libxcb1 libxfixes3 libxrender1 libxext6 libxss1 libxtst6 libxcursor1 libxi6 libpango-1.0-0 libpangocairo-1.0-0 libcairo2 libglib2.0-0 libgtk-3-0 libdbus-1-3 fonts-liberation
-echo "✅ System packages updated."
+if [[ "${EUID}" -ne 0 ]]; then
+  fail 'Run this script as root with sudo.'
+fi
 
-# 2. Install Node.js v20 if not installed or older
-echo "⏳ Verifying Node.js environment..."
-INSTALL_NODE=true
+if [[ "$APP_DIR" == /root || "$APP_DIR" == /root/* ]]; then
+  fail 'Move the checkout to /opt/a4-office or /var/www/a4-office before deployment.'
+fi
+if [[ "$APP_USER" == www-data || "$APP_GROUP" == www-data ]]; then
+  fail 'The application user and group must be isolated from the Nginx www-data account.'
+fi
+
+read -r -p 'Production domain (for example pos.example.com): ' DOMAIN_NAME
+if [[ ! "$DOMAIN_NAME" =~ ^[A-Za-z0-9.-]+$ ]] || [[ "$DOMAIN_NAME" == .* ]] || [[ "$DOMAIN_NAME" == *..* ]]; then
+  fail 'The domain is invalid.'
+fi
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y ca-certificates curl build-essential nginx sqlite3 openssl ufw
+
+NODE_VERSION_OK=false
 if command -v node >/dev/null 2>&1; then
-  NODE_VER=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-  if [ "$NODE_VER" -ge 20 ]; then
-    echo "✅ Node.js $(node -v) is already installed."
-    INSTALL_NODE=false
-  fi
+  NODE_VERSION_OK="$(node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.stdout.write(String(major === 20 && minor >= 19))')"
 fi
-
-if [ "$INSTALL_NODE" = true ]; then
-  echo "⏳ Installing Node.js v20..."
+if [[ "$NODE_VERSION_OK" != true ]]; then
   curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-  apt install -y nodejs
-  echo "✅ Node.js installed: $(node -v)"
+  apt-get install -y nodejs
+fi
+NODE_VERSION_OK="$(node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.stdout.write(String(major === 20 && minor >= 19))')"
+if [[ "$NODE_VERSION_OK" != true ]]; then
+  fail 'Node.js 20.19 or newer is required.'
 fi
 
-# 3. Install PM2 Process Manager globally
-echo "⏳ Verifying PM2 installer..."
 if ! command -v pm2 >/dev/null 2>&1; then
-  echo "⏳ Installing PM2..."
-  npm install -g pm2
+  npm install --global pm2
 fi
-echo "✅ PM2 installed: $(pm2 -v)"
 
-# 4. Prompt for Server Domain
-echo "------------------------------------------------------------"
-echo "🌐 Domain Configuration"
-echo "------------------------------------------------------------"
-read -p "Enter your domain [default: a4posplatform.cloud]: " DOMAIN_NAME
-if [ -z "$DOMAIN_NAME" ]; then
-  DOMAIN_NAME="a4posplatform.cloud"
+if ! getent group "$APP_GROUP" >/dev/null; then
+  groupadd --system "$APP_GROUP"
 fi
-echo "ℹ️ Configuring server block with domain: $DOMAIN_NAME"
+if ! id "$APP_USER" >/dev/null 2>&1; then
+  useradd --system --gid "$APP_GROUP" --home-dir "$APP_HOME" --create-home --shell /usr/sbin/nologin "$APP_USER"
+fi
+# Older releases added Nginx to the runtime group. Remove that inherited
+# membership before applying permissions; a full Nginx restart below also
+# clears supplementary groups retained by existing worker processes.
+if id -nG www-data | tr ' ' '\n' | grep -Fxq "$APP_GROUP"; then
+  gpasswd -d www-data "$APP_GROUP"
+fi
+if id -nG www-data | tr ' ' '\n' | grep -Fxq "$APP_GROUP"; then
+  fail 'Unable to remove www-data from the application runtime group.'
+fi
 
-# 5. Configure Production Environment variables (.env) inside server/
-echo "⏳ Configuring Environment File (server/.env)..."
-mkdir -p server
-if [ ! -f "server/.env" ]; then
-  if [ -f "server/.env.example" ]; then
-    cp server/.env.example server/.env
-    echo "✓ Created server/.env file from template."
-  elif [ -f ".env.example" ]; then
-    cp .env.example server/.env
-    echo "✓ Created server/.env file from root template."
-  else
-    # Fallback default .env creation
-    cat <<EOF > server/.env
-PORT=5000
+install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$APP_HOME" "$PM2_HOME"
+install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 \
+  "$APP_DIR/backups" "$APP_DIR/logs" "$APP_DIR/server/src/db"
+chown -R "$APP_USER:$APP_GROUP" "$APP_DIR"
+chmod 0750 "$APP_DIR"
+
+EXISTING_JWT=''
+EXISTING_RETURN_QR_SECRET=''
+EXISTING_NODE_ENV=''
+if [[ -f "$APP_DIR/.env" ]]; then
+  EXISTING_JWT="$(sed -n 's/^JWT_SECRET=//p' "$APP_DIR/.env" | tail -n 1)"
+  EXISTING_RETURN_QR_SECRET="$(sed -n 's/^RETURN_QR_SECRET=//p' "$APP_DIR/.env" | tail -n 1)"
+  EXISTING_NODE_ENV="$(sed -n 's/^NODE_ENV=//p' "$APP_DIR/.env" | tail -n 1)"
+fi
+EXISTING_JWT="$(EXISTING_JWT="$EXISTING_JWT" EXISTING_NODE_ENV="$EXISTING_NODE_ENV" \
+  node "$APP_DIR/server/scripts/select-deployment-jwt.mjs")"
+EXISTING_RETURN_QR_SECRET="$(EXISTING_JWT="$EXISTING_RETURN_QR_SECRET" \
+  EXISTING_NODE_ENV="$EXISTING_NODE_ENV" node "$APP_DIR/server/scripts/select-deployment-jwt.mjs")"
+unset EXISTING_NODE_ENV
+
+ENV_TEMP="$(mktemp "$APP_DIR/.env.production.XXXXXX")"
+cleanup() {
+  rm -f "$ENV_TEMP"
+}
+trap cleanup EXIT
+
+cat >"$ENV_TEMP" <<EOF
 NODE_ENV=production
-JWT_SECRET=default_placeholder_secret
+PORT=5000
+JWT_SECRET=$EXISTING_JWT
 JWT_EXPIRES_IN=7d
+RETURN_QR_SECRET=$EXISTING_RETURN_QR_SECRET
+RETURN_AUTHORIZATION_TTL_HOURS=24
+CORS_ORIGIN=https://$DOMAIN_NAME,http://$DOMAIN_NAME
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX=1500
+LOGIN_RATE_LIMIT_WINDOW_MS=900000
+LOGIN_RATE_LIMIT_MAX=10
+TRUST_PROXY=loopback
 SQLITE_DB_PATH=./src/db/a4_pos.db
+PRODUCTION_SQLITE_DB_PATH=./src/db/a4_pos.db
+ALLOW_DATABASE_RESET=false
+SEED_DEMO_USERS=false
+BACKUP_DIR=./backups
+BACKUP_RETENTION=10
+SHUTDOWN_TIMEOUT_MS=10000
+VITE_API_BASE_URL=
 EOF
-    echo "✓ Created default server/.env file."
+chown "$APP_USER:$APP_GROUP" "$ENV_TEMP"
+chmod 0600 "$ENV_TEMP"
+mv -f "$ENV_TEMP" "$APP_DIR/.env"
+trap - EXIT
+
+sudo -u "$APP_USER" -H bash -lc "cd '$APP_DIR' && npm run ci:all"
+sudo -u "$APP_USER" -H bash -lc "cd '$APP_DIR' && npm run check"
+sudo -u "$APP_USER" -H bash -lc "cd '$APP_DIR' && npm run build"
+
+read -r -p 'Create the first production Admin now? [y/N]: ' CREATE_ADMIN
+if [[ "$CREATE_ADMIN" =~ ^[Yy]$ ]]; then
+  read -r -p 'Admin username [admin]: ' BOOTSTRAP_USERNAME
+  BOOTSTRAP_USERNAME="${BOOTSTRAP_USERNAME:-admin}"
+  read -r -p 'Admin display name [System Administrator]: ' BOOTSTRAP_NAME
+  BOOTSTRAP_NAME="${BOOTSTRAP_NAME:-System Administrator}"
+  read -r -s -p 'Temporary Admin password (minimum 8 characters): ' BOOTSTRAP_PASSWORD
+  printf '\n'
+  if (( ${#BOOTSTRAP_PASSWORD} < 8 )); then
+    fail 'The temporary Admin password must contain at least 8 characters.'
   fi
+  sudo -u "$APP_USER" -H env \
+    BOOTSTRAP_ADMIN_USERNAME="$BOOTSTRAP_USERNAME" \
+    BOOTSTRAP_ADMIN_NAME="$BOOTSTRAP_NAME" \
+    BOOTSTRAP_ADMIN_PASSWORD="$BOOTSTRAP_PASSWORD" \
+    npm --prefix "$APP_DIR/server" run admin:bootstrap
+  unset BOOTSTRAP_PASSWORD
 fi
 
-# Generate secure random secret for JWT and replace placeholders
-SECURE_SECRET=$(openssl rand -hex 32)
-sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${SECURE_SECRET}|" server/.env
-sed -i "s|^NODE_ENV=.*|NODE_ENV=production|" server/.env
-sed -i "s|^PORT=.*|PORT=5000|" server/.env
+# Lock application source after dependency installation/build. The service can
+# write only runtime state; source remains readable through the a4pos group.
+chown -R "root:$APP_GROUP" "$APP_DIR"
+find "$APP_DIR" -type d -exec chmod 0750 {} +
+find "$APP_DIR" -type f -exec chmod 0640 {} +
+chmod 0750 "$APP_DIR/deploy.sh"
+chown "$APP_USER:$APP_GROUP" "$APP_DIR/.env" "$APP_DIR/server/src/db"
+find "$APP_DIR/server/src/db" -maxdepth 1 -type f \
+  \( -name '*.db' -o -name '*.db-wal' -o -name '*.db-shm' -o -name '*.db-journal' \) \
+  -exec chown "$APP_USER:$APP_GROUP" {} +
+chown -R "$APP_USER:$APP_GROUP" "$APP_DIR/backups" "$APP_DIR/logs"
+chmod 0750 "$APP_DIR/server/src/db" "$APP_DIR/backups" "$APP_DIR/logs"
+find "$APP_DIR/client/dist" -type d -exec chmod 0755 {} +
+find "$APP_DIR/client/dist" -type f -exec chmod 0644 {} +
+# Nginx can traverse only the public build path. It is deliberately not a
+# member of the application group, so source, SQLite files, and backups stay
+# unreadable to the web-server account.
+chmod 0755 "$APP_DIR" "$APP_DIR/client" "$APP_DIR/client/dist"
+chmod 0600 "$APP_DIR/.env"
 
-echo "✅ Environment configured (.env file updated)."
-
-# 6. Install Project Dependencies & Compile React Frontend
-echo "⏳ Installing all project dependencies (Root, Client, Server)..."
-npm run install:all
-
-echo "⏳ Compiling React static production files (Vite build)..."
-npm run build
-echo "✅ Application dependencies and client compilation finished."
-
-# 7. Setup Directory Access Permissions
-echo "⏳ Setting file permissions for security and system write operations..."
-# Web root files readable by Nginx
-chmod -R 755 "$APP_DIR/client/dist"
-# SQLite database folders read/writable by Express app running in PM2
-mkdir -p server/src/db/backups
-chmod -R 777 "$APP_DIR/server/src/db"
-echo "✅ Permissions updated."
-
-# 8. Configure PM2 process daemonization
-echo "⏳ Starting Node.js backend daemon with PM2..."
-# Stop existing application thread if it was running
-pm2 stop a4-pos-server >/dev/null 2>&1 || true
-pm2 delete a4-pos-server >/dev/null 2>&1 || true
-
-# Start clean process in production mode
-pm2 start ecosystem.config.js --env production
-pm2 save
-
-# Automatically configure PM2 startup daemon to launch after reboot
-pm2 startup systemd -u root --hp /root >/dev/null 2>&1 || true
-echo "✅ Daemonized successfully. PM2 processes saved."
-
-# 9. Configure Nginx Reverse Proxy
-echo "⏳ Setting up Nginx Virtual Host configuration..."
-NGINX_CONF="/etc/nginx/sites-available/a4-pos"
-
-cat <<EOF > "$NGINX_CONF"
+cat >"$NGINX_SITE" <<EOF
 server {
     listen 80;
+    listen [::]:80;
     server_name $DOMAIN_NAME;
-
-    # Maximum client payload size (important for document attachments)
     client_max_body_size 10M;
 
-    # Gzip Compression
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+    root $APP_DIR/client/dist;
+    index index.html;
 
-    # Serve static assets directly
-    location / {
-        root $APP_DIR/client/dist;
-        index index.html;
-        try_files \$uri \$uri/ /index.html;
-    }
-
-    # Proxy API requests to backend
-    location /api {
-        proxy_pass http://localhost:5000;
+    location /api/ {
+        proxy_pass http://127.0.0.1:5000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
         proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 60s;
+    }
+
+    location / {
+        try_files \$uri \$uri/ /index.html;
     }
 }
 EOF
 
-# Activate site configuration and disable default site
+ln -sfn "$NGINX_SITE" /etc/nginx/sites-enabled/a4-pos
 rm -f /etc/nginx/sites-enabled/default
-rm -f /etc/nginx/sites-enabled/a4-pos
-ln -s "$NGINX_CONF" /etc/nginx/sites-enabled/
-
-echo "⏳ Testing Nginx server configuration..."
 nginx -t
-if [ $? -eq 0 ]; then
-  systemctl restart nginx
-  echo "✅ Nginx server successfully configured and restarted."
-else
-  echo "❌ Error: Nginx configuration test failed." >&2
+systemctl restart nginx
+
+if ! sudo -u www-data test -r "$APP_DIR/client/dist/index.html"; then
+  fail 'Nginx cannot read the public client build.'
 fi
-
-# 10. Configure Firewall Security Rules (UFW)
-echo "⏳ Opening firewall ports (UFW)..."
-ufw allow 'Nginx Full'
-ufw allow OpenSSH
-ufw --force enable
-echo "✅ Firewall active."
-
-# 11. Configure SSL via Let's Encrypt Certbot
-echo "------------------------------------------------------------"
-echo "🔒 SSL / HTTPS Configuration (Let's Encrypt)"
-echo "------------------------------------------------------------"
-read -p "Would you like to install and configure SSL (HTTPS) for $DOMAIN_NAME? (y/N): " SETUP_SSL
-if [[ "$SETUP_SSL" =~ ^[Yy]$ ]]; then
-  echo "⏳ Installing Certbot and plugins..."
-  apt install -y certbot python3-certbot-nginx
-  
-  echo "⏳ Requesting SSL Certificate for $DOMAIN_NAME..."
-  # Run certbot non-interactively, agree to terms, redirect HTTP to HTTPS
-  certbot --nginx -d "$DOMAIN_NAME" --non-interactive --agree-tos --register-unsafely-without-email --redirect
-  
-  if [ $? -eq 0 ]; then
-    echo "✅ SSL Certificate successfully installed and Nginx configured for HTTPS!"
-  else
-    echo "⚠️ Certbot failed to obtain SSL certificate. Please ensure your domain DNS (A record) points to this server's IP address."
+if sudo -u www-data test -r "$APP_DIR/.env"; then
+  fail 'Nginx can read the private environment file.'
+fi
+while IFS= read -r -d '' sensitive_file; do
+  if sudo -u www-data test -r "$sensitive_file"; then
+    fail "Nginx can read private runtime data: $sensitive_file"
   fi
-else
-  echo "ℹ️ Skipping SSL Configuration. You can configure it manually later using Certbot."
-fi
+done < <(
+  find "$APP_DIR/server/src/db" "$APP_DIR/backups" -maxdepth 1 -type f \
+    \( -name '*.db' -o -name '*.db-wal' -o -name '*.db-shm' -o -name '*.db-journal' \) \
+    -print0
+)
 
-# 12. Setup Automated 2:00 AM SQLite Daily Backups
-echo "⏳ Configuring Automated Database Backups (Cron)..."
-CRON_LINE="0 2 * * * cd $APP_DIR && /usr/bin/npm run db:backup >> $APP_DIR/server/src/db/backups/cron_backup.log 2>&1"
-# Append backup script to crontab if not already configured
-(crontab -l 2>/dev/null | grep -F "db:backup" >/dev/null)
-if [ $? -ne 0 ]; then
-  (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
-  echo "✅ Auto Backup scheduled via Crontab (Daily at 2:00 AM)."
-else
-  echo "✅ Auto Backup cron job is already registered."
-fi
+APP_GROUP_GID="$(getent group "$APP_GROUP" | cut -d: -f3)"
+while IFS= read -r nginx_pid; do
+  if awk -v gid="$APP_GROUP_GID" '$1 == "Groups:" { for (index = 2; index <= NF; index += 1) if ($index == gid) found = 1 } END { exit found ? 0 : 1 }' "/proc/$nginx_pid/status"; then
+    fail "Nginx worker $nginx_pid retained the application group after restart."
+  fi
+done < <(pgrep -u www-data nginx || true)
 
-echo "------------------------------------------------------------"
-echo "🎉 Deployment Completed Successfully!"
-echo "------------------------------------------------------------"
-echo "🌐 App is available at: http://$DOMAIN_NAME"
-echo "💾 SQLite backups are saved at: $APP_DIR/server/src/db/backups/"
-echo "------------------------------------------------------------"
+sudo -u "$APP_USER" -H env PM2_HOME="$PM2_HOME" \
+  pm2 delete a4-pos-server >/dev/null 2>&1 || true
+sudo -u "$APP_USER" -H env PM2_HOME="$PM2_HOME" \
+  pm2 start "$APP_DIR/ecosystem.config.js" --env production
+sudo -u "$APP_USER" -H env PM2_HOME="$PM2_HOME" pm2 save
+pm2 startup systemd -u "$APP_USER" --hp "$APP_HOME"
+
+CRON_FILE="/etc/cron.d/a4-pos-backup"
+cat >"$CRON_FILE" <<EOF
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+0 2 * * * $APP_USER cd $APP_DIR && npm run db:backup >> $APP_DIR/logs/backup.log 2>&1
+EOF
+chmod 0644 "$CRON_FILE"
+
+ufw allow OpenSSH
+ufw allow 'Nginx Full'
+ufw --force enable
+
+printf '\nDeployment completed.\n'
+printf 'Application: http://%s\n' "$DOMAIN_NAME"
+printf 'API health: http://%s/api/health\n' "$DOMAIN_NAME"
+printf 'Backups: %s/backups (last 10 valid copies)\n' "$APP_DIR"
+printf 'Next: configure TLS with certbot, then keep only the HTTPS CORS origin.\n'

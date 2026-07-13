@@ -1,4 +1,5 @@
 import { backupDatabase } from './backup.js';
+import db from '../db/index.js';
 
 async function run() {
   console.log('Initiating database backup process...');
@@ -11,8 +12,10 @@ async function run() {
     }
   } catch (error) {
     console.error('Backup script failed:', error.message);
-    process.exit(1);
+    process.exitCode = 1;
+  } finally {
+    await db.close();
   }
 }
 
-run();
+await run();

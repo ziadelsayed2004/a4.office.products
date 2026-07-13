@@ -2,10 +2,18 @@ import { useEffect, useRef } from 'react';
 
 function editableTarget(target) {
   if (!(target instanceof Element)) return false;
-  return Boolean(target.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]'));
+  return Boolean(
+    target.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]')
+  );
 }
 
-export function useScannerCapture({ onScan, disabled = false, restoreFocusRef, maxGapMs = 70, duplicateMs = 1200 }) {
+export function useScannerCapture({
+  onScan,
+  disabled = false,
+  restoreFocusRef,
+  maxGapMs = 70,
+  duplicateMs = 1200,
+}) {
   const state = useRef({ buffer: '', lastKeyAt: 0, lastCode: '', lastScanAt: 0 });
   const callback = useRef(onScan);
   callback.current = onScan;

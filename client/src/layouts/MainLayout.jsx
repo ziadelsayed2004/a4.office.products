@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Avatar,
@@ -21,9 +21,10 @@ import {
   Tooltip,
   Typography,
   useTheme,
-} from "@mui/material";
+} from '@mui/material';
 import {
   AccountCircleRounded,
+  AssignmentReturnRounded,
   AssessmentRounded,
   BadgeRounded,
   CategoryRounded,
@@ -45,39 +46,35 @@ import {
   SellRounded,
   ShoppingBasketRounded,
   SwapHorizRounded,
-} from "@mui/icons-material";
-import { useAuth } from "../app/AuthContext.jsx";
-import { APP_CONFIG } from "../config/appConfig.js";
-import { Breadcrumbs } from "../components/Breadcrumbs.jsx";
-import { useColorMode } from "../theme/ThemeConfig.jsx";
-import { t } from "../locales/t.js";
-import logo from "../assets/a4-logo.png";
-import "../styles/MainLayout.css";
+  CloseRounded,
+} from '@mui/icons-material';
+import { useAuth } from '../app/AuthContext.jsx';
+import { APP_CONFIG } from '../config/appConfig.js';
+import { Breadcrumbs } from '../components/Breadcrumbs.jsx';
+import { useColorMode } from '../theme/ThemeConfig.jsx';
+import { t } from '../locales/t.js';
+import logo from '../assets/a4-logo.png';
+import '../styles/MainLayout.css';
 
 const titles = {
-  "/": ["لوحة التحكم", "ملخص سريع لحالة المبيعات والمخزون والحجوزات"],
-  "/pos": ["نقطة البيع", "بيع مباشر أو إنشاء واستلام حجز مسبق"],
-  "/shift-summary": ["شيفتي الحالية", "متابعة حركات الشيفت وطلب التقفيل"],
-  "/receipts": ["الإيصالات", "البحث عن الإيصالات وعرضها وإعادة طباعتها"],
-  "/invoices": ["مركز الفواتير", "بحث وعرض الفواتير المحفوظة بحسب صلاحياتك"],
-  "/products": ["المنتجات", "إدارة المنتجات والأسعار وخصائص الحجز"],
-  "/categories": ["التصنيفات", "تنظيم المنتجات داخل تصنيفات واضحة"],
-  "/price-tiers": [
-    "فئات الأسعار",
-    "إدارة أسعار القطاعي والجملة والفئات الخاصة",
-  ],
-  "/inventory": ["المخزون", "متابعة الرصيد الفعلي وحركات التسوية"],
-  "/preorders": ["الحجوزات المسبقة", "متابعة الحجز من العربون حتى الاستلام"],
-  "/customers": ["العملاء", "بيانات عملاء الحجوزات المسبقة"],
-  "/payments": ["طرق الدفع", "تفعيل طرق الدفع المتاحة داخل الكاشير"],
-  "/shifts": ["مراجعة الشيفتات", "اعتماد أو رفض طلبات تقفيل الكاشير"],
-  "/users": ["المستخدمون", "إدارة حسابات الأدمن والكاشير"],
-  "/reports": ["التقارير", "تقارير المبيعات والحجوزات والمخزون والشيفتات"],
-  "/logs": ["سجل العمليات", "تتبع كل العمليات الحساسة داخل النظام"],
-  "/printer-settings": [
-    "إعدادات الطباعة",
-    "إعدادات ريسيت البيع وملصقات المنتجات",
-  ],
+  '/': ['لوحة التحكم', 'ملخص سريع لحالة المبيعات والمخزون والحجوزات'],
+  '/pos': ['نقطة البيع', 'بيع مباشر أو إنشاء واستلام حجز مسبق'],
+  '/shift-summary': ['شيفتي الحالية', 'متابعة حركات الشيفت وطلب التقفيل'],
+  '/receipts': ['الإيصالات', 'البحث عن الإيصالات وعرضها وإعادة طباعتها'],
+  '/invoices': ['مركز الفواتير', 'بحث وعرض الفواتير المحفوظة بحسب صلاحياتك'],
+  '/products': ['المنتجات', 'إدارة المنتجات والأسعار وخصائص الحجز'],
+  '/categories': ['التصنيفات', 'تنظيم المنتجات داخل تصنيفات واضحة'],
+  '/price-tiers': ['فئات الأسعار', 'إدارة أسعار القطاعي والجملة والفئات الخاصة'],
+  '/inventory': ['المخزون', 'متابعة الرصيد الفعلي وحركات التسوية'],
+  '/preorders': ['الحجوزات المسبقة', 'متابعة الحجز من العربون حتى الاستلام'],
+  '/customers': ['العملاء', 'بيانات عملاء الحجوزات المسبقة'],
+  '/payments': ['طرق الدفع', 'تفعيل طرق الدفع المتاحة داخل الكاشير'],
+  '/return-authorizations': ['بطاقات المرتجع', 'إصدار ومتابعة بطاقات QR الدقيقة للمرتجعات'],
+  '/shifts': ['مراجعة الشيفتات', 'اعتماد أو رفض طلبات تقفيل الكاشير'],
+  '/users': ['المستخدمون', 'إدارة حسابات الأدمن والكاشير'],
+  '/reports': ['التقارير', 'تقارير المبيعات والحجوزات والمخزون والشيفتات'],
+  '/logs': ['سجل العمليات', 'تتبع كل العمليات الحساسة داخل النظام'],
+  '/printer-settings': ['إعدادات الطباعة', 'إعدادات ريسيت البيع وملصقات المنتجات'],
 };
 
 export function MainLayout() {
@@ -87,16 +84,14 @@ export function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(
-    () => localStorage.getItem(APP_CONFIG.storageKeys.sidebarCollapsed) === "1",
+    () => localStorage.getItem(APP_CONFIG.storageKeys.sidebarCollapsed) === '1'
   );
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState(null);
+  const activeItemRef = useRef(null);
 
   useEffect(() => {
-    localStorage.setItem(
-      APP_CONFIG.storageKeys.sidebarCollapsed,
-      collapsed ? "1" : "0",
-    );
+    localStorage.setItem(APP_CONFIG.storageKeys.sidebarCollapsed, collapsed ? '1' : '0');
   }, [collapsed]);
 
   useEffect(() => {
@@ -104,25 +99,29 @@ export function MainLayout() {
     setProfileAnchor(null);
   }, [location.pathname]);
 
+  useEffect(() => {
+    activeItemRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [location.pathname, mobileOpen]);
+
   const menu = useMemo(() => {
     const cashier = [
       {
-        section: t("nav.cashier"),
+        section: t('nav.cashier'),
         items: [
-          { label: t("nav.pos"), path: "/pos", icon: <PointOfSaleRounded /> },
+          { label: t('nav.pos'), path: '/pos', icon: <PointOfSaleRounded /> },
           {
-            label: t("nav.currentShift"),
-            path: "/shift-summary",
+            label: t('nav.currentShift'),
+            path: '/shift-summary',
             icon: <EventAvailableRounded />,
           },
           {
-            label: t("nav.receipts"),
-            path: "/receipts",
+            label: t('nav.receipts'),
+            path: '/receipts',
             icon: <ReceiptLongRounded />,
           },
           {
-            label: t("nav.invoices"),
-            path: "/invoices",
+            label: t('nav.invoices'),
+            path: '/invoices',
             icon: <DescriptionRounded />,
           },
         ],
@@ -131,79 +130,82 @@ export function MainLayout() {
     if (!isAdmin) return cashier;
     return [
       {
-        section: t("nav.home"),
-        items: [
-          { label: t("nav.dashboard"), path: "/", icon: <DashboardRounded /> },
-        ],
+        section: t('nav.home'),
+        items: [{ label: t('nav.dashboard'), path: '/', icon: <DashboardRounded /> }],
       },
       ...cashier,
       {
-        section: t("nav.catalog"),
+        section: t('nav.catalog'),
         items: [
           {
-            label: t("nav.products"),
-            path: "/products",
+            label: t('nav.products'),
+            path: '/products',
             icon: <ShoppingBasketRounded />,
           },
           {
-            label: t("nav.categories"),
-            path: "/categories",
+            label: t('nav.categories'),
+            path: '/categories',
             icon: <CategoryRounded />,
           },
           {
-            label: t("nav.priceTiers"),
-            path: "/price-tiers",
+            label: t('nav.priceTiers'),
+            path: '/price-tiers',
             icon: <SellRounded />,
           },
           {
-            label: t("nav.inventory"),
-            path: "/inventory",
+            label: t('nav.inventory'),
+            path: '/inventory',
             icon: <Inventory2Rounded />,
           },
         ],
       },
       {
-        section: t("nav.operations"),
+        section: t('nav.operations'),
         items: [
           {
-            label: t("nav.preorders"),
-            path: "/preorders",
+            label: t('nav.preorders'),
+            path: '/preorders',
             icon: <BadgeRounded />,
           },
           {
-            label: t("nav.customers"),
-            path: "/customers",
+            label: t('nav.customers'),
+            path: '/customers',
             icon: <GroupsRounded />,
           },
           {
-            label: t("nav.payments"),
-            path: "/payments",
+            label: t('nav.payments'),
+            path: '/payments',
             icon: <PaymentsRounded />,
+          },
+          {
+            label: 'بطاقات المرتجع',
+            path: '/return-authorizations',
+            icon: <AssignmentReturnRounded />,
           },
         ],
       },
       {
-        section: t("nav.management"),
+        section: t('nav.management'),
         items: [
           {
-            label: t("nav.shifts"),
-            path: "/shifts",
+            label: t('nav.shifts'),
+            path: '/shifts',
             icon: <SwapHorizRounded />,
           },
           {
-            label: t("nav.users"),
-            path: "/users",
+            label: t('nav.users'),
+            path: '/users',
             icon: <AccountCircleRounded />,
           },
           {
-            label: t("nav.reports"),
-            path: "/reports",
+            label: t('nav.reports'),
+            path: '/reports',
             icon: <AssessmentRounded />,
           },
-          { label: t("nav.audit"), path: "/logs", icon: <HistoryRounded /> },
+          { label: t('nav.audit'), path: '/logs', icon: <HistoryRounded /> },
           {
-            label: t("nav.printers"),
-            path: "/printer-settings",
+            label: t('nav.printers'),
+            path: '/printer-settings',
             icon: <PrintRounded />,
           },
         ],
@@ -219,15 +221,15 @@ export function MainLayout() {
   const handleLogout = async () => {
     setProfileAnchor(null);
     await logout();
-    navigate("/login");
+    navigate('/login');
   };
 
   const [pageTitle, pageSubtitle] = titles[location.pathname] || [
     APP_CONFIG.brandName,
     APP_CONFIG.brandSubtitle,
   ];
-  const drawerAnchor = muiTheme.direction === "rtl" ? "left" : "right";
-  const layoutClass = `main-layout ${collapsed ? "is-collapsed" : "is-expanded"}`;
+  const drawerAnchor = muiTheme.direction === 'rtl' ? 'left' : 'right';
+  const layoutClass = `main-layout ${collapsed ? 'is-collapsed' : 'is-expanded'}`;
 
   const renderDrawer = ({ mobile = false } = {}) => {
     const drawerCollapsed = !mobile && collapsed;
@@ -235,7 +237,7 @@ export function MainLayout() {
     return (
       <div className="main-layout__drawer-container">
         <div
-          className={`sidebar-header ${drawerCollapsed ? "sidebar-header--collapsed" : "sidebar-header--expanded"}`}
+          className={`sidebar-header ${drawerCollapsed ? 'sidebar-header--collapsed' : 'sidebar-header--expanded'}`}
         >
           <div className="sidebar-logo-box">
             <img className="sidebar-logo" src={logo} alt={APP_CONFIG.logoAlt} />
@@ -244,6 +246,40 @@ export function MainLayout() {
             <strong>{APP_CONFIG.brandName}</strong>
             <span>{APP_CONFIG.brandSubtitle}</span>
           </div>
+          {mobile && (
+            <IconButton
+              className="sidebar-mobile-close"
+              onClick={() => setMobileOpen(false)}
+              aria-label="إغلاق القائمة"
+            >
+              <CloseRounded />
+            </IconButton>
+          )}
+        </div>
+
+        <div className="sidebar-profile-wrap">
+          <Tooltip
+            placement="left"
+            title={
+              drawerCollapsed
+                ? `${user?.name || 'المستخدم'} · ${currentShift?.status === 'OPEN' ? `شيفت #${currentShift.id}` : 'لا يوجد شيفت مفتوح'}`
+                : ''
+            }
+          >
+            <ListItemButton
+              className="profile-card"
+              onClick={(event) => setProfileAnchor(event.currentTarget)}
+            >
+              <Avatar className="profile-card__avatar">{user?.name?.slice(0, 1) || 'A'}</Avatar>
+              <div className="profile-card__info">
+                <strong>{user?.name}</strong>
+                <span>
+                  {user?.role === 'Admin' ? 'مدير النظام' : 'كاشير'} ·{' '}
+                  {currentShift?.status === 'OPEN' ? `شيفت #${currentShift.id}` : 'دون شيفت مفتوح'}
+                </span>
+              </div>
+            </ListItemButton>
+          </Tooltip>
         </div>
         <Divider className="sidebar-divider" />
 
@@ -253,11 +289,7 @@ export function MainLayout() {
               className="sidebar-menu-list"
               key={group.section}
               subheader={
-                <ListSubheader
-                  component="div"
-                  className="sidebar-subheader"
-                  disableSticky
-                >
+                <ListSubheader component="div" className="sidebar-subheader" disableSticky>
                   {group.section}
                 </ListSubheader>
               }
@@ -265,28 +297,17 @@ export function MainLayout() {
               {group.items.map((item) => {
                 const active = location.pathname === item.path;
                 return (
-                  <ListItem
-                    disablePadding
-                    className="sidebar-list-item"
-                    key={item.path}
-                  >
-                    <Tooltip
-                      placement="left"
-                      title={drawerCollapsed ? item.label : ""}
-                    >
+                  <ListItem disablePadding className="sidebar-list-item" key={item.path}>
+                    <Tooltip placement="left" title={drawerCollapsed ? item.label : ''}>
                       <ListItemButton
                         className="sidebar-item-btn"
                         selected={active}
-                        aria-current={active ? "page" : undefined}
+                        aria-current={active ? 'page' : undefined}
+                        ref={active ? activeItemRef : undefined}
                         onClick={() => go(item.path)}
                       >
-                        <ListItemIcon className="sidebar-item-icon">
-                          {item.icon}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={item.label}
-                          className="sidebar-item-text"
-                        />
+                        <ListItemIcon className="sidebar-item-icon">{item.icon}</ListItemIcon>
+                        <ListItemText primary={item.label} className="sidebar-item-text" />
                       </ListItemButton>
                     </Tooltip>
                   </ListItem>
@@ -296,28 +317,8 @@ export function MainLayout() {
           ))}
         </div>
 
-        <div className="sidebar-profile-wrap">
-          <ListItemButton
-            className="profile-card"
-            onClick={(event) => setProfileAnchor(event.currentTarget)}
-          >
-            <Avatar className="profile-card__avatar">
-              {user?.name?.slice(0, 1) || "A"}
-            </Avatar>
-            <div className="profile-card__info">
-              <strong>{user?.name}</strong>
-              <span>
-                {user?.username} · {user?.role === "Admin" ? "مدير" : "كاشير"}
-              </span>
-            </div>
-          </ListItemButton>
-        </div>
-
         <div className="sidebar-toggle-container">
-          <Tooltip
-            placement="left"
-            title={drawerCollapsed ? "توسيع القائمة" : "تصغير القائمة"}
-          >
+          <Tooltip placement="left" title={drawerCollapsed ? 'توسيع القائمة' : 'تصغير القائمة'}>
             <IconButton
               className="sidebar-toggle-button"
               onClick={() => setCollapsed((value) => !value)}
@@ -338,7 +339,7 @@ export function MainLayout() {
             className="main-layout__mobile-menu"
             edge="start"
             onClick={() => setMobileOpen((value) => !value)}
-            aria-label={mobileOpen ? "إغلاق القائمة" : "فتح القائمة"}
+            aria-label={mobileOpen ? 'إغلاق القائمة' : 'فتح القائمة'}
             aria-expanded={mobileOpen}
           >
             <MenuRounded />
@@ -348,7 +349,7 @@ export function MainLayout() {
             <Typography component="span">{pageSubtitle}</Typography>
           </div>
           <div className="main-layout__actions">
-            {currentShift?.status === "OPEN" && (
+            {currentShift?.status === 'OPEN' && (
               <Chip
                 className="main-layout__shift-chip"
                 size="small"
@@ -357,14 +358,12 @@ export function MainLayout() {
                 label={`شيفت #${currentShift.id}`}
               />
             )}
-            <Tooltip title={mode === "light" ? "الوضع الداكن" : "الوضع الفاتح"}>
+            <Tooltip title={mode === 'light' ? 'الوضع الداكن' : 'الوضع الفاتح'}>
               <IconButton
                 onClick={toggleColorMode}
-                aria-label={
-                  mode === "light" ? "تفعيل الوضع الداكن" : "تفعيل الوضع الفاتح"
-                }
+                aria-label={mode === 'light' ? 'تفعيل الوضع الداكن' : 'تفعيل الوضع الفاتح'}
               >
-                {mode === "light" ? <DarkModeRounded /> : <LightModeRounded />}
+                {mode === 'light' ? <DarkModeRounded /> : <LightModeRounded />}
               </IconButton>
             </Tooltip>
             <Tooltip title="الحساب">
@@ -373,9 +372,7 @@ export function MainLayout() {
                 aria-label="فتح قائمة الحساب"
               >
                 <Badge color="success" variant="dot" overlap="circular">
-                  <Avatar className="main-layout__avatar">
-                    {user?.name?.slice(0, 1) || "A"}
-                  </Avatar>
+                  <Avatar className="main-layout__avatar">{user?.name?.slice(0, 1) || 'A'}</Avatar>
                 </Badge>
               </IconButton>
             </Tooltip>
@@ -383,11 +380,7 @@ export function MainLayout() {
         </Toolbar>
       </AppBar>
 
-      <Box
-        component="nav"
-        className="main-layout__sidebar-nav"
-        aria-label="القائمة الرئيسية"
-      >
+      <Box component="nav" className="main-layout__sidebar-nav" aria-label="القائمة الرئيسية">
         <Drawer
           variant="temporary"
           anchor={drawerAnchor}
@@ -396,7 +389,7 @@ export function MainLayout() {
           className="main-layout__mobile-drawer"
           slotProps={{
             root: { keepMounted: true },
-            paper: { className: "main-layout__mobile-drawer-paper" },
+            paper: { className: 'main-layout__mobile-drawer-paper' },
           }}
         >
           {renderDrawer({ mobile: true })}
@@ -407,7 +400,7 @@ export function MainLayout() {
           open
           className="main-layout__desktop-drawer"
           slotProps={{
-            paper: { className: "main-layout__desktop-drawer-paper" },
+            paper: { className: 'main-layout__desktop-drawer-paper' },
           }}
         >
           {renderDrawer()}
@@ -427,23 +420,17 @@ export function MainLayout() {
         anchorEl={profileAnchor}
         open={Boolean(profileAnchor)}
         onClose={() => setProfileAnchor(null)}
-        transformOrigin={{ horizontal: "left", vertical: "top" }}
-        anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
+        transformOrigin={{ horizontal: 'left', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'left', vertical: 'bottom' }}
       >
         <Box className="user-menu-header">
-          <Typography className="user-menu-header__name">
-            {user?.name}
-          </Typography>
+          <Typography className="user-menu-header__name">{user?.name}</Typography>
           <Typography className="user-menu-header__role">
-            @{user?.username} ·{" "}
-            {user?.role === "Admin" ? "مدير النظام" : "كاشير"}
+            @{user?.username} · {user?.role === 'Admin' ? 'مدير النظام' : 'كاشير'}
           </Typography>
         </Box>
         <Divider />
-        <MenuItem
-          className="user-menu-item user-menu-item--logout"
-          onClick={handleLogout}
-        >
+        <MenuItem className="user-menu-item user-menu-item--logout" onClick={handleLogout}>
           <LogoutRounded fontSize="small" />
           <span>تسجيل الخروج</span>
         </MenuItem>

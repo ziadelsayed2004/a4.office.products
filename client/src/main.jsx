@@ -16,5 +16,5 @@ createRoot(document.getElementById('root')).render(
         <App />
       </ErrorBoundary>
     </StyledEngineProvider>
-  </StrictMode>,
+  </StrictMode>
 );

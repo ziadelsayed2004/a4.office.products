@@ -10,6 +10,11 @@ import {
 } from '../services/printService.js';
 import { ThermalReceipt } from '../components/ThermalReceipt.jsx';
 import { LoadingState } from '../components/LoadingState.jsx';
+import { applyReceiptPageSize } from '../utils/receiptPrintSizing.js';
+import {
+  normalizeBrowserPrintSettings,
+  PRINTER_SETTINGS_UNAVAILABLE_MESSAGE,
+} from '../utils/browserPrintSettings.js';
 import '../styles/ReceiptPrint.css';
 
 function normalizedCopies(value) {
@@ -19,27 +24,32 @@ function normalizedCopies(value) {
 
 function postPrintMessage(type, receiptId, extra = {}) {
   if (window.parent === window) return;
-  window.parent.postMessage({
-    source: PRINT_MESSAGE_SOURCE,
-    type,
-    receiptId: String(receiptId),
-    ...extra,
-  }, window.location.origin);
+  window.parent.postMessage(
+    {
+      source: PRINT_MESSAGE_SOURCE,
+      type,
+      receiptId: String(receiptId),
+      ...extra,
+    },
+    window.location.origin
+  );
 }
 
 async function waitForAssets(container) {
   if (document.fonts?.ready) await document.fonts.ready;
 
   const images = [...(container?.querySelectorAll('img') || [])];
-  await Promise.all(images.map(async (image) => {
-    if (!image.complete) {
-      await new Promise((resolve) => {
-        image.addEventListener('load', resolve, { once: true });
-        image.addEventListener('error', resolve, { once: true });
-      });
-    }
-    if (image.decode) await image.decode().catch(() => undefined);
-  }));
+  await Promise.all(
+    images.map(async (image) => {
+      if (!image.complete) {
+        await new Promise((resolve) => {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', resolve, { once: true });
+        });
+      }
+      if (image.decode) await image.decode().catch(() => undefined);
+    })
+  );
 
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
@@ -55,7 +65,10 @@ export default function ReceiptPrint() {
 
   const copies = normalizedCopies(searchParams.get('copies'));
   const reprint = searchParams.get('reprint') === '1';
-  const copyNumbers = useMemo(() => Array.from({ length: copies }, (_, index) => index + 1), [copies]);
+  const copyNumbers = useMemo(
+    () => Array.from({ length: copies }, (_, index) => index + 1),
+    [copies]
+  );
 
   useEffect(() => {
     let active = true;
@@ -64,12 +77,14 @@ export default function ReceiptPrint() {
 
     Promise.all([
       api.get(`/api/pos/receipts/${encodeURIComponent(receiptId)}`),
-      api.get('/api/printer-settings').catch(() => ({ data: {} })),
+      api.get('/api/printer-settings').catch((settingsError) => {
+        throw new Error(`${PRINTER_SETTINGS_UNAVAILABLE_MESSAGE} ${settingsError.message}`);
+      }),
     ])
       .then(([response, settingsResponse]) => {
         if (!active) return;
         setReceipt(response.data || response || null);
-        setSettings(settingsResponse.data || settingsResponse || {});
+        setSettings(normalizeBrowserPrintSettings(settingsResponse.data || settingsResponse));
       })
       .catch((err) => {
         if (!active) return;
@@ -78,40 +93,53 @@ export default function ReceiptPrint() {
       })
       .finally(() => active && setLoading(false));
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [receiptId]);
 
   useEffect(() => {
     if (!receipt) return undefined;
     let active = true;
+    let cleanupPageSize = () => undefined;
     document.title = `طباعة ${receipt.receipt_number || receiptId}`;
 
     waitForAssets(containerRef.current)
-      .then(() => active && postPrintMessage(PRINT_READY, receiptId))
+      .then(() => {
+        if (!active) return;
+        const pageSize = applyReceiptPageSize(containerRef.current);
+        cleanupPageSize = pageSize.cleanup;
+        postPrintMessage(PRINT_READY, receiptId, {
+          pageWidthMm: pageSize.widthMm,
+          pageHeightMm: pageSize.heightMm,
+        });
+      })
       .catch((err) => active && postPrintMessage(PRINT_ERROR, receiptId, { message: err.message }));
 
     const afterPrint = () => postPrintMessage(PRINT_COMPLETE, receiptId);
     window.addEventListener('afterprint', afterPrint);
     return () => {
       active = false;
+      cleanupPageSize();
       window.removeEventListener('afterprint', afterPrint);
     };
-  }, [receipt, receiptId]);
+  }, [copies, receipt, receiptId, settings]);
 
   return (
     <main className="receipt-print-page" ref={containerRef}>
       {loading && <LoadingState label="جاري تجهيز مستند الطباعة..." />}
       {error && <Alert severity="error">{error}</Alert>}
-      {receipt && copyNumbers.map((copyNumber) => (
-        <ThermalReceipt
-          key={copyNumber}
-          receipt={receipt}
-          settings={settings}
-          reprint={reprint}
-          copyNumber={copyNumber}
-          copies={copies}
-        />
-      ))}
+      {receipt &&
+        copyNumbers.map((copyNumber) => (
+          <ThermalReceipt
+            key={copyNumber}
+            receipt={receipt}
+            settings={settings}
+            reprint={reprint}
+            copyNumber={copyNumber}
+            copies={copies}
+          />
+        ))}
     </main>
   );
 }

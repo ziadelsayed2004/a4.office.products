@@ -49,6 +49,17 @@
 .pos-search__field {
   min-width: 0;
 }
+.pos-category-filters {
+  margin-bottom: var(--space-4);
+  gap: var(--space-2);
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.pos-category-filters .MuiButton-root {
+  min-height: 40px;
+  white-space: nowrap;
+}
 .pos-product-grid {
   gap: var(--space-3);
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
@@ -126,6 +137,15 @@
   position: sticky;
   overflow: hidden;
 }
+.pos-cart__header {
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  display: flex;
+}
+.pos-cart__mobile-close {
+  display: none !important;
+}
 .pos-cart__items {
   min-height: 140px;
   max-height: 320px;
@@ -176,13 +196,19 @@
   display: flex;
 }
 .qty-control .MuiIconButton-root {
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
 }
-.qty-control strong {
+.qty-control__input {
+  width: 52px;
+}
+.qty-control__input .MuiInputBase-root {
+  height: 44px;
+  border-radius: 0;
+}
+.qty-control__input input {
+  padding-inline: 4px;
   text-align: center;
-  min-width: 22px;
-  font-size: 0.8125rem;
 }
 .pos-customer {
   padding-block: var(--space-3);
@@ -286,6 +312,65 @@
 .checkout-payment-alert {
   margin-bottom: var(--space-4);
 }
+.quick-payment,
+.return-review,
+.return-review__allocations {
+  gap: var(--space-4);
+  display: grid;
+}
+.quick-payment__methods {
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  display: grid;
+}
+.quick-payment__methods .MuiButton-root {
+  min-height: 48px;
+}
+.return-review__summary {
+  gap: var(--space-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: grid;
+}
+.return-review__summary > div,
+.return-review__allocations > section {
+  padding: var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-alt);
+}
+.return-review__summary span,
+.return-review__summary strong {
+  display: block;
+}
+.return-review__summary span {
+  margin-bottom: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+.return-review__items {
+  gap: var(--space-2);
+  display: grid;
+}
+.return-review__items > div,
+.return-review__allocations > section > div {
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  display: flex;
+}
+.return-review__items > div {
+  min-height: 48px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+}
+.return-review__allocations > section {
+  gap: var(--space-3);
+  display: grid;
+}
+.pos-mobile-cart-bar {
+  display: none;
+}
 .pickup-detail-card {
   padding: var(--space-4);
   border-color: var(--border-color);
@@ -321,15 +406,56 @@
   }
 }
 @media (max-width: 980px) {
+  .pos-page {
+    padding-bottom: 78px;
+  }
   .pos-workspace {
     grid-template-columns: 1fr;
   }
   .pos-cart {
+    width: min(100%, 620px);
+    height: min(88vh, 780px);
     max-height: none;
-    position: static;
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+    position: fixed;
+    z-index: 1350;
+    right: 50%;
+    bottom: 0;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    box-shadow: var(--shadow-lg);
+    transform: translate(50%, 110%);
+    transition: transform 180ms ease;
+  }
+  .pos-cart.is-open {
+    transform: translate(50%, 0);
+  }
+  .pos-cart__mobile-close {
+    display: inline-flex !important;
   }
   .pos-cart__items {
-    max-height: none;
+    max-height: 38vh;
+  }
+  .pos-mobile-cart-bar {
+    min-height: 62px;
+    padding: var(--space-2) var(--space-4);
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    border: 0;
+    border-top: 1px solid var(--border-color);
+    background: var(--color-primary);
+    color: #fff;
+    font: inherit;
+    cursor: pointer;
+    display: flex;
+    position: fixed;
+    z-index: 1200;
+    right: 0;
+    bottom: 0;
+    left: 0;
+  }
+  .pos-mobile-cart-bar strong {
+    font-size: 1rem;
   }
 }
 @media (max-width: 720px) {
@@ -358,8 +484,11 @@
   .pickup-scanner {
     padding: var(--space-5) var(--space-3);
   }
+  .return-review__summary {
+    grid-template-columns: 1fr;
+  }
 }
-@media (max-width: 420px) {
+@media (max-width: 340px) {
   .pos-product-grid {
     grid-template-columns: 1fr;
   }

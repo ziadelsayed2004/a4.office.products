@@ -2,71 +2,51 @@ import * as priceTiersService from './priceTiers.service.js';
 
 export async function getPriceTiersController(req, res, next) {
   try {
-    const isCashier = req.user.role === 'Cashier';
-    const activeOnly = isCashier || req.query.activeOnly === 'true';
-
-    const tiers = await priceTiersService.getAllPriceTiers(activeOnly);
-
+    const activeOnly = req.user.role === 'Cashier' || req.query.activeOnly === 'true';
     return res.status(200).json({
       status: 'success',
-      data: tiers
+      data: await priceTiersService.getAllPriceTiers(activeOnly),
     });
   } catch (error) {
-    return res.status(500).json({
-      error: 'حدث خطأ أثناء تحميل فئات الأسعار.',
-      code: 'SERVER_ERROR'
-    });
+    return next(error);
   }
 }
 
 export async function createPriceTierController(req, res, next) {
   try {
-    const { name, description } = req.body;
-    if (!name) {
-      return res.status(400).json({
-        error: 'اسم فئة السعر مطلوب.',
-        code: 'VALIDATION_ERROR'
-      });
-    }
-
-    const newTier = await priceTiersService.createPriceTier(
-      { name, description },
-      req.user.id
-    );
-
+    const tier = await priceTiersService.createPriceTier(req.body, req.user.id);
     return res.status(201).json({
       status: 'success',
-      message: 'تم إنشاء فئة السعر بنجاح.',
-      data: newTier
+      message: 'Price tier created successfully.',
+      data: tier,
     });
   } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'CREATE_PRICE_TIER_FAILED'
-    });
+    return next(error);
   }
 }
 
 export async function updatePriceTierController(req, res, next) {
   try {
-    const { id } = req.params;
-    const { name, description, is_active } = req.body;
-
-    const updated = await priceTiersService.updatePriceTier(
-      parseInt(id, 10),
-      { name, description, is_active },
-      req.user.id
-    );
-
+    const tier = await priceTiersService.updatePriceTier(req.params.id, req.body, req.user.id);
     return res.status(200).json({
       status: 'success',
-      message: 'تم تحديث فئة السعر بنجاح.',
-      data: updated
+      message: 'Price tier updated successfully.',
+      data: tier,
     });
   } catch (error) {
-    return res.status(400).json({
-      error: error.message,
-      code: 'UPDATE_PRICE_TIER_FAILED'
+    return next(error);
+  }
+}
+
+export async function deletePriceTierController(req, res, next) {
+  try {
+    const data = await priceTiersService.deletePriceTier(req.params.id, req.user.id);
+    return res.status(200).json({
+      status: 'success',
+      message: 'Price tier deleted successfully.',
+      data,
     });
+  } catch (error) {
+    return next(error);
   }
 }

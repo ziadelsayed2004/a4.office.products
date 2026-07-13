@@ -26,6 +26,8 @@ const ReceiptPrint = lazy(() => import('./pages/ReceiptPrint.jsx'));
 const ProductLabelPrint = lazy(() => import('./pages/ProductLabelPrint.jsx'));
 const AuditLogs = lazy(() => import('./pages/AuditLogs.jsx'));
 const PrinterSettings = lazy(() => import('./pages/PrinterSettings.jsx'));
+const ReturnAuthorizations = lazy(() => import('./pages/ReturnAuthorizations.jsx'));
+const ReturnAuthorizationPrint = lazy(() => import('./pages/ReturnAuthorizationPrint.jsx'));
 
 function Protected({ children }) {
   const { loading, isAuthenticated } = useAuth();
@@ -58,27 +60,155 @@ export default function App() {
         <BrowserRouter>
           <Suspense fallback={<LoadingState label="جاري فتح الصفحة..." />}>
             <Routes>
-              <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
-              <Route path="/receipts/:receiptId/print" element={<Protected><ReceiptPrint /></Protected>} />
-              <Route path="/labels/print" element={<Protected><ProductLabelPrint /></Protected>} />
-              <Route path="/" element={<Protected><MainLayout /></Protected>}>
+              <Route
+                path="/login"
+                element={
+                  <GuestOnly>
+                    <Login />
+                  </GuestOnly>
+                }
+              />
+              <Route
+                path="/receipts/:receiptId/print"
+                element={
+                  <Protected>
+                    <ReceiptPrint />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/labels/print"
+                element={
+                  <Protected>
+                    <ProductLabelPrint />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/return-authorizations/:authorizationId/print"
+                element={
+                  <AdminOnly>
+                    <ReturnAuthorizationPrint />
+                  </AdminOnly>
+                }
+              />
+              <Route
+                path="/"
+                element={
+                  <Protected>
+                    <MainLayout />
+                  </Protected>
+                }
+              >
                 <Route index element={<Home />} />
                 <Route path="pos" element={<POS />} />
                 <Route path="shift-summary" element={<ShiftSummary />} />
                 <Route path="receipts" element={<Receipts />} />
                 <Route path="invoices" element={<Invoices />} />
-                <Route path="products" element={<AdminOnly><Products /></AdminOnly>} />
-                <Route path="categories" element={<AdminOnly><Categories /></AdminOnly>} />
-                <Route path="price-tiers" element={<AdminOnly><PriceTiers /></AdminOnly>} />
-                <Route path="inventory" element={<AdminOnly><Inventory /></AdminOnly>} />
-                <Route path="preorders" element={<AdminOnly><Preorders /></AdminOnly>} />
-                <Route path="customers" element={<AdminOnly><Customers /></AdminOnly>} />
-                <Route path="payments" element={<AdminOnly><Payments /></AdminOnly>} />
-                <Route path="shifts" element={<AdminOnly><Shifts /></AdminOnly>} />
-                <Route path="users" element={<AdminOnly><Users /></AdminOnly>} />
-                <Route path="reports" element={<AdminOnly><Reports /></AdminOnly>} />
-                <Route path="logs" element={<AdminOnly><AuditLogs /></AdminOnly>} />
-                <Route path="printer-settings" element={<AdminOnly><PrinterSettings /></AdminOnly>} />
+                <Route
+                  path="products"
+                  element={
+                    <AdminOnly>
+                      <Products />
+                    </AdminOnly>
+                  }
+                />
+                <Route
+                  path="categories"
+                  element={
+                    <AdminOnly>
+                      <Categories />
+                    </AdminOnly>
+                  }
+                />
+                <Route
+                  path="price-tiers"
+                  element={
+                    <AdminOnly>
+                      <PriceTiers />
+                    </AdminOnly>
+                  }
+                />
+                <Route
+                  path="inventory"
+                  element={
+                    <AdminOnly>
+                      <Inventory />
+                    </AdminOnly>
+                  }
+                />
+                <Route
+                  path="preorders"
+                  element={
+                    <AdminOnly>
+                      <Preorders />
+                    </AdminOnly>
+                  }
+                />
+                <Route
+                  path="customers"
+                  element={
+                    <AdminOnly>
+                      <Customers />
+                    </AdminOnly>
+                  }
+                />
+                <Route
+                  path="payments"
+                  element={
+                    <AdminOnly>
+                      <Payments />
+                    </AdminOnly>
+                  }
+                />
+                <Route
+                  path="return-authorizations"
+                  element={
+                    <AdminOnly>
+                      <ReturnAuthorizations />
+                    </AdminOnly>
+                  }
+                />
+                <Route
+                  path="shifts"
+                  element={
+                    <AdminOnly>
+                      <Shifts />
+                    </AdminOnly>
+                  }
+                />
+                <Route
+                  path="users"
+                  element={
+                    <AdminOnly>
+                      <Users />
+                    </AdminOnly>
+                  }
+                />
+                <Route
+                  path="reports"
+                  element={
+                    <AdminOnly>
+                      <Reports />
+                    </AdminOnly>
+                  }
+                />
+                <Route
+                  path="logs"
+                  element={
+                    <AdminOnly>
+                      <AuditLogs />
+                    </AdminOnly>
+                  }
+                />
+                <Route
+                  path="printer-settings"
+                  element={
+                    <AdminOnly>
+                      <PrinterSettings />
+                    </AdminOnly>
+                  }
+                />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>

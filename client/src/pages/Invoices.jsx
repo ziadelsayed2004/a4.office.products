@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Alert,
   Button,
@@ -13,6 +14,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import {
+  AssignmentReturnRounded,
   PrintRounded,
   QrCodeScannerRounded,
   RefreshRounded,
@@ -66,7 +68,11 @@ function invoiceId(invoice) {
 }
 
 function invoiceNumber(invoice) {
-  return first(invoice?.invoice_number, invoice?.invoiceNumber, invoiceId(invoice) ? `#${invoiceId(invoice)}` : '—');
+  return first(
+    invoice?.invoice_number,
+    invoice?.invoiceNumber,
+    invoiceId(invoice) ? `#${invoiceId(invoice)}` : '—'
+  );
 }
 
 function receiptNumber(invoice) {
@@ -74,20 +80,30 @@ function receiptNumber(invoice) {
     invoice?.receipt_number,
     invoice?.receiptNumber,
     invoice?.receipts?.[0]?.receipt_number,
-    invoice?.receipts?.[0]?.receiptNumber,
+    invoice?.receipts?.[0]?.receiptNumber
   );
 }
 
 function receiptId(receipt) {
-  return first(receipt?.id, receipt?.receipt_id, receipt?.receiptId, receipt?.receipt_number, receipt?.receiptNumber);
+  return first(
+    receipt?.id,
+    receipt?.receipt_id,
+    receipt?.receiptId,
+    receipt?.receipt_number,
+    receipt?.receiptNumber
+  );
 }
 
 function originLabel(value) {
-  return {
-    SALE: 'بيع مباشر',
-    ORDER_SALE: 'بيع مباشر',
-    PREORDER_PICKUP: 'استلام حجز',
-  }[String(value || '').toUpperCase()] || value || '—';
+  return (
+    {
+      SALE: 'بيع مباشر',
+      ORDER_SALE: 'بيع مباشر',
+      PREORDER_PICKUP: 'استلام حجز',
+    }[String(value || '').toUpperCase()] ||
+    value ||
+    '—'
+  );
 }
 
 function buildQuery(filters, page = 1) {
@@ -103,6 +119,8 @@ function buildQuery(filters, page = 1) {
 
 export default function Invoices() {
   const { isAdmin, currentShift } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -127,7 +145,8 @@ export default function Invoices() {
     return id || number ? [{ id, receipt_number: number, print_count: selected?.print_count }] : [];
   }, [selected]);
 
-  const selectedReceipt = receipts.find((item) => String(receiptId(item)) === String(selectedReceiptId)) || receipts[0];
+  const selectedReceipt =
+    receipts.find((item) => String(receiptId(item)) === String(selectedReceiptId)) || receipts[0];
 
   const assignList = (response, nextPage) => {
     const normalized = normalizeList(response);
@@ -167,8 +186,9 @@ export default function Invoices() {
     }
   };
 
-  const lookupExactInvoice = async () => {
-    const value = lookup.value.trim();
+  const lookupExactInvoice = async (overrideLookup = null) => {
+    const criteria = overrideLookup || lookup;
+    const value = criteria.value.trim();
     if (!value) {
       setToast({ severity: 'warning', message: 'أدخل رقم الفاتورة أو الإيصال أو رمز QR.' });
       return;
@@ -178,13 +198,14 @@ export default function Invoices() {
     setError('');
     setCashierMode('exact');
     try {
-      const query = new URLSearchParams({ [lookup.type]: value });
+      const query = new URLSearchParams({ [criteria.type]: value });
       const response = await api.get(`/api/pos/invoices/lookup?${query}`);
       const normalized = normalizeList(response);
       setRows(normalized.rows);
       setTotal(normalized.total);
       setPage(1);
       if (normalized.rows.length === 1) await openDetails(normalized.rows[0]);
+      if (overrideLookup?.type === 'token') setSearchParams({}, { replace: true });
     } catch (err) {
       setRows([]);
       setTotal(0);
@@ -212,7 +233,9 @@ export default function Invoices() {
       const detail = response.data || response || row;
       setSelected(detail);
       const detailReceipts = Array.isArray(detail.receipts) ? detail.receipts : [];
-      setSelectedReceiptId(receiptId(detailReceipts[0]) || first(detail.receipt_id, detail.receiptId, ''));
+      setSelectedReceiptId(
+        receiptId(detailReceipts[0]) || first(detail.receipt_id, detail.receiptId, '')
+      );
       setDetailOpen(showDialog);
       return detail;
     } catch (err) {
@@ -236,9 +259,14 @@ export default function Invoices() {
   };
 
   const printSelectedReceipt = async () => {
-    const id = !isAdmin && cashierMode === 'exact'
-      ? first(selectedReceipt?.receipt_number, selectedReceipt?.receiptNumber, receiptId(selectedReceipt))
-      : receiptId(selectedReceipt);
+    const id =
+      !isAdmin && cashierMode === 'exact'
+        ? first(
+            selectedReceipt?.receipt_number,
+            selectedReceipt?.receiptNumber,
+            receiptId(selectedReceipt)
+          )
+        : receiptId(selectedReceipt);
     if (!id) return;
     if (!hasOpenShift) {
       setToast({ severity: 'warning', message: 'يلزم شيفت مفتوح خاص بك لطلب الطباعة.' });
@@ -264,48 +292,77 @@ export default function Invoices() {
   };
 
   useEffect(() => {
-    if (isAdmin) loadAdmin(1, initialAdminFilters);
+    const token = searchParams.get('token')?.trim();
+    if (token) {
+      const tokenLookup = { type: 'token', value: token, shiftId: '' };
+      setLookup(tokenLookup);
+      lookupExactInvoice(tokenLookup);
+    } else if (isAdmin) loadAdmin(1, initialAdminFilters);
     else loadOwnShift(1);
   }, [isAdmin]);
 
-  const columns = useMemo(() => [
-    {
-      key: 'invoice_number',
-      label: 'رقم الفاتورة',
-      render: (row) => <strong className="a4-ltr">{invoiceNumber(row)}</strong>,
-    },
-    {
-      key: 'receipt_number',
-      label: 'رقم الإيصال',
-      render: (row) => <span className="a4-ltr">{receiptNumber(row) || '—'}</span>,
-    },
-    {
-      key: 'origin',
-      label: 'المصدر',
-      render: (row) => originLabel(first(row.origin, row.reference_type)),
-    },
-    {
-      key: 'status',
-      label: 'الحالة',
-      render: (row) => <StatusChip status={row.status} label={statusLabel(row.status)} />,
-    },
-    { key: 'cashier_name', label: 'الكاشير', render: (row) => first(row.cashier_name, row.cashier?.name, '—') },
-    { key: 'shift_id', label: 'الشيفت', render: (row) => first(row.shift_id, row.shift?.id) ? `#${first(row.shift_id, row.shift?.id)}` : '—' },
-    { key: 'customer_name', label: 'العميل', render: (row) => first(row.customer_name, row.customer?.name, '—') },
-    { key: 'total', label: 'الإجمالي', render: (row) => <strong>{money(first(row.total, row.total_amount, 0))}</strong> },
-    { key: 'created_at', label: 'التاريخ', render: (row) => dateTime(first(row.created_at, row.createdAt)) },
-    {
-      key: 'actions',
-      label: 'الإجراءات',
-      render: (row) => (
-        <Tooltip title="عرض الفاتورة">
-          <IconButton size="small" onClick={() => openDetails(row)} aria-label="عرض الفاتورة">
-            <VisibilityRounded fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      ),
-    },
-  ], [isAdmin]);
+  const columns = useMemo(
+    () => [
+      {
+        key: 'invoice_number',
+        label: 'رقم الفاتورة',
+        render: (row) => <strong className="a4-ltr">{invoiceNumber(row)}</strong>,
+      },
+      {
+        key: 'receipt_number',
+        label: 'رقم الإيصال',
+        render: (row) => <span className="a4-ltr">{receiptNumber(row) || '—'}</span>,
+      },
+      {
+        key: 'origin',
+        label: 'المصدر',
+        render: (row) => originLabel(first(row.origin, row.reference_type)),
+      },
+      {
+        key: 'status',
+        label: 'الحالة',
+        render: (row) => <StatusChip status={row.status} label={statusLabel(row.status)} />,
+      },
+      {
+        key: 'cashier_name',
+        label: 'الكاشير',
+        render: (row) => first(row.cashier_name, row.cashier?.name, '—'),
+      },
+      {
+        key: 'shift_id',
+        label: 'الشيفت',
+        render: (row) =>
+          first(row.shift_id, row.shift?.id) ? `#${first(row.shift_id, row.shift?.id)}` : '—',
+      },
+      {
+        key: 'customer_name',
+        label: 'العميل',
+        render: (row) => first(row.customer_name, row.customer?.name, '—'),
+      },
+      {
+        key: 'total',
+        label: 'الإجمالي',
+        render: (row) => <strong>{money(first(row.total, row.total_amount, 0))}</strong>,
+      },
+      {
+        key: 'created_at',
+        label: 'التاريخ',
+        render: (row) => dateTime(first(row.created_at, row.createdAt)),
+      },
+      {
+        key: 'actions',
+        label: 'الإجراءات',
+        render: (row) => (
+          <Tooltip title="عرض الفاتورة">
+            <IconButton size="small" onClick={() => openDetails(row)} aria-label="عرض الفاتورة">
+              <VisibilityRounded fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ),
+      },
+    ],
+    [isAdmin]
+  );
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const changePage = (_, nextPage) => {
@@ -322,26 +379,137 @@ export default function Invoices() {
     <div className="a4-page invoices-page">
       <PageHeader
         title="مركز الفواتير"
-        description={isAdmin
-          ? 'ابحث في كل الفواتير وافتح نسختها المحفوظة وسجلها التشغيلي.'
-          : 'افتح فاتورة برقمها أو رقم الإيصال أو QR، أو اعرض فواتير شيفتاتك.'}
-        actions={<Button variant="outlined" startIcon={<RefreshRounded />} onClick={() => isAdmin ? loadAdmin(page) : loadOwnShift(page)} disabled={loading}>تحديث</Button>}
+        description={
+          isAdmin
+            ? 'ابحث في كل الفواتير وافتح نسختها المحفوظة وسجلها التشغيلي.'
+            : 'افتح فاتورة برقمها أو رقم الإيصال أو QR، أو اعرض فواتير شيفتاتك.'
+        }
+        actions={
+          <Button
+            variant="outlined"
+            startIcon={<RefreshRounded />}
+            onClick={() => (isAdmin ? loadAdmin(page) : loadOwnShift(page))}
+            disabled={loading}
+          >
+            تحديث
+          </Button>
+        }
       />
 
       {isAdmin ? (
         <FilterPanel resultCount={total} onApply={() => loadAdmin(1)} onReset={resetAdminFilters}>
-          <Field label="رقم الفاتورة" ltr><TextField value={adminFilters.invoiceNumber} onChange={(event) => setAdminFilters((state) => ({ ...state, invoiceNumber: event.target.value }))} /></Field>
-          <Field label="رقم الإيصال" ltr><TextField value={adminFilters.receiptNumber} onChange={(event) => setAdminFilters((state) => ({ ...state, receiptNumber: event.target.value }))} /></Field>
-          <Field label="من تاريخ"><TextField type="date" value={adminFilters.startDate} onChange={(event) => setAdminFilters((state) => ({ ...state, startDate: event.target.value }))} /></Field>
-          <Field label="إلى تاريخ"><TextField type="date" value={adminFilters.endDate} onChange={(event) => setAdminFilters((state) => ({ ...state, endDate: event.target.value }))} /></Field>
-          <Field label="رقم الكاشير"><TextField type="number" value={adminFilters.cashierId} onChange={(event) => setAdminFilters((state) => ({ ...state, cashierId: event.target.value }))} /></Field>
-          <Field label="رقم الشيفت"><TextField type="number" value={adminFilters.shiftId} onChange={(event) => setAdminFilters((state) => ({ ...state, shiftId: event.target.value }))} /></Field>
-          <Field label="طريقة الدفع"><TextField value={adminFilters.paymentMethod} onChange={(event) => setAdminFilters((state) => ({ ...state, paymentMethod: event.target.value }))} /></Field>
-          <Field label="مصدر الفاتورة"><TextField select value={adminFilters.origin} onChange={(event) => setAdminFilters((state) => ({ ...state, origin: event.target.value }))}><MenuItem value="">الكل</MenuItem><MenuItem value="SALE">بيع مباشر</MenuItem><MenuItem value="PREORDER_PICKUP">استلام حجز</MenuItem></TextField></Field>
-          <Field label="حالة الفاتورة"><TextField select value={adminFilters.status} onChange={(event) => setAdminFilters((state) => ({ ...state, status: event.target.value }))}><MenuItem value="">الكل</MenuItem><MenuItem value="COMPLETED">مكتملة</MenuItem><MenuItem value="PARTIALLY_RETURNED">مرتجع جزئي</MenuItem><MenuItem value="RETURNED">مرتجعة</MenuItem><MenuItem value="VOID">ملغاة</MenuItem></TextField></Field>
-          <Field label="العميل"><TextField value={adminFilters.customer} onChange={(event) => setAdminFilters((state) => ({ ...state, customer: event.target.value }))} /></Field>
-          <Field label="المنتج"><TextField value={adminFilters.productName} onChange={(event) => setAdminFilters((state) => ({ ...state, productName: event.target.value }))} /></Field>
-          <Field label="SKU أو الباركود" ltr><TextField value={adminFilters.sku} onChange={(event) => setAdminFilters((state) => ({ ...state, sku: event.target.value }))} /></Field>
+          <Field label="رقم الفاتورة" ltr>
+            <TextField
+              value={adminFilters.invoiceNumber}
+              onChange={(event) =>
+                setAdminFilters((state) => ({ ...state, invoiceNumber: event.target.value }))
+              }
+            />
+          </Field>
+          <Field label="رقم الإيصال" ltr>
+            <TextField
+              value={adminFilters.receiptNumber}
+              onChange={(event) =>
+                setAdminFilters((state) => ({ ...state, receiptNumber: event.target.value }))
+              }
+            />
+          </Field>
+          <Field label="من تاريخ">
+            <TextField
+              type="date"
+              value={adminFilters.startDate}
+              onChange={(event) =>
+                setAdminFilters((state) => ({ ...state, startDate: event.target.value }))
+              }
+            />
+          </Field>
+          <Field label="إلى تاريخ">
+            <TextField
+              type="date"
+              value={adminFilters.endDate}
+              onChange={(event) =>
+                setAdminFilters((state) => ({ ...state, endDate: event.target.value }))
+              }
+            />
+          </Field>
+          <Field label="رقم الكاشير">
+            <TextField
+              type="number"
+              value={adminFilters.cashierId}
+              onChange={(event) =>
+                setAdminFilters((state) => ({ ...state, cashierId: event.target.value }))
+              }
+            />
+          </Field>
+          <Field label="رقم الشيفت">
+            <TextField
+              type="number"
+              value={adminFilters.shiftId}
+              onChange={(event) =>
+                setAdminFilters((state) => ({ ...state, shiftId: event.target.value }))
+              }
+            />
+          </Field>
+          <Field label="طريقة الدفع">
+            <TextField
+              value={adminFilters.paymentMethod}
+              onChange={(event) =>
+                setAdminFilters((state) => ({ ...state, paymentMethod: event.target.value }))
+              }
+            />
+          </Field>
+          <Field label="مصدر الفاتورة">
+            <TextField
+              select
+              value={adminFilters.origin}
+              onChange={(event) =>
+                setAdminFilters((state) => ({ ...state, origin: event.target.value }))
+              }
+            >
+              <MenuItem value="">الكل</MenuItem>
+              <MenuItem value="SALE">بيع مباشر</MenuItem>
+              <MenuItem value="PREORDER_PICKUP">استلام حجز</MenuItem>
+            </TextField>
+          </Field>
+          <Field label="حالة الفاتورة">
+            <TextField
+              select
+              value={adminFilters.status}
+              onChange={(event) =>
+                setAdminFilters((state) => ({ ...state, status: event.target.value }))
+              }
+            >
+              <MenuItem value="">الكل</MenuItem>
+              <MenuItem value="COMPLETED">مكتملة</MenuItem>
+              <MenuItem value="PARTIALLY_RETURNED">مرتجع جزئي</MenuItem>
+              <MenuItem value="RETURNED">مرتجعة</MenuItem>
+              <MenuItem value="VOID">ملغاة</MenuItem>
+            </TextField>
+          </Field>
+          <Field label="العميل">
+            <TextField
+              value={adminFilters.customer}
+              onChange={(event) =>
+                setAdminFilters((state) => ({ ...state, customer: event.target.value }))
+              }
+            />
+          </Field>
+          <Field label="المنتج">
+            <TextField
+              value={adminFilters.productName}
+              onChange={(event) =>
+                setAdminFilters((state) => ({ ...state, productName: event.target.value }))
+              }
+            />
+          </Field>
+          <Field label="SKU أو الباركود" ltr>
+            <TextField
+              value={adminFilters.sku}
+              onChange={(event) =>
+                setAdminFilters((state) => ({ ...state, sku: event.target.value }))
+              }
+            />
+          </Field>
         </FilterPanel>
       ) : (
         <>
@@ -350,36 +518,95 @@ export default function Invoices() {
               <QrCodeScannerRounded color="primary" />
               <div>
                 <h2 className="a4-section-title">بحث مباشر آمن</h2>
-                <p className="a4-section-subtitle">البحث الدقيق لا يغير الدفع أو المخزون أو الشيفت.</p>
+                <p className="a4-section-subtitle">
+                  البحث الدقيق لا يغير الدفع أو المخزون أو الشيفت.
+                </p>
               </div>
             </div>
             <div className="invoice-lookup-panel__form">
-              <Field label="نوع البحث"><TextField select value={lookup.type} onChange={(event) => setLookup((state) => ({ ...state, type: event.target.value }))}><MenuItem value="invoiceNumber">رقم الفاتورة</MenuItem><MenuItem value="receiptNumber">رقم الإيصال</MenuItem><MenuItem value="token">رمز QR الآمن</MenuItem></TextField></Field>
-              <Field label="القيمة" ltr><TextField autoFocus value={lookup.value} onChange={(event) => setLookup((state) => ({ ...state, value: event.target.value }))} onKeyDown={(event) => event.key === 'Enter' && lookupExactInvoice()} /></Field>
-              <Button variant="contained" startIcon={<SearchRounded />} onClick={lookupExactInvoice} disabled={loading}>فتح الفاتورة</Button>
+              <Field label="نوع البحث">
+                <TextField
+                  select
+                  value={lookup.type}
+                  onChange={(event) =>
+                    setLookup((state) => ({ ...state, type: event.target.value }))
+                  }
+                >
+                  <MenuItem value="invoiceNumber">رقم الفاتورة</MenuItem>
+                  <MenuItem value="receiptNumber">رقم الإيصال</MenuItem>
+                  <MenuItem value="token">رمز QR الآمن</MenuItem>
+                </TextField>
+              </Field>
+              <Field label="القيمة" ltr>
+                <TextField
+                  autoFocus
+                  value={lookup.value}
+                  onChange={(event) =>
+                    setLookup((state) => ({ ...state, value: event.target.value }))
+                  }
+                  onKeyDown={(event) => event.key === 'Enter' && lookupExactInvoice()}
+                />
+              </Field>
+              <Button
+                variant="contained"
+                startIcon={<SearchRounded />}
+                onClick={() => lookupExactInvoice()}
+                disabled={loading}
+              >
+                فتح الفاتورة
+              </Button>
             </div>
           </section>
 
           <section className="a4-page-section invoice-own-shift-panel">
             <div>
               <h2 className="a4-section-title">فواتير شيفتاتي</h2>
-              <p className="a4-section-subtitle">اترك رقم الشيفت فارغاً لعرض فواتير الشيفتات المسموحة لك.</p>
+              <p className="a4-section-subtitle">
+                اترك رقم الشيفت فارغاً لعرض فواتير الشيفتات المسموحة لك.
+              </p>
             </div>
             <div className="invoice-own-shift-panel__form">
-              <Field label="رقم الشيفت"><TextField type="number" value={lookup.shiftId} onChange={(event) => setLookup((state) => ({ ...state, shiftId: event.target.value }))} /></Field>
-              <Button variant="outlined" startIcon={<SearchRounded />} onClick={() => loadOwnShift(1)} disabled={loading}>عرض القائمة</Button>
+              <Field label="رقم الشيفت">
+                <TextField
+                  type="number"
+                  value={lookup.shiftId}
+                  onChange={(event) =>
+                    setLookup((state) => ({ ...state, shiftId: event.target.value }))
+                  }
+                />
+              </Field>
+              <Button
+                variant="outlined"
+                startIcon={<SearchRounded />}
+                onClick={() => loadOwnShift(1)}
+                disabled={loading}
+              >
+                عرض القائمة
+              </Button>
             </div>
           </section>
         </>
       )}
 
       {error && <Alert severity="error">{error}</Alert>}
-      {!hasOpenShift && <Alert severity="info">عرض الفواتير متاح بدون شيفت مفتوح. الطباعة وإعادتها تحتاجان شيفتاً مفتوحاً خاصاً بك.</Alert>}
+      {!hasOpenShift && (
+        <Alert severity="info">
+          عرض الفواتير متاح بدون شيفت مفتوح. الطباعة وإعادتها تحتاجان شيفتاً مفتوحاً خاصاً بك.
+        </Alert>
+      )}
 
       <section className="a4-page-section">
-        {loading
-          ? <LoadingState label="جاري تحميل الفواتير..." />
-          : <DataTable columns={columns} rows={rows} mobilePrimary={invoiceNumber} emptyTitle="لا توجد فواتير" emptyDescription="غيّر معايير البحث أو الفلاتر ثم حاول مرة أخرى." />}
+        {loading ? (
+          <LoadingState label="جاري تحميل الفواتير..." />
+        ) : (
+          <DataTable
+            columns={columns}
+            rows={rows}
+            mobilePrimary={invoiceNumber}
+            emptyTitle="لا توجد فواتير"
+            emptyDescription="غيّر معايير البحث أو الفلاتر ثم حاول مرة أخرى."
+          />
+        )}
         {!loading && total > PAGE_SIZE && cashierMode !== 'exact' && (
           <div className="invoices-pagination">
             <Pagination count={pageCount} page={page} onChange={changePage} color="primary" />
@@ -388,25 +615,76 @@ export default function Invoices() {
         )}
       </section>
 
-      <Dialog open={detailOpen} onClose={printing ? undefined : () => setDetailOpen(false)} fullWidth maxWidth="lg">
+      <Dialog
+        open={detailOpen}
+        onClose={printing ? undefined : () => setDetailOpen(false)}
+        fullWidth
+        maxWidth="lg"
+      >
         <DialogTitle>تفاصيل الفاتورة {selected ? invoiceNumber(selected) : ''}</DialogTitle>
         <DialogContent dividers>
-          {detailLoading ? <LoadingState /> : <InvoiceDetails invoice={selected} isAdmin={isAdmin} />}
+          {detailLoading ? (
+            <LoadingState />
+          ) : (
+            <InvoiceDetails invoice={selected} isAdmin={isAdmin} />
+          )}
           {receipts.length > 0 && (
             <section className="invoice-print-options">
               <h3>طلب الطباعة</h3>
               <div className="invoice-print-options__fields">
-                <Field label="الإيصال"><TextField select value={selectedReceiptId || receiptId(receipts[0])} onChange={(event) => setSelectedReceiptId(event.target.value)}>{receipts.map((receipt) => <MenuItem key={receiptId(receipt)} value={receiptId(receipt)}>{first(receipt.receipt_number, receipt.receiptNumber, `#${receiptId(receipt)}`)}</MenuItem>)}</TextField></Field>
-                <Field label="سبب إعادة الطباعة" hint="اختياري"><TextField value={printReason} onChange={(event) => setPrintReason(event.target.value)} /></Field>
+                <Field label="الإيصال">
+                  <TextField
+                    select
+                    value={selectedReceiptId || receiptId(receipts[0])}
+                    onChange={(event) => setSelectedReceiptId(event.target.value)}
+                  >
+                    {receipts.map((receipt) => (
+                      <MenuItem key={receiptId(receipt)} value={receiptId(receipt)}>
+                        {first(
+                          receipt.receipt_number,
+                          receipt.receiptNumber,
+                          `#${receiptId(receipt)}`
+                        )}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Field>
+                <Field label="سبب إعادة الطباعة" hint="اختياري">
+                  <TextField
+                    value={printReason}
+                    onChange={(event) => setPrintReason(event.target.value)}
+                  />
+                </Field>
               </div>
-              {!hasOpenShift && <Alert severity="warning">الطباعة معطلة حتى تفتح شيفتاً خاصاً بك.</Alert>}
+              {!hasOpenShift && (
+                <Alert severity="warning">الطباعة معطلة حتى تفتح شيفتاً خاصاً بك.</Alert>
+              )}
             </section>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDetailOpen(false)} disabled={printing}>إغلاق</Button>
+          <Button onClick={() => setDetailOpen(false)} disabled={printing}>
+            إغلاق
+          </Button>
+          {isAdmin && selected && (
+            <Button
+              variant="outlined"
+              startIcon={<AssignmentReturnRounded />}
+              onClick={() => {
+                setDetailOpen(false);
+                navigate(`/return-authorizations?orderId=${invoiceId(selected)}`);
+              }}
+            >
+              إصدار بطاقة مرتجع
+            </Button>
+          )}
           {receipts.length > 0 && (
-            <Button variant="contained" startIcon={<PrintRounded />} onClick={printSelectedReceipt} disabled={printing || !hasOpenShift}>
+            <Button
+              variant="contained"
+              startIcon={<PrintRounded />}
+              onClick={printSelectedReceipt}
+              disabled={printing || !hasOpenShift}
+            >
               {printing ? 'جاري تجهيز الطباعة...' : 'طباعة الإيصال'}
             </Button>
           )}

@@ -1,0 +1,169 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import POS from '../pages/POS.jsx';
+
+const mocks = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
+  loadShift: vi.fn(),
+}));
+
+vi.mock('../services/apiClient.js', () => ({
+  api: { get: mocks.get, post: mocks.post },
+}));
+
+vi.mock('../app/AuthContext.jsx', () => ({
+  useAuth: () => ({
+    user: { id: 7, name: 'Cashier', role: 'Cashier' },
+    currentShift: { id: 12, status: 'OPEN' },
+    loadShift: mocks.loadShift,
+  }),
+}));
+
+vi.mock('../services/printService.js', () => ({
+  printReceiptInFrame: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock('../hooks/useScannerCapture.js', () => ({ useScannerCapture: vi.fn() }));
+
+const product = {
+  id: 1,
+  name: 'قلم أزرق',
+  sku: 'PEN-1',
+  categoryId: 2,
+  category_name: 'أقلام',
+  stockOnHand: 5,
+  canSellNow: true,
+  canPreorderNow: false,
+  availabilityPolicy: 'STOCK_ONLY',
+  defaultPreorderDepositPct: 50,
+  prices: [{ price_tier_id: 1, tier_name: 'قطاعي', price: 1000 }],
+};
+
+function renderPos() {
+  return render(
+    <MemoryRouter>
+      <POS />
+    </MemoryRouter>
+  );
+}
+
+describe('POS cashier-first workflows', () => {
+  beforeEach(() => {
+    mocks.get.mockImplementation((path) => {
+      if (path === '/api/payment-methods')
+        return Promise.resolve({
+          data: [
+            {
+              id: 1,
+              code: 'Cash',
+              name_ar: 'نقدي',
+              is_active: 1,
+              accepts_cash_received: 1,
+            },
+          ],
+        });
+      if (path === '/api/printer-settings') return Promise.resolve({ data: {} });
+      if (path.startsWith('/api/categories'))
+        return Promise.resolve({ data: [{ id: 2, name: 'أقلام' }] });
+      if (path.startsWith('/api/pos/products/search')) return Promise.resolve({ data: [product] });
+      return Promise.reject(new Error(`Unexpected GET ${path}`));
+    });
+    mocks.post.mockImplementation((path, body) => {
+      if (path === '/api/pos/scan/resolve' && body.code === 'ret_card')
+        return Promise.resolve({
+          data: {
+            type: 'return_authorization',
+            action: 'RETURN_REVIEW',
+            data: {
+              id: 9,
+              authorizationNumber: 'RMA-9',
+              invoiceNumber: 'INV-9',
+              totalRefund: 1000,
+              expiresAt: '2026-07-14T10:00:00.000Z',
+              items: [
+                {
+                  id: 4,
+                  productName: 'قلم أزرق',
+                  quantity: 1,
+                  disposition: 'RESTOCK',
+                },
+              ],
+              allocations: [
+                {
+                  id: 5,
+                  methodName: 'نقدي',
+                  refundMode: 'CASH_DRAWER',
+                  amount: 1000,
+                },
+              ],
+            },
+          },
+        });
+      if (path === '/api/pos/return-authorizations/execute')
+        return Promise.resolve({
+          data: {
+            returnId: 3,
+            returnNumber: 'RTN-3',
+            receiptId: 22,
+            receiptNumber: 'REC-22',
+          },
+        });
+      return Promise.reject(new Error(`Unexpected POST ${path}`));
+    });
+  });
+
+  it('keeps an independent sale draft while switching modes', async () => {
+    renderPos();
+    fireEvent.click(await screen.findByRole('button', { name: /قلم أزرق/ }));
+    expect(screen.getByLabelText('كمية قلم أزرق')).toHaveValue('1');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'حجز' }));
+    expect(screen.queryByLabelText('كمية قلم أزرق')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'بيع مباشر' }));
+
+    expect(screen.getByLabelText('كمية قلم أزرق')).toHaveValue('1');
+    expect(sessionStorage.getItem('a4.pos.draft.7.12.sale')).toContain('قلم أزرق');
+  });
+
+  it('opens the mobile cart summary and uses quick full payment without a default method', async () => {
+    renderPos();
+    fireEvent.click(await screen.findByRole('button', { name: /قلم أزرق/ }));
+    fireEvent.click(screen.getByRole('button', { name: /فتح السلة والدفع/ }));
+    expect(document.querySelector('.pos-cart')).toHaveClass('is-open');
+
+    fireEvent.click(screen.getByRole('button', { name: 'الدفع وإصدار الإيصال' }));
+    expect(screen.getByText('لم يتم اختيار طريقة دفع تلقائيًا.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /نقدي/ }));
+    expect(screen.getByLabelText('المبلغ المطبق')).toHaveValue('10.00');
+    expect(screen.getByLabelText('النقد المستلم')).toHaveValue('10.00');
+  });
+
+  it('scans a one-time return card read-only and executes it only after confirmation', async () => {
+    renderPos();
+    const scanner = await screen.findByLabelText(
+      'المسح الموحد: منتج أو حجز أو فاتورة أو بطاقة مرتجع'
+    );
+    fireEvent.change(scanner, { target: { value: 'ret_card' } });
+    fireEvent.keyDown(scanner, { key: 'Enter' });
+
+    expect(await screen.findByText(/مراجعة بطاقة المرتجع/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'هذه معاينة فقط. لا يمكن للكاشير تغيير البنود أو الكميات أو مبلغ الرد أو طرقه.'
+      )
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'تأكيد استلام ورد المبلغ' }));
+
+    await waitFor(() =>
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/api/pos/return-authorizations/execute',
+        expect.objectContaining({ token: 'ret_card', refundReferences: [] }),
+        expect.objectContaining({ headers: expect.any(Object) })
+      )
+    );
+    expect(await screen.findByText('تم تنفيذ المرتجع')).toBeInTheDocument();
+    expect(screen.getByText('RTN-3')).toBeInTheDocument();
+  });
+});

@@ -1,0 +1,26 @@
+.return-card-print-page {
+  min-height: 100vh;
+  padding: var(--space-4);
+  background: #eef1f5;
+}
+
+.return-card-print-page__actions {
+  width: min(100%, 80mm);
+  margin: 0 auto var(--space-4);
+  justify-content: space-between;
+  display: flex;
+}
+
+@media print {
+  .return-card-print-page {
+    width: 80mm;
+    min-height: 110mm;
+    padding: 0;
+    background: #fff;
+  }
+
+  .return-card-print-page__actions,
+  .return-card-print-page .MuiAlert-root {
+    display: none !important;
+  }
+}

@@ -40,9 +40,7 @@ export function Breadcrumbs({ currentLabel, className = '' }) {
 
   if (location.pathname === '/login') return null;
 
-  const normalizedPath = location.pathname !== '/'
-    ? location.pathname.replace(/\/$/, '')
-    : '/';
+  const normalizedPath = location.pathname !== '/' ? location.pathname.replace(/\/$/, '') : '/';
   const labelKey = routeLabels[normalizedPath];
   const resolvedLabel = currentLabel || (labelKey ? t(labelKey) : fallbackLabel(normalizedPath));
 

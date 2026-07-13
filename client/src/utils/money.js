@@ -17,7 +17,7 @@ export function piastersToInput(value) {
 }
 
 export function createIdempotencyKey(prefix = 'pos') {
-  const random = globalThis.crypto?.randomUUID?.()
-    || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const random =
+    globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return `${prefix}-${random}`;
 }

@@ -10,7 +10,9 @@
   box-shadow: none;
   color: var(--color-text);
   text-align: right;
-  transition: transform 160ms ease, box-shadow 160ms ease;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .metric-card:hover {

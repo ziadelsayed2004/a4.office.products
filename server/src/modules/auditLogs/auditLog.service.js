@@ -1,93 +1,78 @@
 import db from '../../db/index.js';
+import { requireInteger } from '../../utils/financial.js';
+import { addCalendarDay, cairoMidnightUtc } from '../invoices/invoices.service.js';
 
-/**
- * Retrieve database audit log entries with optional filters and pagination.
- */
-export async function getAuditLogs(filters = {}) {
-  let query = `
-    SELECT al.*, u.username, u.name AS user_name, u.role AS user_role
-    FROM audit_logs al
-    LEFT JOIN users u ON al.user_id = u.id
-    WHERE 1=1
-  `;
+function page(filters) {
+  const limit =
+    filters.limit === undefined
+      ? 100
+      : requireInteger(Number(filters.limit), 'limit', { min: 1, max: 100 });
+  const offset =
+    filters.offset === undefined ? 0 : requireInteger(Number(filters.offset), 'offset', { min: 0 });
+  return { limit, offset };
+}
+
+function buildFilters(filters) {
+  const clauses = ['1 = 1'];
   const params = [];
-
-  // Filter validations
   if (filters.userId) {
-    query += ' AND al.user_id = ?';
-    params.push(filters.userId);
+    clauses.push('al.user_id = ?');
+    params.push(requireInteger(Number(filters.userId), 'userId', { min: 1 }));
   }
   if (filters.shiftId) {
-    query += ' AND al.shift_id = ?';
-    params.push(filters.shiftId);
+    clauses.push('al.shift_id = ?');
+    params.push(requireInteger(Number(filters.shiftId), 'shiftId', { min: 1 }));
   }
   if (filters.actionType) {
-    query += ' AND al.action_type = ?';
+    clauses.push('al.action_type = ?');
     params.push(filters.actionType);
   }
   if (filters.entityType) {
-    query += ' AND al.entity_type = ?';
+    clauses.push('al.entity_type = ?');
     params.push(filters.entityType);
   }
   if (filters.startDate) {
-    query += ' AND al.created_at >= ?';
-    params.push(filters.startDate);
+    clauses.push('al.created_at >= ?');
+    params.push(cairoMidnightUtc(filters.startDate));
   }
   if (filters.endDate) {
-    query += ' AND al.created_at <= ?';
-    params.push(filters.endDate);
+    clauses.push('al.created_at < ?');
+    params.push(cairoMidnightUtc(addCalendarDay(filters.endDate)));
   }
+  return { where: clauses.join(' AND '), params };
+}
 
-  query += ' ORDER BY al.created_at DESC';
+function parseJson(value) {
+  if (!value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
 
-  // Pagination parameters
-  const limit = parseInt(filters.limit || '100', 10);
-  const offset = parseInt(filters.offset || '0', 10);
-  query += ' LIMIT ? OFFSET ?';
-  params.push(limit, offset);
-
-  const logs = await db.all(query, params);
-
-  // Parse before_values and after_values back into JSON objects
+export async function getAuditLogs(filters = {}, connection = db) {
+  const pagination = page(filters);
+  const { where, params } = buildFilters(filters);
+  const logs = await connection.all(
+    `SELECT al.*, u.username, u.name AS user_name, u.role AS user_role
+       FROM audit_logs al LEFT JOIN users u ON u.id = al.user_id
+      WHERE ${where}
+      ORDER BY al.created_at DESC, al.id DESC LIMIT ? OFFSET ?;`,
+    [...params, pagination.limit, pagination.offset]
+  );
   return logs.map((log) => ({
     ...log,
-    before_values: log.before_values ? JSON.parse(log.before_values) : null,
-    after_values: log.after_values ? JSON.parse(log.after_values) : null
+    before_values: parseJson(log.before_values),
+    after_values: parseJson(log.after_values),
   }));
 }
 
-/**
- * Fetch total count of audit logs matching filters for metadata response.
- */
-export async function getAuditLogsCount(filters = {}) {
-  let query = 'SELECT COUNT(*) AS count FROM audit_logs WHERE 1=1';
-  const params = [];
-
-  if (filters.userId) {
-    query += ' AND user_id = ?';
-    params.push(filters.userId);
-  }
-  if (filters.shiftId) {
-    query += ' AND shift_id = ?';
-    params.push(filters.shiftId);
-  }
-  if (filters.actionType) {
-    query += ' AND action_type = ?';
-    params.push(filters.actionType);
-  }
-  if (filters.entityType) {
-    query += ' AND entity_type = ?';
-    params.push(filters.entityType);
-  }
-  if (filters.startDate) {
-    query += ' AND created_at >= ?';
-    params.push(filters.startDate);
-  }
-  if (filters.endDate) {
-    query += ' AND created_at <= ?';
-    params.push(filters.endDate);
-  }
-
-  const result = await db.get(query, params);
-  return result ? result.count : 0;
+export async function getAuditLogsCount(filters = {}, connection = db) {
+  const { where, params } = buildFilters(filters);
+  const result = await connection.get(
+    `SELECT COUNT(*) AS count FROM audit_logs al WHERE ${where};`,
+    params
+  );
+  return result?.count || 0;
 }

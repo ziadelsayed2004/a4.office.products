@@ -1,12 +1,5 @@
 import * as invoicesService from './invoices.service.js';
 
-function sendError(res, error, fallbackCode) {
-  return res.status(error.status || 500).json({
-    error: error.message,
-    code: error.code || fallbackCode
-  });
-}
-
 function adminFilters(query) {
   return {
     invoiceNumber: query.invoiceNumber,
@@ -15,6 +8,7 @@ function adminFilters(query) {
     endDate: query.endDate,
     cashierId: query.cashierId,
     shiftId: query.shiftId,
+    categoryId: query.categoryId,
     paymentMethod: query.paymentMethod,
     origin: query.origin,
     status: query.status,
@@ -22,57 +16,61 @@ function adminFilters(query) {
     productName: query.productName,
     sku: query.sku || query.barcode,
     limit: query.limit,
-    offset: query.offset
+    offset: query.offset,
   };
 }
 
-export async function listAdminInvoicesController(req, res) {
+export async function listAdminInvoicesController(req, res, next) {
   try {
-    const result = await invoicesService.listInvoices(adminFilters(req.query));
-    return res.status(200).json({ status: 'success', data: result });
+    const data = await invoicesService.listInvoices(adminFilters(req.query));
+    return res.status(200).json({ status: 'success', data });
   } catch (error) {
-    return sendError(res, error, 'INVOICE_LIST_FAILED');
+    return next(error);
   }
 }
 
-export async function getAdminInvoiceController(req, res) {
+export async function getAdminInvoiceController(req, res, next) {
   try {
-    const detail = await invoicesService.getInvoiceDetail(req.params.id, req.user);
-    return res.status(200).json({ status: 'success', data: detail });
+    const data = await invoicesService.getInvoiceDetail(req.params.id, req.user);
+    return res.status(200).json({ status: 'success', data });
   } catch (error) {
-    return sendError(res, error, 'INVOICE_DETAIL_FAILED');
+    return next(error);
   }
 }
 
-export async function lookupCashierInvoicesController(req, res) {
+export async function lookupCashierInvoicesController(req, res, next) {
   try {
-    const result = await invoicesService.lookupCashierInvoices({
-      token: req.query.token,
-      invoiceNumber: req.query.invoiceNumber,
-      receiptNumber: req.query.receiptNumber,
-      ownShift: req.query.ownShift === 'true',
-      shiftId: req.query.shiftId,
-      limit: req.query.limit,
-      offset: req.query.offset
-    }, req.user);
-    return res.status(200).json({ status: 'success', data: result });
+    const data = await invoicesService.lookupCashierInvoices(
+      {
+        token: req.query.token,
+        invoiceNumber: req.query.invoiceNumber,
+        receiptNumber: req.query.receiptNumber,
+        ownShift: req.query.ownShift === 'true',
+        shiftId: req.query.shiftId,
+        limit: req.query.limit,
+        offset: req.query.offset,
+      },
+      req.user
+    );
+    return res.status(200).json({ status: 'success', data });
   } catch (error) {
-    return sendError(res, error, 'INVOICE_LOOKUP_FAILED');
+    return next(error);
   }
 }
 
-export async function getCashierInvoiceController(req, res) {
+export async function getCashierInvoiceController(req, res, next) {
   try {
-    const credential = req.query.token || req.query.invoiceNumber || req.query.receiptNumber
-      ? {
-          token: req.query.token,
-          invoiceNumber: req.query.invoiceNumber,
-          receiptNumber: req.query.receiptNumber
-        }
-      : null;
-    const detail = await invoicesService.getInvoiceDetail(req.params.id, req.user, { credential });
-    return res.status(200).json({ status: 'success', data: detail });
+    const credential =
+      req.query.token || req.query.invoiceNumber || req.query.receiptNumber
+        ? {
+            token: req.query.token,
+            invoiceNumber: req.query.invoiceNumber,
+            receiptNumber: req.query.receiptNumber,
+          }
+        : null;
+    const data = await invoicesService.getInvoiceDetail(req.params.id, req.user, { credential });
+    return res.status(200).json({ status: 'success', data });
   } catch (error) {
-    return sendError(res, error, 'INVOICE_DETAIL_FAILED');
+    return next(error);
   }
 }

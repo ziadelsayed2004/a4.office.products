@@ -1,21 +1,17 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { SERVER_ROOT } from '../config/env.js';
 import { assertSafeResetTarget } from './reset-safety.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const serverRoot = path.resolve(__dirname, '../..');
-const configuredPath = path.resolve(
-  serverRoot,
-  process.env.SQLITE_DB_PATH || './src/db/a4_pos.db'
-);
+const serverRoot = SERVER_ROOT;
+const configuredPath = path.resolve(serverRoot, process.env.SQLITE_DB_PATH || './src/db/a4_pos.db');
 
 let db;
 
 try {
   const databasePath = assertSafeResetTarget({
     targetPath: configuredPath,
-    serverRoot
+    serverRoot,
   });
 
   // The guard above runs before the database module is imported or any file is removed.

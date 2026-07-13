@@ -1,17 +1,147 @@
-.product-label-print { margin: 0; padding: 0; display: grid; justify-content: center; background: #fff; color: #000; }
-.product-label { box-sizing: border-box; overflow: hidden; padding: 2mm; border: 1px solid #000; break-inside: avoid; page-break-inside: avoid; background: #fff; display: grid; gap: 1mm; }
-.product-label-print--small .product-label { width: 38mm; height: 25mm; }
-.product-label-print--medium .product-label { width: 50mm; height: 25mm; }
-.product-label-print--large .product-label { width: 80mm; height: 50mm; padding: 3mm; }
-.product-label header, .product-label__body { display: flex; align-items: center; justify-content: space-between; gap: 2mm; }
-.product-label header { border-bottom: .3mm solid #000; font-size: 6pt; }
-.product-label h1 { margin: 0; text-align: center; font-size: 8pt; line-height: 1.25; }
-.product-label-print--large h1 { font-size: 12pt; }
-.product-label__body > div { display: grid; gap: 1mm; min-width: 0; }
-.product-label__body b { font-size: 9pt; }
-.product-label__body span { font: 6pt monospace; overflow-wrap: anywhere; }
+.product-label-print {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  justify-content: center;
+  background: #ffffff;
+  color: #000000;
+}
+
+.product-label {
+  --label-padding: 1.2mm;
+  --label-gap: 0.6mm;
+  --label-header-height: 2.2mm;
+  --label-title-height: 5.2mm;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: var(--label-padding);
+  border: 1px solid #000000;
+  break-inside: avoid-page;
+  page-break-inside: avoid;
+  background: #ffffff;
+  display: grid;
+  grid-template-rows: var(--label-header-height) var(--label-title-height) minmax(0, 1fr);
+  gap: var(--label-gap);
+}
+
+.product-label-print--small .product-label {
+  width: 38mm;
+  height: 25mm;
+}
+
+.product-label-print--medium .product-label {
+  width: 50mm;
+  height: 25mm;
+}
+
+.product-label-print--large .product-label {
+  --label-padding: 3mm;
+  --label-gap: 1mm;
+  --label-header-height: 3mm;
+  --label-title-height: 8mm;
+  width: 80mm;
+  height: 50mm;
+}
+
+.product-label header,
+.product-label__body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2mm;
+}
+
+.product-label header {
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  border-bottom: 0.3mm solid #000000;
+  font-size: 5pt;
+  line-height: 1.1;
+}
+
+.product-label header strong,
+.product-label header span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-label h1 {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  text-align: center;
+  overflow-wrap: anywhere;
+  font-size: 6.5pt;
+  line-height: 1.1;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.product-label-print--large h1 {
+  font-size: 10pt;
+}
+
+.product-label__body {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.product-label__body > div {
+  display: grid;
+  gap: 0.4mm;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.product-label__body b {
+  font-size: 7.5pt;
+  line-height: 1.1;
+}
+
+.product-label__body span {
+  max-height: 2.2em;
+  overflow: hidden;
+  font: 5pt/1.1 monospace;
+  overflow-wrap: anywhere;
+}
+
+.product-label__body > svg {
+  width: auto;
+  max-width: 45%;
+  height: auto;
+  max-height: 100%;
+  flex: 0 0 auto;
+}
+
+.product-label-print--large .product-label__body b {
+  font-size: 10pt;
+}
+
+.product-label-print--large .product-label__body span {
+  font-size: 7pt;
+}
+
+@page {
+  margin: 0;
+}
+
 @media print {
-  @page { margin: 0; }
-  html, body, #root { margin: 0 !important; padding: 0 !important; background: #fff !important; }
-  .product-label { border: 0; page-break-after: always; }
+  .product-label {
+    margin: 0;
+    border: 0;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .product-label:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
 }

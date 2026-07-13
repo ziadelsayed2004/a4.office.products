@@ -22,11 +22,14 @@
   width: 64px;
   height: 64px;
   margin: 0 auto var(--space-4);
+  padding: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  border: 1px solid #dce2ea;
   border-radius: var(--radius-md);
+  background: #fff;
 }
 
 .login-logo {

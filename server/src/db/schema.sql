@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS product_book_details (
 CREATE TABLE IF NOT EXISTS product_prices (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    price_tier_id INTEGER NOT NULL REFERENCES price_tiers(id) ON DELETE CASCADE,
+    price_tier_id INTEGER NOT NULL REFERENCES price_tiers(id) ON DELETE RESTRICT,
     price INTEGER NOT NULL CHECK(price >= 0), -- Stored as integer minor units (piastres)
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -198,28 +198,42 @@ CREATE TABLE IF NOT EXISTS payments (
     cashier_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     reference_type TEXT NOT NULL CHECK(reference_type IN ('order', 'preorder')),
     reference_id INTEGER NOT NULL, -- order_id or preorder_id
-    payment_method TEXT NOT NULL CHECK(payment_method IN ('Cash', 'Card', 'InstaPay', 'Wallet', 'Transfer')),
+    payment_method TEXT NOT NULL,
     amount INTEGER NOT NULL CHECK(amount > 0),
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    method_id INTEGER REFERENCES payment_methods(id) ON DELETE RESTRICT,
+    stage TEXT NOT NULL DEFAULT 'SALE' CHECK(stage IN ('SALE', 'PREORDER_DEPOSIT', 'PREORDER_PICKUP', 'REFUND')),
+    direction TEXT NOT NULL DEFAULT 'IN' CHECK(direction IN ('IN', 'OUT')),
+    applied_amount INTEGER,
+    reference_number TEXT,
+    note TEXT,
+    cash_received INTEGER,
+    change_amount INTEGER NOT NULL DEFAULT 0,
+    method_snapshot TEXT,
+    is_excluded INTEGER NOT NULL DEFAULT 0 CHECK(is_excluded IN (0, 1)),
+    exclusion_reason TEXT,
+    return_id INTEGER REFERENCES returns(id) ON DELETE RESTRICT
 );
 
 -- 16. RECEIPTS Table (Thermal printer friendly records)
 CREATE TABLE IF NOT EXISTS receipts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     receipt_number TEXT UNIQUE NOT NULL,
-    reference_type TEXT NOT NULL CHECK(reference_type IN ('order_sale', 'preorder_deposit', 'preorder_pickup')),
+    reference_type TEXT NOT NULL CHECK(reference_type IN ('order_sale', 'preorder_deposit', 'preorder_pickup', 'order_return')),
     reference_id INTEGER NOT NULL,
     printed_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     print_count INTEGER NOT NULL DEFAULT 1 CHECK(print_count >= 1),
     last_printed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    snapshot_json TEXT,
+    qr_token TEXT
 );
 
 -- 17. INVENTORY LEDGER Table (Double entry-style transaction book)
 CREATE TABLE IF NOT EXISTS inventory_ledger (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
-    transaction_type TEXT NOT NULL CHECK(transaction_type IN ('STOCK_IN', 'SALE', 'PREORDER_PICKUP', 'ADJUSTMENT_ADD', 'ADJUSTMENT_SUB')),
+    transaction_type TEXT NOT NULL CHECK(transaction_type IN ('STOCK_IN', 'SALE', 'PREORDER_PICKUP', 'RETURN', 'ADJUSTMENT_ADD', 'ADJUSTMENT_SUB')),
     quantity_changed INTEGER NOT NULL CHECK(quantity_changed != 0),
     before_quantity INTEGER NOT NULL CHECK(before_quantity >= 0),
     after_quantity INTEGER NOT NULL CHECK(after_quantity >= 0), -- Enforces zero-negative physical stock constraint
@@ -278,6 +292,10 @@ CREATE TABLE IF NOT EXISTS returns (
     cashier_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     total_refunded INTEGER NOT NULL CHECK(total_refunded >= 0),
     notes TEXT,
+    payment_method_snapshot TEXT,
+    authorization_id INTEGER REFERENCES return_authorizations(id) ON DELETE RESTRICT,
+    return_number TEXT UNIQUE,
+    authorized_by INTEGER REFERENCES users(id) ON DELETE RESTRICT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -286,9 +304,77 @@ CREATE TABLE IF NOT EXISTS return_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     return_id INTEGER NOT NULL REFERENCES returns(id) ON DELETE CASCADE,
     product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+    order_item_id INTEGER REFERENCES order_items(id) ON DELETE RESTRICT,
     quantity INTEGER NOT NULL CHECK(quantity > 0),
     refund_amount INTEGER NOT NULL CHECK(refund_amount >= 0),
+    disposition TEXT NOT NULL DEFAULT 'RESTOCK' CHECK(disposition IN ('RESTOCK', 'NO_RESTOCK')),
+    restocked INTEGER NOT NULL DEFAULT 1 CHECK(restocked IN (0, 1)),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Exact, one-time Admin return authorizations and immutable tender allocations.
+CREATE TABLE IF NOT EXISTS return_authorizations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    authorization_number TEXT UNIQUE NOT NULL,
+    order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE RESTRICT,
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'CONSUMED', 'REVOKED', 'EXPIRED')),
+    reason TEXT NOT NULL,
+    total_refund INTEGER NOT NULL CHECK(total_refund >= 0),
+    expires_at DATETIME NOT NULL,
+    created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    token_nonce TEXT NOT NULL,
+    token_version INTEGER NOT NULL DEFAULT 1 CHECK(token_version > 0),
+    consumed_return_id INTEGER UNIQUE REFERENCES returns(id) ON DELETE RESTRICT,
+    consumed_by INTEGER REFERENCES users(id) ON DELETE RESTRICT,
+    consumed_shift_id INTEGER REFERENCES shifts(id) ON DELETE RESTRICT,
+    consumed_at DATETIME,
+    revoked_by INTEGER REFERENCES users(id) ON DELETE RESTRICT,
+    revoked_reason TEXT,
+    revoked_at DATETIME,
+    print_count INTEGER NOT NULL DEFAULT 0 CHECK(print_count >= 0),
+    last_printed_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS return_authorization_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    authorization_id INTEGER NOT NULL REFERENCES return_authorizations(id) ON DELETE CASCADE,
+    order_item_id INTEGER NOT NULL REFERENCES order_items(id) ON DELETE RESTRICT,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+    product_name_snapshot TEXT NOT NULL,
+    sku_snapshot TEXT,
+    quantity INTEGER NOT NULL CHECK(quantity > 0),
+    unit_price INTEGER NOT NULL CHECK(unit_price >= 0),
+    refund_amount INTEGER NOT NULL CHECK(refund_amount >= 0),
+    disposition TEXT NOT NULL CHECK(disposition IN ('RESTOCK', 'NO_RESTOCK')),
+    no_restock_reason TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(authorization_id, order_item_id),
+    CHECK(disposition = 'RESTOCK' OR length(trim(no_restock_reason)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS return_authorization_allocations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    authorization_id INTEGER NOT NULL REFERENCES return_authorizations(id) ON DELETE CASCADE,
+    payment_method_id INTEGER NOT NULL REFERENCES payment_methods(id) ON DELETE RESTRICT,
+    method_code_snapshot TEXT NOT NULL,
+    method_name_snapshot TEXT NOT NULL,
+    refund_mode TEXT NOT NULL CHECK(refund_mode IN ('CASH_DRAWER', 'EXTERNAL_REFERENCE', 'DISABLED')),
+    amount INTEGER NOT NULL CHECK(amount > 0),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(authorization_id, payment_method_id)
+);
+
+CREATE TABLE IF NOT EXISTS return_authorization_print_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    authorization_id INTEGER NOT NULL REFERENCES return_authorizations(id) ON DELETE RESTRICT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    request_key TEXT NOT NULL,
+    copies INTEGER NOT NULL DEFAULT 1 CHECK(copies BETWEEN 1 AND 20),
+    reason TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, request_key)
 );
 
 -- DATABASE LOOKUP INDEXES (Required for fast scan search/filters)
@@ -305,6 +391,8 @@ CREATE INDEX IF NOT EXISTS idx_payments_reference ON payments(reference_type, re
 CREATE INDEX IF NOT EXISTS idx_inv_ledger_product ON inventory_ledger(product_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_date ON audit_logs(created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_return_authorization ON return_authorizations(order_id) WHERE status = 'ACTIVE';
+CREATE INDEX IF NOT EXISTS idx_return_authorizations_list ON return_authorizations(status, created_at DESC);
 
 -- Additional Performance and Reporting Lookup Indexes
 CREATE INDEX IF NOT EXISTS idx_inv_ledger_latest ON inventory_ledger(product_id, id DESC);

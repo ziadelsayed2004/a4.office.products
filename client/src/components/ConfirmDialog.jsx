@@ -29,7 +29,6 @@ export function ConfirmDialog({
     <Dialog
       open={open}
       onClose={loading ? undefined : onClose}
-      disableEscapeKeyDown={loading}
       fullWidth
       maxWidth={false}
       aria-labelledby={titleId}
@@ -45,9 +44,11 @@ export function ConfirmDialog({
         {title}
       </DialogTitle>
       <DialogContent id={descriptionId} className="confirm-dialog__content">
-        {typeof description === 'string'
-          ? <Typography color="text.secondary">{description}</Typography>
-          : description}
+        {typeof description === 'string' ? (
+          <Typography color="text.secondary">{description}</Typography>
+        ) : (
+          description
+        )}
       </DialogContent>
       <DialogActions className="confirm-dialog__actions">
         <Button type="button" variant="outlined" onClick={onClose} disabled={loading}>
@@ -61,7 +62,9 @@ export function ConfirmDialog({
           disabled={loading}
           autoFocus={!loading}
         >
-          {loading && <CircularProgress className="confirm-dialog__progress" size={16} color="inherit" />}
+          {loading && (
+            <CircularProgress className="confirm-dialog__progress" size={16} color="inherit" />
+          )}
           {loading ? 'جاري التنفيذ...' : confirmLabel}
         </Button>
       </DialogActions>

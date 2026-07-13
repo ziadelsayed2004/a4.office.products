@@ -3,21 +3,27 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import db, { withTransaction } from './index.js';
+import config from '../config/index.js';
 import { backupDatabase } from '../utils/backup.js';
 import * as workflowHardening from './migrations/001_workflow_hardening.js';
+import * as returnAuthorizations from './migrations/002_return_authorizations.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const migrations = [workflowHardening];
+const migrations = [workflowHardening, returnAuthorizations];
 
 async function tableExists(name) {
-  return Boolean(await db.get("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?;", [name]));
+  return Boolean(
+    await db.get("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?;", [name])
+  );
 }
 
 async function assertDatabaseHealth({ initialized }) {
   const integrity = await db.get('PRAGMA integrity_check;');
   if (!integrity || integrity.integrity_check !== 'ok') {
-    throw new Error(`SQLite integrity preflight failed: ${integrity?.integrity_check || 'unknown result'}`);
+    throw new Error(
+      `SQLite integrity preflight failed: ${integrity?.integrity_check || 'unknown result'}`
+    );
   }
   const foreignKeys = await db.all('PRAGMA foreign_key_check;');
   if (foreignKeys.length > 0) {
@@ -31,7 +37,9 @@ async function assertDatabaseHealth({ initialized }) {
      GROUP BY user_id HAVING COUNT(*) > 1 LIMIT 1;`
   );
   if (duplicateShift) {
-    throw new Error(`Migration blocked: user ${duplicateShift.user_id} has ${duplicateShift.count} unfinished shifts.`);
+    throw new Error(
+      `Migration blocked: user ${duplicateShift.user_id} has ${duplicateShift.count} unfinished shifts.`
+    );
   }
 
   const continuity = await db.get(`
@@ -61,28 +69,68 @@ async function assertDatabaseHealth({ initialized }) {
      GROUP BY copied.id HAVING COUNT(original.id) > 1 LIMIT 1;
   `);
   if (ambiguousDeposit) {
-    throw new Error(`Migration blocked: ambiguous legacy copied deposit payment ${ambiguousDeposit.id}.`);
+    throw new Error(
+      `Migration blocked: ambiguous legacy copied deposit payment ${ambiguousDeposit.id}.`
+    );
   }
 }
 
 async function validateTargetSchema() {
   await assertDatabaseHealth({ initialized: true });
   const requiredTables = [
-    'schema_migrations', 'document_sequences', 'idempotency_records', 'payment_methods',
-    'secure_tokens', 'print_requests', 'shift_close_revisions'
+    'schema_migrations',
+    'document_sequences',
+    'idempotency_records',
+    'payment_methods',
+    'secure_tokens',
+    'print_requests',
+    'shift_close_revisions',
+    'return_authorizations',
+    'return_authorization_items',
+    'return_authorization_allocations',
+    'return_authorization_print_requests',
   ];
   for (const table of requiredTables) {
-    if (!(await tableExists(table))) throw new Error(`Post-migration validation failed: missing table ${table}.`);
+    if (!(await tableExists(table)))
+      throw new Error(`Post-migration validation failed: missing table ${table}.`);
   }
   const productColumns = await db.all('PRAGMA table_info(products);');
   if (!productColumns.some((column) => column.name === 'availability_policy')) {
     throw new Error('Post-migration validation failed: canonical product policy is missing.');
   }
+  const paymentMethodColumns = await db.all('PRAGMA table_info(payment_methods);');
+  for (const column of ['is_system', 'refund_mode']) {
+    if (!paymentMethodColumns.some((candidate) => candidate.name === column)) {
+      throw new Error(`Post-migration validation failed: payment_methods.${column} is missing.`);
+    }
+  }
+  const priceTierForeignKey = (await db.all('PRAGMA foreign_key_list(product_prices);')).find(
+    (foreignKey) => foreignKey.table === 'price_tiers' && foreignKey.from === 'price_tier_id'
+  );
+  if (priceTierForeignKey?.on_delete !== 'RESTRICT') {
+    throw new Error(
+      'Post-migration validation failed: product price tiers must use ON DELETE RESTRICT.'
+    );
+  }
+  for (const [table, requiredFragment] of [
+    ['receipts', 'order_return'],
+    ['inventory_ledger', "'RETURN'"],
+  ]) {
+    const definition = await db.get(
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?;",
+      [table]
+    );
+    if (!definition?.sql?.includes(requiredFragment)) {
+      throw new Error(
+        `Post-migration validation failed: ${table} does not support ${requiredFragment}.`
+      );
+    }
+  }
 }
 
-async function seedDefaults() {
+async function seedDefaults({ freshDatabase }) {
   const usersCount = await db.get('SELECT COUNT(*) AS count FROM users;');
-  if (usersCount.count === 0) {
+  if (usersCount.count === 0 && config.demoUsers.enabled) {
     const adminHash = await bcrypt.hash('admin123', 10);
     const cashierHash = await bcrypt.hash('cashier123', 10);
     await withTransaction(async (connection) => {
@@ -95,16 +143,24 @@ async function seedDefaults() {
         ['cashier', cashierHash, 'Cashier', 'كاشير المحل', '01000000002']
       );
     });
+  } else if (usersCount.count === 0) {
+    console.warn(
+      'Demo user seeding is disabled. Run npm run admin:bootstrap to create the first Admin account.'
+    );
   }
 
   await withTransaction(async (connection) => {
-    await connection.exec(`
+    if (freshDatabase) {
+      await connection.exec(`
       INSERT OR IGNORE INTO categories (name, is_active) VALUES
         ('كتب خارجية', 1), ('أدوات مكتبية', 1), ('أجهزة وآلات حاسبة', 1);
       INSERT OR IGNORE INTO price_tiers (name, description, is_active) VALUES
         ('سعر التجزئة الافتراضي', 'السعر الافتراضي لبيع التجزئة للجمهور', 1),
         ('سعر الجملة للشركات', 'سعر خاص للشركات والمؤسسات', 1),
         ('خصم الطلاب والمعلمين', 'خصم مخصص للطلاب وهيئة التدريس', 1);
+      `);
+    }
+    await connection.exec(`
       INSERT OR IGNORE INTO business_settings (key, value) VALUES
         ('active_payment_methods', '["Cash","Card","InstaPay","Wallet","Transfer"]');
       INSERT OR IGNORE INTO printer_settings (key, value) VALUES
@@ -155,11 +211,15 @@ export async function runMigrations() {
   `);
 
   await assertDatabaseHealth({ initialized });
-  const appliedRows = await db.all('SELECT version, checksum FROM schema_migrations ORDER BY version;');
+  const appliedRows = await db.all(
+    'SELECT version, checksum FROM schema_migrations ORDER BY version;'
+  );
   const applied = new Map(appliedRows.map((row) => [row.version, row.checksum]));
   for (const migration of migrations) {
     if (applied.has(migration.version) && applied.get(migration.version) !== migration.checksum) {
-      throw new Error(`Migration ${migration.version} checksum does not match the applied version.`);
+      throw new Error(
+        `Migration ${migration.version} checksum does not match the applied version.`
+      );
     }
   }
 
@@ -179,7 +239,7 @@ export async function runMigrations() {
     console.log(`Applied migration ${migration.version}: ${migration.name}`);
   }
 
-  await seedDefaults();
+  await seedDefaults({ freshDatabase: !initialized });
   await validateTargetSchema();
   console.log('Database schema and migrations validated successfully.');
   console.log('----------------------------------------');
