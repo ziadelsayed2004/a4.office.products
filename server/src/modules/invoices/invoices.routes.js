@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../../middleware/auth.js';
+import { authenticate, requireRole } from '../../middleware/auth.js';
 import { isAdmin } from '../../middleware/rbac.js';
 import * as invoicesController from './invoices.controller.js';
 import { validate } from '../../middleware/validate.js';
@@ -29,7 +29,7 @@ adminRouter.get(
 );
 
 const posRouter = Router();
-posRouter.use(authenticate);
+posRouter.use(authenticate, requireRole(['Cashier']));
 posRouter.get(
   '/lookup',
   validate({ query: invoiceLookupQuery }),

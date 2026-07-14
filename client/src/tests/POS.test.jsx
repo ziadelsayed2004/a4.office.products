@@ -71,37 +71,45 @@ describe('POS cashier-first workflows', () => {
       return Promise.reject(new Error(`Unexpected GET ${path}`));
     });
     mocks.post.mockImplementation((path, body) => {
-      if (path === '/api/pos/scan/resolve' && body.code === 'ret_card')
+      if (path === '/api/pos/scan/resolve' && body.code === 'invoice_card')
         return Promise.resolve({
           data: {
-            type: 'return_authorization',
-            action: 'RETURN_REVIEW',
+            type: 'invoice',
+            action: 'INVOICE_VIEW',
             data: {
               id: 9,
-              authorizationNumber: 'RMA-9',
               invoiceNumber: 'INV-9',
-              totalRefund: 1000,
-              expiresAt: '2026-07-14T10:00:00.000Z',
-              items: [
-                {
-                  id: 4,
-                  productName: 'قلم أزرق',
-                  quantity: 1,
-                  disposition: 'RESTOCK',
-                },
-              ],
-              allocations: [
-                {
-                  id: 5,
-                  methodName: 'نقدي',
-                  refundMode: 'CASH_DRAWER',
-                  amount: 1000,
-                },
-              ],
+              items: [{ id: 4, quantity: 1, remaining_returnable_quantity: 1 }],
             },
           },
         });
-      if (path === '/api/pos/return-authorizations/execute')
+      if (path === '/api/pos/returns/quote')
+        return Promise.resolve({
+          data: {
+            orderId: 9,
+            invoiceNumber: 'INV-9',
+            totalRefund: 1000,
+            items: [{ id: 4, productName: 'قلم أزرق', quantity: 1, disposition: 'RESTOCK' }],
+            allocations: [
+              {
+                id: 5,
+                paymentMethodId: 1,
+                methodName: 'نقدي',
+                refundMode: 'CASH_DRAWER',
+                amount: 1000,
+              },
+            ],
+          },
+        });
+      if (path === '/api/pos/scan/resolve' && body.code === 'approval_card')
+        return Promise.resolve({
+          data: {
+            type: 'return_approval_card',
+            action: 'VALID',
+            data: { id: 6, cardNumber: 'RAC-6', label: 'Main card', status: 'ACTIVE' },
+          },
+        });
+      if (path === '/api/pos/returns/execute')
         return Promise.resolve({
           data: {
             returnId: 3,
@@ -140,26 +148,28 @@ describe('POS cashier-first workflows', () => {
     expect(screen.getByLabelText('النقد المستلم')).toHaveValue('10.00');
   });
 
-  it('scans a one-time return card read-only and executes it only after confirmation', async () => {
+  it('prepares a return and executes it only after scanning a reusable approval card', async () => {
     renderPos();
+    fireEvent.click(await screen.findByRole('tab', { name: 'مرتجع' }));
     const scanner = await screen.findByLabelText(
       'المسح الموحد: منتج أو حجز أو فاتورة أو بطاقة مرتجع'
     );
-    fireEvent.change(scanner, { target: { value: 'ret_card' } });
+    fireEvent.change(scanner, { target: { value: 'invoice_card' } });
+    fireEvent.keyDown(scanner, { key: 'Enter' });
+    await waitFor(() =>
+      expect(mocks.post).toHaveBeenCalledWith('/api/pos/returns/quote', expect.any(Object))
+    );
+
+    fireEvent.change(scanner, { target: { value: 'approval_card' } });
     fireEvent.keyDown(scanner, { key: 'Enter' });
 
-    expect(await screen.findByText(/مراجعة بطاقة المرتجع/)).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'هذه معاينة فقط. لا يمكن للكاشير تغيير البنود أو الكميات أو مبلغ الرد أو طرقه.'
-      )
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/اعتماد المرتجع/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'تأكيد استلام ورد المبلغ' }));
 
     await waitFor(() =>
       expect(mocks.post).toHaveBeenCalledWith(
-        '/api/pos/return-authorizations/execute',
-        expect.objectContaining({ token: 'ret_card', refundReferences: [] }),
+        '/api/pos/returns/execute',
+        expect.objectContaining({ approvalCardToken: 'approval_card', refundReferences: [] }),
         expect.objectContaining({ headers: expect.any(Object) })
       )
     );

@@ -17,16 +17,27 @@ const router = Router();
 // Protect all routes under shifts module with authentication
 router.use(authenticate);
 
-router.post('/open', validate({ body: openShiftBody }), shiftsController.openShiftController);
-router.get('/current', shiftsController.getCurrentShiftController);
-router.get('/current/summary', shiftsController.getCurrentShiftSummaryController);
+router.post(
+  '/open',
+  requireRole(['Cashier']),
+  validate({ body: openShiftBody }),
+  shiftsController.openShiftController
+);
+router.get('/current', requireRole(['Cashier']), shiftsController.getCurrentShiftController);
+router.get(
+  '/current/summary',
+  requireRole(['Cashier']),
+  shiftsController.getCurrentShiftSummaryController
+);
 router.post(
   '/current/close-request',
+  requireRole(['Cashier']),
   validate({ body: shiftCloseBody }),
   shiftsController.requestCloseShiftController
 );
 router.post(
   '/current/cash-movement',
+  requireRole(['Cashier']),
   validate({ body: cashMovementBody }),
   shiftsController.registerCashMovementController
 );

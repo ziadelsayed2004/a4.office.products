@@ -47,16 +47,11 @@ export async function checkoutController(req, res, next) {
 
 export async function returnOrderController(req, res, next) {
   try {
-    const result = await posService.returnOrderItems({
-      cashierId: req.user.id,
-      orderId: req.params.id,
-      authorizationToken: req.body.authorizationToken,
-      refundReferences: req.body.refundReferences,
-      cashierNote: req.body.cashierNote,
-      idempotencyKey: req.get('Idempotency-Key'),
+    return res.status(410).json({
+      status: 'error',
+      error: 'Legacy return endpoint has been removed.',
+      code: 'LEGACY_RETURN_AUTHORIZATION_REMOVED',
     });
-    res.setHeader('Idempotency-Replayed', String(Boolean(result.replayed)));
-    return res.status(result.statusCode).json({ status: 'success', data: result.data });
   } catch (error) {
     return next(error);
   }

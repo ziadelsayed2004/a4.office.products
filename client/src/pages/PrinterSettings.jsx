@@ -39,7 +39,7 @@ const defaults = Object.freeze({
   print_mode: 'browser',
   receipt_printer_width: '80mm',
   receipt_copies: '1',
-  receipt_printer_header: 'مكتبة A4 للأدوات المكتبية',
+  receipt_printer_header: 'مكتبة A4 فرع السويس',
   receipt_printer_footer: 'شكراً لتعاملكم معنا',
   auto_print_sale: 'true',
   auto_print_preorder_deposit: 'true',

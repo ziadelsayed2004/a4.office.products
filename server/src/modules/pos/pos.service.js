@@ -91,7 +91,7 @@ export async function searchPosProducts(queryStr = '', connection = db) {
 
 async function requireOwnOpenShift(connection, userId) {
   const shift = await connection.get(
-    "SELECT * FROM shifts WHERE user_id = ? AND status = 'OPEN' ORDER BY id DESC LIMIT 1;",
+    "SELECT s.* FROM shifts s JOIN users u ON u.id=s.user_id WHERE s.user_id = ? AND u.role='Cashier' AND u.is_active=1 AND s.status = 'OPEN' ORDER BY s.id DESC LIMIT 1;",
     [userId]
   );
   if (!shift)

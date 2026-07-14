@@ -1,7 +1,7 @@
 export const PRODUCT_LABEL_SIZES = Object.freeze({
-  small: Object.freeze({ widthMm: 38, heightMm: 25, qrSize: 34 }),
-  medium: Object.freeze({ widthMm: 50, heightMm: 25, qrSize: 40 }),
-  large: Object.freeze({ widthMm: 80, heightMm: 50, qrSize: 96 }),
+  small: Object.freeze({ widthMm: 38, heightMm: 25, barcodeHeight: 24 }),
+  medium: Object.freeze({ widthMm: 50, heightMm: 25, barcodeHeight: 28 }),
+  large: Object.freeze({ widthMm: 80, heightMm: 50, barcodeHeight: 52 }),
 });
 
 export const PRODUCT_LABEL_LAYOUT_BUDGETS = Object.freeze({
@@ -36,14 +36,14 @@ export function productLabelVerticalBudget(value) {
     layout.gapMm * 2 -
     layout.headerMm -
     layout.titleMm;
-  const qrHeightMm = dimensions.qrSize / CSS_PIXELS_PER_MM;
+  const barcodeHeightMm = dimensions.barcodeHeight / CSS_PIXELS_PER_MM;
 
   return {
     size,
     bodyHeightMm,
-    qrHeightMm,
-    spareHeightMm: bodyHeightMm - qrHeightMm,
-    fits: qrHeightMm <= bodyHeightMm,
+    barcodeHeightMm,
+    spareHeightMm: bodyHeightMm - barcodeHeightMm,
+    fits: barcodeHeightMm <= bodyHeightMm,
   };
 }
 

@@ -34,6 +34,8 @@ import {
   posReturnAuthorizationRoutes,
 } from './modules/returnAuthorizations/returnAuthorizations.routes.js';
 import { isChromiumAvailable } from './utils/pdf.js';
+import returnApprovalCardRoutes from './modules/returnApprovalCards/returnApprovalCards.routes.js';
+import cashierReturnRoutes from './modules/cashierReturns/cashierReturns.routes.js';
 
 const app = express();
 app.set('trust proxy', config.trustProxy);
@@ -63,6 +65,8 @@ app.use('/api/pos/preorders', preorderRoutes);
 app.use('/api/admin/preorders', preorderAdminRoutes);
 app.use('/api/admin/return-authorizations', adminReturnAuthorizationRoutes);
 app.use('/api/pos/return-authorizations', posReturnAuthorizationRoutes);
+app.use('/api/admin/return-approval-cards', returnApprovalCardRoutes);
+app.use('/api/pos/returns', cashierReturnRoutes);
 app.use('/api/shifts', shiftsRoutes);
 app.use('/api/admin', reportsRoutes);
 app.use('/api/admin/printer-settings', printerSettingsRoutes);
@@ -92,7 +96,7 @@ app.get('/api/health', async (req, res) => {
         journalMode: journal?.journal_mode,
         foreignKeys: foreignKeys?.foreign_keys === 1,
       },
-      migrations: { ready: Number(migrations?.count || 0) >= 2 },
+      migrations: { ready: Number(migrations?.count || 0) >= 3 },
       pdf: { available: isChromiumAvailable() },
     });
   } catch (error) {

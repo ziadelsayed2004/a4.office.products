@@ -95,6 +95,12 @@ async function getShiftSystemSnapshot(connection, shift) {
 export async function openShift(userId, openingCash) {
   const amount = requirePiasters(openingCash, 'openingCash');
   return withTransaction(async (connection) => {
+    const cashier = await connection.get(
+      "SELECT id FROM users WHERE id=? AND role='Cashier' AND is_active=1;",
+      [userId]
+    );
+    if (!cashier)
+      throw new AppError('Only an active Cashier can open a shift.', 403, 'CASHIER_REQUIRED');
     const existing = await connection.get(
       "SELECT * FROM shifts WHERE user_id = ? AND status IN ('OPEN', 'PENDING_ADMIN_REVIEW') ORDER BY id DESC LIMIT 1;",
       [userId]

@@ -7,10 +7,11 @@ import config from '../config/index.js';
 import { backupDatabase } from '../utils/backup.js';
 import * as workflowHardening from './migrations/001_workflow_hardening.js';
 import * as returnAuthorizations from './migrations/002_return_authorizations.js';
+import * as approvalCardsBarcodes from './migrations/003_approval_cards_barcodes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const migrations = [workflowHardening, returnAuthorizations];
+const migrations = [workflowHardening, returnAuthorizations, approvalCardsBarcodes];
 
 async function tableExists(name) {
   return Boolean(
@@ -89,6 +90,8 @@ async function validateTargetSchema() {
     'return_authorization_items',
     'return_authorization_allocations',
     'return_authorization_print_requests',
+    'return_approval_cards',
+    'return_approval_card_print_requests',
   ];
   for (const table of requiredTables) {
     if (!(await tableExists(table)))

@@ -152,18 +152,18 @@ export async function printReceiptInFrame({
   };
 }
 
-function productLabelUrl({ productId, token, quantity, size }) {
+function productLabelUrl({ productId, barcode, quantity, size }) {
   const query = new URLSearchParams({
     productId: String(productId),
-    token: String(token),
+    barcode: String(barcode),
     quantity: String(quantity),
     size: String(size),
   });
   return `/labels/print?${query}`;
 }
 
-export function printProductLabelsInFrame({ productId, token, quantity = 1, size = 'medium' }) {
-  if (!productId || !token) return Promise.reject(new Error('بيانات ملصق المنتج غير مكتملة.'));
+export function printProductLabelsInFrame({ productId, barcode, quantity = 1, size = 'medium' }) {
+  if (!productId || !barcode) return Promise.reject(new Error('بيانات ملصق المنتج غير مكتملة.'));
   return new Promise((resolve, reject) => {
     const iframe = document.createElement('iframe');
     iframe.className = 'a4-print-frame';
@@ -197,7 +197,7 @@ export function printProductLabelsInFrame({ productId, token, quantity = 1, size
       if (event.origin !== window.location.origin || event.source !== iframe.contentWindow) return;
       if (
         event.data?.source !== LABEL_PRINT_MESSAGE_SOURCE ||
-        event.data?.labelId !== String(token)
+        event.data?.labelId !== String(barcode)
       )
         return;
       if (event.data.type === PRINT_ERROR)
@@ -222,7 +222,7 @@ export function printProductLabelsInFrame({ productId, token, quantity = 1, size
       () => fail(new Error('انتهت مهلة تجهيز الملصقات.')),
       READY_TIMEOUT_MS
     );
-    iframe.src = productLabelUrl({ productId, token, quantity, size });
+    iframe.src = productLabelUrl({ productId, barcode, quantity, size });
     document.body.appendChild(iframe);
   });
 }

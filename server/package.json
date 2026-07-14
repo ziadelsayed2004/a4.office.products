@@ -17,7 +17,7 @@
     "test:schema": "node src/tests/schema.test.js",
     "test:api-contracts": "node src/tests/api-contracts.test.js",
     "test:correctness": "node src/tests/backend-correctness.test.js && node src/tests/safe-delete.test.js",
-    "test:returns": "node src/tests/return-authorizations.test.js",
+    "test:returns": "node src/tests/return-authorizations.test.js && node src/tests/approval-cards.test.js",
     "test:smoke": "node src/tests/smoke.test.js",
     "test:services": "node src/tests/services.test.js",
     "db:setup": "node src/db/setup.js",

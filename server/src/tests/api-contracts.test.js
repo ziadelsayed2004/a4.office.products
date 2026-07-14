@@ -295,65 +295,64 @@ const OPERATIONS = [
     invalid: { body: {} },
   },
   {
-    name: 'pos return',
+    name: 'return approval card create',
     method: 'POST',
-    path: '/api/pos/orders/1/return',
-    access: 'protected',
-    invalid: { path: '/api/pos/orders/0/return', body: {} },
-  },
-  {
-    name: 'return authorization quote',
-    method: 'POST',
-    path: '/api/admin/return-authorizations/quote',
+    path: '/api/admin/return-approval-cards',
     access: 'admin',
     invalid: { body: {} },
   },
   {
-    name: 'return authorization create',
-    method: 'POST',
-    path: '/api/admin/return-authorizations',
-    access: 'admin',
-    invalid: { body: {} },
-  },
-  {
-    name: 'return authorization list',
+    name: 'return approval card list',
     method: 'GET',
-    path: '/api/admin/return-authorizations',
+    path: '/api/admin/return-approval-cards',
     access: 'admin',
-    invalid: { path: '/api/admin/return-authorizations?limit=101' },
   },
   {
-    name: 'return authorization detail',
+    name: 'return approval card detail',
     method: 'GET',
-    path: '/api/admin/return-authorizations/1',
+    path: '/api/admin/return-approval-cards/1',
     access: 'admin',
-    invalid: { path: '/api/admin/return-authorizations/0' },
+    invalid: { path: '/api/admin/return-approval-cards/0' },
   },
   {
-    name: 'return authorization revoke',
+    name: 'return approval card rotate',
     method: 'POST',
-    path: '/api/admin/return-authorizations/1/revoke',
+    path: '/api/admin/return-approval-cards/1/rotate',
+    access: 'admin',
+    invalid: { path: '/api/admin/return-approval-cards/0/rotate', body: {} },
+  },
+  {
+    name: 'return approval card disable',
+    method: 'POST',
+    path: '/api/admin/return-approval-cards/1/disable',
     access: 'admin',
     invalid: { body: {} },
   },
   {
-    name: 'return authorization reissue',
+    name: 'return approval card enable',
     method: 'POST',
-    path: '/api/admin/return-authorizations/1/reissue',
+    path: '/api/admin/return-approval-cards/1/enable',
     access: 'admin',
-    invalid: { path: '/api/admin/return-authorizations/0/reissue', body: {} },
+    invalid: { path: '/api/admin/return-approval-cards/0/enable', body: {} },
   },
   {
-    name: 'return authorization print request',
+    name: 'return approval card print request',
     method: 'POST',
-    path: '/api/admin/return-authorizations/1/print-request',
+    path: '/api/admin/return-approval-cards/1/print-request',
     access: 'admin',
     invalid: { body: { copies: 0 } },
   },
   {
-    name: 'return authorization execute',
+    name: 'cashier return quote',
     method: 'POST',
-    path: '/api/pos/return-authorizations/execute',
+    path: '/api/pos/returns/quote',
+    access: 'protected',
+    invalid: { body: {} },
+  },
+  {
+    name: 'cashier return execute',
+    method: 'POST',
+    path: '/api/pos/returns/execute',
     access: 'protected',
     invalid: { body: {} },
   },
@@ -702,7 +701,7 @@ async function run() {
   const validatedOperations = OPERATIONS.filter((operation) => operation.invalid);
   assert.equal(protectedOperations.length, 82, '82 operations must require authentication');
   assert.equal(adminOperations.length, 53, '53 operations must require Admin role');
-  assert.equal(validatedOperations.length, 75, '75 operations must be Zod-validated');
+  assert.equal(validatedOperations.length, 74, '74 operations must be Zod-validated');
 
   for (const operation of protectedOperations) {
     const response = await send(baseUrl, operation);
@@ -896,7 +895,7 @@ async function run() {
   assert.deepEqual(unavailablePayload.database, { engine: 'SQLite', available: false });
 
   console.log(
-    'API contract matrix passed: 86 operations, 82 auth guards, 53 Admin guards, 75 validation contracts.'
+    'API contract matrix passed: 86 operations, 82 auth guards, 53 Admin guards, 74 validation contracts.'
   );
 }
 

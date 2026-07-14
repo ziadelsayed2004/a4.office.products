@@ -2,6 +2,7 @@ import db from '../../db/index.js';
 import { AppError } from '../../utils/financial.js';
 import { getInvoiceByExactCredential } from '../invoices/invoices.service.js';
 import { resolveReturnAuthorizationToken } from '../returnAuthorizations/returnAuthorizations.service.js';
+import { resolveCardToken } from '../returnApprovalCards/returnApprovalCards.service.js';
 
 async function resolveProduct(productId, connection) {
   const product = await connection.get(
@@ -109,6 +110,7 @@ export async function resolveScan(code, actor, connection = db) {
   if (normalized.startsWith('ret_')) {
     return resolveReturnAuthorizationToken(normalized, actor, connection);
   }
+  if (normalized.startsWith('rac_')) return resolveCardToken(normalized, connection);
 
   const token = await connection.get(
     'SELECT token_type, reference_id FROM secure_tokens WHERE token = ?;',
@@ -121,7 +123,7 @@ export async function resolveScan(code, actor, connection = db) {
     return { type: 'invoice', action: 'READ_ONLY', data: detail };
   }
 
-  if (/^(prod_|pre_|inv_|ret_)/.test(normalized)) {
+  if (/^(prod_|pre_|inv_|ret_|rac_)/.test(normalized)) {
     throw new AppError('Secure QR token is invalid.', 404, 'INVALID_SECURE_TOKEN');
   }
 

@@ -1,12 +1,10 @@
 import { Router } from 'express';
 import * as posController from './pos.controller.js';
-import { authenticate } from '../../middleware/auth.js';
+import { authenticate, requireRole } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import {
   checkoutBody,
-  idParams,
   posSearchQuery,
-  returnOrderBody,
   scanBody,
   scanProductBody,
 } from '../../validation/schemas.js';
@@ -14,7 +12,7 @@ import {
 const router = Router();
 
 // Apply auth check globally - both cashiers and admins can access scan/search in POS
-router.use(authenticate);
+router.use(authenticate, requireRole(['Cashier']));
 
 router.post('/scan/resolve', validate({ body: scanBody }), posController.resolveScanController);
 router.post(
@@ -28,10 +26,6 @@ router.get(
   posController.searchPosProductsController
 );
 router.post('/orders/checkout', validate({ body: checkoutBody }), posController.checkoutController);
-router.post(
-  '/orders/:id/return',
-  validate({ params: idParams, body: returnOrderBody }),
-  posController.returnOrderController
-);
+router.post('/orders/:id/return', posController.returnOrderController);
 
 export default router;

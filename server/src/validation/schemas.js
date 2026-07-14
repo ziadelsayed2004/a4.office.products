@@ -439,6 +439,21 @@ export const returnAuthorizationExecuteBody = z.object({
   refundReferences: z.array(refundReference).max(100).default([]),
   cashierNote: optionalNullableTrimmed(1000),
 });
+export const approvalCardCreateBody = z.object({ label: trimmed(120) });
+export const approvalCardDisableBody = z.object({ reason: trimmed(500) });
+export const approvalCardPrintBody = z.object({
+  requestKey: trimmed(200),
+  copies: optionalInteger(1, 20).default(1),
+  reason: optionalNullableTrimmed(500),
+});
+export const cashierReturnQuoteBody = returnAuthorizationQuoteBody.extend({
+  reason: trimmed(1000),
+});
+export const cashierReturnExecuteBody = cashierReturnQuoteBody.extend({
+  approvalCardToken: trimmed(500),
+  refundReferences: z.array(refundReference).max(100).default([]),
+  cashierNote: optionalNullableTrimmed(1000),
+});
 
 export const preorderCreateBody = z
   .object({

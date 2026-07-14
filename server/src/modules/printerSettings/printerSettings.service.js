@@ -5,7 +5,7 @@ import { AppError } from '../../utils/errors.js';
 const DEFAULT_SETTINGS = Object.freeze({
   print_mode: 'browser',
   receipt_printer_width: '80mm',
-  receipt_printer_header: 'مكتبة A4 للأدوات المكتبية',
+  receipt_printer_header: 'مكتبة A4 فرع السويس',
   receipt_printer_footer: 'شكراً لتعاملكم معنا',
   print_show_customer: 'true',
   print_show_price_tier: 'true',

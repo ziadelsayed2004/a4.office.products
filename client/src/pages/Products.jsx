@@ -288,7 +288,7 @@ export default function Products() {
       setQrProduct(null);
       await printProductLabelsInFrame({
         productId: result.product.id,
-        token: result.token,
+        barcode: result.barcode,
         quantity: result.quantity,
         size: result.label_size,
       });

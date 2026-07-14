@@ -84,6 +84,7 @@ export async function nextDocumentNumber(connection, kind) {
     receipt: { prefix: 'REC', width: 4 },
     preorder: { prefix: 'PR', width: 4 },
     returnAuthorization: { prefix: 'RMA', width: 4 },
+    returnApprovalCard: { prefix: 'RAC', width: 4 },
     return: { prefix: 'RTN', width: 4 },
   };
   const definition = definitions[kind];

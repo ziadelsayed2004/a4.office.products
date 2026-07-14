@@ -62,7 +62,6 @@ for (const required of [
   'npm run check',
   'NODE_ENV=production',
   'RETURN_QR_SECRET=$EXISTING_RETURN_QR_SECRET',
-  'RETURN_AUTHORIZATION_TTL_HOURS=24',
   'VITE_API_BASE_URL=',
   'HOST=127.0.0.1',
   'APP_DOMAIN=$DOMAIN_NAME',

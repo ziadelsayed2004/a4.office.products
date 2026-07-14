@@ -119,7 +119,7 @@ export function normalizeThermalReceipt(receipt = {}, settings = {}) {
       printSettings.business_name,
       printSettings.businessName,
       printSettings.receipt_printer_header,
-      'مكتبة A4 للأدوات المكتبية'
+      'مكتبة A4 فرع السويس'
     ),
     businessSubtitle: first(printSettings.business_subtitle, printSettings.businessSubtitle),
     footer: firstPresent(

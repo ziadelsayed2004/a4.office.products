@@ -968,40 +968,38 @@ async function runServicesTests() {
         }),
       }
     );
-    assert.strictEqual(unauthorizedLegacyReturn.status, 409);
-    assertApiError(await unauthorizedLegacyReturn.json(), 'RETURN_AUTHORIZATION_REQUIRED');
+    assert.strictEqual(unauthorizedLegacyReturn.status, 410);
+    assertApiError(await unauthorizedLegacyReturn.json(), 'LEGACY_RETURN_AUTHORIZATION_REMOVED');
 
-    const returnQuoteRes = await fetch(`${BASE_URL}/api/admin/return-authorizations/quote`, {
+    const createApprovalCardRes = await fetch(`${BASE_URL}/api/admin/return-approval-cards`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        orderId: testOrderId,
-        items: [{ orderItemId: returnOrderItemId, quantity: 1, disposition: 'RESTOCK' }],
-      }),
+      body: JSON.stringify({ label: 'Service integration approval card' }),
+    });
+    assert.strictEqual(createApprovalCardRes.status, 201);
+    const approvalCard = (await createApprovalCardRes.json()).data;
+
+    const returnInput = {
+      orderId: testOrderId,
+      reason: 'Service integration return',
+      items: [{ orderItemId: returnOrderItemId, quantity: 1, disposition: 'RESTOCK' }],
+    };
+    const returnQuoteRes = await fetch(`${BASE_URL}/api/pos/returns/quote`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${cashierToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(returnInput),
     });
     assert.strictEqual(returnQuoteRes.status, 200);
     const returnQuote = (await returnQuoteRes.json()).data;
     assert.strictEqual(returnQuote.totalRefund, 11000);
 
-    const issueReturnRes = await fetch(`${BASE_URL}/api/admin/return-authorizations`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        'Content-Type': 'application/json',
-        'Idempotency-Key': 'services-order-return-issue-001',
-      },
-      body: JSON.stringify({
-        orderId: testOrderId,
-        reason: 'Service integration return',
-        items: [{ orderItemId: returnOrderItemId, quantity: 1, disposition: 'RESTOCK' }],
-      }),
-    });
-    assert.strictEqual(issueReturnRes.status, 201);
-    const issuedReturn = (await issueReturnRes.json()).data;
-    const externalAllocation = issuedReturn.allocations.find(
+    const externalAllocation = returnQuote.allocations.find(
       (allocation) => allocation.refundMode === 'EXTERNAL_REFERENCE'
     );
     assert.ok(externalAllocation);
@@ -1013,18 +1011,18 @@ async function runServicesTests() {
         Authorization: `Bearer ${cashierToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ code: issuedReturn.qrToken }),
+      body: JSON.stringify({ code: approvalCard.qrToken }),
     });
     assert.strictEqual(returnScanRes.status, 200);
     const returnScan = (await returnScanRes.json()).data;
-    assert.strictEqual(returnScan.type, 'return_authorization');
-    assert.strictEqual(returnScan.action, 'RETURN_REVIEW');
+    assert.strictEqual(returnScan.type, 'return_approval_card');
+    assert.strictEqual(returnScan.action, 'VALID');
     assert.deepStrictEqual(
       await db.get('SELECT COUNT(*) AS count FROM returns;'),
       returnScanBefore
     );
 
-    const returnRes = await fetch(`${BASE_URL}/api/pos/return-authorizations/execute`, {
+    const returnRes = await fetch(`${BASE_URL}/api/pos/returns/execute`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${cashierToken}`,
@@ -1032,9 +1030,13 @@ async function runServicesTests() {
         'Idempotency-Key': 'services-order-return-execute-001',
       },
       body: JSON.stringify({
-        token: issuedReturn.qrToken,
+        ...returnInput,
+        approvalCardToken: approvalCard.qrToken,
         refundReferences: [
-          { allocationId: externalAllocation.id, referenceNumber: 'SERVICES-REFUND-001' },
+          {
+            allocationId: externalAllocation.paymentMethodId,
+            referenceNumber: 'SERVICES-REFUND-001',
+          },
         ],
       }),
     });

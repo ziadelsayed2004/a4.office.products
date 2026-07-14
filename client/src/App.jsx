@@ -28,6 +28,7 @@ const AuditLogs = lazy(() => import('./pages/AuditLogs.jsx'));
 const PrinterSettings = lazy(() => import('./pages/PrinterSettings.jsx'));
 const ReturnAuthorizations = lazy(() => import('./pages/ReturnAuthorizations.jsx'));
 const ReturnAuthorizationPrint = lazy(() => import('./pages/ReturnAuthorizationPrint.jsx'));
+const ReturnApprovalCardPrint = lazy(() => import('./pages/ReturnApprovalCardPrint.jsx'));
 
 function Protected({ children }) {
   const { loading, isAuthenticated } = useAuth();
@@ -40,6 +41,13 @@ function AdminOnly({ children }) {
   if (loading) return <LoadingState />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return isAdmin ? children : <Navigate to="/pos" replace />;
+}
+
+function CashierOnly({ children }) {
+  const { loading, isAuthenticated, isAdmin } = useAuth();
+  if (loading) return <LoadingState />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return isAdmin ? <Navigate to="/" replace /> : children;
 }
 
 function GuestOnly({ children }) {
@@ -60,6 +68,14 @@ export default function App() {
         <BrowserRouter>
           <Suspense fallback={<LoadingState label="جاري فتح الصفحة..." />}>
             <Routes>
+              <Route
+                path="/return-approval-cards/:cardId/print"
+                element={
+                  <AdminOnly>
+                    <ReturnApprovalCardPrint />
+                  </AdminOnly>
+                }
+              />
               <Route
                 path="/login"
                 element={
@@ -101,9 +117,30 @@ export default function App() {
                 }
               >
                 <Route index element={<Home />} />
-                <Route path="pos" element={<POS />} />
-                <Route path="shift-summary" element={<ShiftSummary />} />
-                <Route path="receipts" element={<Receipts />} />
+                <Route
+                  path="pos"
+                  element={
+                    <CashierOnly>
+                      <POS />
+                    </CashierOnly>
+                  }
+                />
+                <Route
+                  path="shift-summary"
+                  element={
+                    <CashierOnly>
+                      <ShiftSummary />
+                    </CashierOnly>
+                  }
+                />
+                <Route
+                  path="receipts"
+                  element={
+                    <CashierOnly>
+                      <Receipts />
+                    </CashierOnly>
+                  }
+                />
                 <Route path="invoices" element={<Invoices />} />
                 <Route
                   path="products"

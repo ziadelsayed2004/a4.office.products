@@ -99,7 +99,7 @@ assert.equal(normalizeProductLabelSize('missing'), 'medium');
 assert.equal(productLabelSizeFromDimensions('38mm', '25mm'), 'small');
 assert.equal(productLabelSizeFromDimensions(50, 25), 'medium');
 assert.equal(productLabelSizeFromDimensions(80, 50), 'large');
-assert.deepEqual(PRODUCT_LABEL_SIZES.large, { widthMm: 80, heightMm: 50, qrSize: 96 });
+assert.deepEqual(PRODUCT_LABEL_SIZES.large, { widthMm: 80, heightMm: 50, barcodeHeight: 52 });
 
 for (const [labelSize, dimensions] of Object.entries(PRODUCT_LABEL_SIZES)) {
   const labelCss = buildProductLabelPageCss(labelSize);
@@ -107,7 +107,7 @@ for (const [labelSize, dimensions] of Object.entries(PRODUCT_LABEL_SIZES)) {
   assert.match(labelCss, /\.product-label\s*\{[\s\S]*height:/);
   assert.doesNotMatch(labelCss, /size:[^;]*auto/);
   const budget = productLabelVerticalBudget(labelSize);
-  assert.equal(budget.fits, true, `${labelSize} QR code must fit its body row`);
+  assert.equal(budget.fits, true, `${labelSize} barcode must fit its body row`);
   assert.ok(budget.spareHeightMm > 3, `${labelSize} keeps a deterministic overflow margin`);
 }
 

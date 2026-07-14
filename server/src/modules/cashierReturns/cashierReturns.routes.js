@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { authenticate, requireRole } from '../../middleware/auth.js';
+import { validate } from '../../middleware/validate.js';
+import { cashierReturnQuoteBody, cashierReturnExecuteBody } from '../../validation/schemas.js';
+import * as controller from './cashierReturns.controller.js';
+const router = Router();
+router.use(authenticate, requireRole(['Cashier']));
+router.post('/quote', validate({ body: cashierReturnQuoteBody }), controller.quote);
+router.post('/execute', validate({ body: cashierReturnExecuteBody }), controller.execute);
+export default router;

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as preordersController from './preorders.controller.js';
 import { authenticate } from '../../middleware/auth.js';
+import { requireRole } from '../../middleware/auth.js';
 import { isAdmin } from '../../middleware/rbac.js';
 import { validate } from '../../middleware/validate.js';
 import {
@@ -16,7 +17,7 @@ import {
 const router = Router();
 
 // Protect endpoints under cashier authentication
-router.use(authenticate);
+router.use(authenticate, requireRole(['Cashier']));
 
 router.post(
   '/',

@@ -58,7 +58,8 @@ export function AuthProvider({ children }) {
     try {
       const response = await api.get('/api/auth/me');
       setUser(response.data);
-      await loadShift();
+      if (response.data?.role === 'Cashier') await loadShift();
+      else setCurrentShift(null);
     } catch {
       clearSession();
     } finally {
@@ -90,7 +91,8 @@ export function AuthProvider({ children }) {
       if (auth.refreshToken)
         localStorage.setItem(APP_CONFIG.storageKeys.refreshToken, auth.refreshToken);
       setUser(auth.user);
-      await loadShift();
+      if (auth.user?.role === 'Cashier') await loadShift();
+      else setCurrentShift(null);
       return auth.user;
     },
     [loadShift]

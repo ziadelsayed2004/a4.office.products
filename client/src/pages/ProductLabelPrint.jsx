@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from '@mui/material';
-import { QRCodeSVG } from 'qrcode.react';
+import JsBarcode from 'jsbarcode';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../services/apiClient.js';
 import {
@@ -26,17 +26,32 @@ function post(type, labelId, extra = {}) {
   );
 }
 
+function Barcode({ value, size }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    JsBarcode(ref.current, value, {
+      format: 'CODE128',
+      displayValue: false,
+      margin: 0,
+      height: PRODUCT_LABEL_SIZES[size].barcodeHeight,
+      width: size === 'small' ? 1 : 1.3,
+    });
+  }, [value, size]);
+  return <svg ref={ref} className="product-label__barcode" aria-label={`Barcode ${value}`} />;
+}
+
 async function ready(container) {
   if (document.fonts?.ready) await document.fonts.ready;
-  const images = [...(container?.querySelectorAll('img') || [])];
-  await Promise.all(images.map((image) => image.decode?.().catch(() => undefined)));
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  if (!container?.querySelector('svg.product-label__barcode rect'))
+    throw new Error('تعذر إنشاء الباركود بالمقاس المحدد.');
 }
 
 export default function ProductLabelPrint() {
   const [params] = useSearchParams();
   const containerRef = useRef(null);
-  const token = params.get('token') || '';
+  const barcode = params.get('barcode') || '';
   const productId = params.get('productId') || '';
   const size = normalizeProductLabelSize(params.get('size'));
   const quantity = Math.min(500, Math.max(1, Number.parseInt(params.get('quantity'), 10) || 1));
@@ -45,52 +60,45 @@ export default function ProductLabelPrint() {
   const labels = useMemo(() => Array.from({ length: quantity }, (_, index) => index), [quantity]);
 
   useEffect(() => {
-    Promise.all([
-      api.get(`/api/products/${encodeURIComponent(productId)}`),
-      api.post('/api/pos/scan/resolve', { code: token }),
-    ])
-      .then(([productResponse, tokenResponse]) => {
-        const resolved = tokenResponse.data || {};
-        if (resolved.type !== 'product' || Number(resolved.data?.id) !== Number(productId)) {
-          throw new Error('رمز المنتج لا يطابق المنتج المطلوب.');
-        }
-        setProduct(productResponse.data);
+    api
+      .get(`/api/products/${encodeURIComponent(productId)}`)
+      .then((response) => {
+        const loaded = response.data;
+        if (String(loaded.barcode || loaded.sku) !== barcode)
+          throw new Error('الباركود لا يطابق المنتج.');
+        setProduct(loaded);
       })
       .catch((loadError) => {
         setError(loadError.message);
-        post(PRINT_ERROR, token, { message: loadError.message });
+        post(PRINT_ERROR, barcode, { message: loadError.message });
       });
-  }, [productId, token]);
+  }, [productId, barcode]);
 
   useEffect(() => {
     if (!product) return undefined;
     let active = true;
-    let cleanupPageSize = () => undefined;
+    let cleanup = () => undefined;
     ready(containerRef.current)
       .then(() => {
         if (!active) return;
-        const pageSize = applyProductLabelPageSize(containerRef.current, size);
-        cleanupPageSize = pageSize.cleanup;
-        post(PRINT_READY, token, {
-          pageWidthMm: pageSize.widthMm,
-          pageHeightMm: pageSize.heightMm,
-        });
+        const page = applyProductLabelPageSize(containerRef.current, size);
+        cleanup = page.cleanup;
+        post(PRINT_READY, barcode, { pageWidthMm: page.widthMm, pageHeightMm: page.heightMm });
         if (window.parent === window) window.print();
       })
-      .catch((loadError) => post(PRINT_ERROR, token, { message: loadError.message }));
-    const afterPrint = () => post(PRINT_COMPLETE, token);
+      .catch((loadError) => post(PRINT_ERROR, barcode, { message: loadError.message }));
+    const afterPrint = () => post(PRINT_COMPLETE, barcode);
     window.addEventListener('afterprint', afterPrint);
     return () => {
       active = false;
-      cleanupPageSize();
+      cleanup();
       window.removeEventListener('afterprint', afterPrint);
     };
-  }, [product, size, token]);
+  }, [product, size, barcode]);
 
   const price =
     product?.prices?.find((row) => row.is_active === 1 && row.price !== null) ||
     product?.prices?.find((row) => row.price !== null);
-
   return (
     <main className={`product-label-print product-label-print--${size}`} ref={containerRef}>
       {!product && !error && <LoadingState label="جاري تجهيز الملصقات..." />}
@@ -106,9 +114,9 @@ export default function ProductLabelPrint() {
             <div className="product-label__body">
               <div>
                 <b>{price ? money(price.price) : ''}</b>
-                <span className="a4-ltr">{product.barcode || product.sku}</span>
+                <span className="a4-ltr">{barcode}</span>
               </div>
-              <QRCodeSVG value={token} size={PRODUCT_LABEL_SIZES[size].qrSize} level="M" />
+              <Barcode value={barcode} size={size} />
             </div>
           </article>
         ))}

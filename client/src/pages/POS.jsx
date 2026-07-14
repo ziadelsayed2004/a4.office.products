@@ -386,27 +386,60 @@ export default function POS() {
     try {
       const resolved = resolvePayload(await api.post('/api/pos/scan/resolve', { code: clean }));
       if (resolved.type === 'invoice') {
-        navigate(`/invoices?token=${encodeURIComponent(clean)}`);
+        if (mode !== MODES.RETURN) navigate(`/invoices?token=${encodeURIComponent(clean)}`);
+        else {
+          const invoice = resolved.data;
+          const items = (invoice.items || [])
+            .filter((item) => Number(item.remaining_returnable_quantity ?? item.quantity) > 0)
+            .map((item) => ({
+              orderItemId: item.order_item_id || item.id,
+              quantity: Number(item.remaining_returnable_quantity ?? item.quantity),
+              disposition: 'RESTOCK',
+            }));
+          const quote = (
+            await api.post('/api/pos/returns/quote', {
+              orderId: invoice.id,
+              items,
+              reason: 'Customer return',
+            })
+          ).data;
+          setReturnData({
+            ...quote,
+            invoice,
+            request: { orderId: invoice.id, items, reason: 'Customer return' },
+            approvalCardToken: '',
+          });
+          setRefundReferences({});
+          setReturnKey(createIdempotencyKey('return'));
+          setToast({ message: 'تم تجهيز المرتجع. راجع التفاصيل ثم امسح بطاقة اعتماد الأدمن.' });
+        }
       } else if (resolved.type === 'preorder') {
         const value = resolved.data.preorder ? resolved.data : resolved.raw;
         setPickupData(value);
         setPickupPayments({});
         setPickupKey(createIdempotencyKey('pickup'));
         setPickupOpen(true);
-      } else if (resolved.type === 'return_authorization') {
-        switchMode(MODES.RETURN);
-        const review = { ...resolved.data, token: clean, action: resolved.raw.action };
-        setReturnData(review);
-        setRefundReferences({});
-        setReturnKey(createIdempotencyKey('return'));
-        if (String(resolved.raw.action || '').toUpperCase() === 'BLOCKED') {
+      } else if (resolved.type === 'return_approval_card') {
+        if (!returnData?.request) {
+          setToast({ severity: 'warning', message: 'امسح الفاتورة وجهّز المرتجع أولاً.' });
+        } else if (resolved.raw.action !== 'VALID') {
           setToast({
             severity: 'error',
-            message: resolved.raw.message || 'بطاقة المرتجع غير متاحة للتنفيذ.',
+            message: resolved.raw.message || 'بطاقة الاعتماد متوقفة.',
           });
         } else {
+          setReturnData((value) => ({
+            ...value,
+            approvalCardToken: clean,
+            approvalCard: resolved.data,
+          }));
           setReturnOpen(true);
         }
+      } else if (resolved.type === 'return_authorization') {
+        setToast({
+          severity: 'error',
+          message: 'بطاقة التفويض القديمة ملغاة. استخدم بطاقة اعتماد الأدمن.',
+        });
       } else if (resolved.type === 'product') {
         const product = resolved.data.product || resolved.data;
         if (product.canSellNow) {
@@ -621,7 +654,7 @@ export default function POS() {
   };
 
   const completeReturn = async () => {
-    if (!returnData?.token || loading) return;
+    if (!(returnData?.approvalCardToken || returnData?.token) || loading) return;
     const authorization = returnData.authorization || returnData;
     const allocations = authorization.allocations || returnData.allocations || [];
     const references = allocations
@@ -631,7 +664,7 @@ export default function POS() {
           'EXTERNAL_REFERENCE'
       )
       .map((allocation) => ({
-        allocationId: allocation.id,
+        allocationId: allocation.paymentMethodId || allocation.payment_method_id || allocation.id,
         referenceNumber: String(refundReferences[allocation.id] || '').trim(),
       }));
     if (references.some((reference) => !reference.referenceNumber)) {
@@ -641,8 +674,12 @@ export default function POS() {
     setLoading(true);
     try {
       const response = await api.post(
-        '/api/pos/return-authorizations/execute',
-        { token: returnData.token, refundReferences: references },
+        '/api/pos/returns/execute',
+        {
+          ...returnData.request,
+          approvalCardToken: returnData.approvalCardToken,
+          refundReferences: references,
+        },
         { headers: { 'Idempotency-Key': returnKey } }
       );
       setReturnOpen(false);
@@ -1213,14 +1250,11 @@ export default function POS() {
         fullWidth
         maxWidth="md"
       >
-        <DialogTitle>
-          مراجعة بطاقة المرتجع{' '}
-          {returnAuthorization.authorizationNumber || returnAuthorization.authorization_number}
-        </DialogTitle>
+        <DialogTitle>مراجعة واعتماد المرتجع</DialogTitle>
         <DialogContent dividers>
           <div className="return-review">
             <Alert severity="warning">
-              هذه معاينة فقط. لا يمكن للكاشير تغيير البنود أو الكميات أو مبلغ الرد أو طرقه.
+              راجع البنود والمبلغ ثم أكّد العملية ببطاقة اعتماد الأدمن الممسوحة.
             </Alert>
             <div className="return-review__summary">
               <div>
@@ -1236,10 +1270,8 @@ export default function POS() {
                 </strong>
               </div>
               <div>
-                <span>انتهاء البطاقة</span>
-                <strong>
-                  {returnAuthorization.expiresAt || returnAuthorization.expires_at || '—'}
-                </strong>
+                <span>بطاقة الاعتماد</span>
+                <strong>{returnData?.approvalCard?.label || 'نشطة'}</strong>
               </div>
             </div>
             <div className="return-review__items">

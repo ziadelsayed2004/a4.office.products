@@ -50,7 +50,6 @@ const environmentSchema = z
       .regex(/^\d+[smhd]$/, 'JWT_EXPIRES_IN must use a value such as 15m, 8h, or 7d.')
       .default('7d'),
     RETURN_QR_SECRET: z.string().min(1).optional(),
-    RETURN_AUTHORIZATION_TTL_HOURS: integerString('RETURN_AUTHORIZATION_TTL_HOURS', 1, 168, 24),
     CORS_ORIGIN: z.string().min(1).default('http://localhost:5173'),
     RATE_LIMIT_WINDOW_MS: integerString('RATE_LIMIT_WINDOW_MS', 1000, 86_400_000, 900_000),
     RATE_LIMIT_MAX: integerString('RATE_LIMIT_MAX', 1, 1_000_000, 1500),
@@ -257,7 +256,7 @@ export function createConfig(
     },
     returns: {
       qrSecret: returnQrSecret,
-      defaultTtlHours: values.RETURN_AUTHORIZATION_TTL_HOURS,
+      defaultTtlHours: 24,
       maximumTtlHours: 168,
     },
     database: {

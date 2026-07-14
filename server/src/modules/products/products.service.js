@@ -2,7 +2,6 @@ import db, { withTransaction } from '../../db/index.js';
 import { writeAuditLog } from '../../utils/auditLogger.js';
 import {
   AppError,
-  generateSecureToken,
   requireInteger,
   requirePiasters,
   saveSecureToken,
@@ -312,6 +311,7 @@ async function unlinkInactivePrices(connection, productId, rawTierIds) {
 export async function createProduct(productData, adminUserId) {
   const name = String(field(productData, 'name') || '').trim();
   const sku = String(field(productData, 'sku') || '').trim();
+  const barcode = cleanOptional(field(productData, 'barcode')) || sku;
   if (!name) throw new AppError('Product name is required.', 400, 'PRODUCT_NAME_REQUIRED');
   if (!sku) throw new AppError('SKU is required.', 400, 'PRODUCT_SKU_REQUIRED');
   const policy = availabilityPolicyFrom(productData);
@@ -361,6 +361,9 @@ export async function createProduct(productData, adminUserId) {
     if (await connection.get('SELECT id FROM products WHERE sku = ?;', [sku])) {
       throw new AppError('SKU is already used by another product.', 409, 'SKU_CONFLICT');
     }
+    if (await connection.get('SELECT id FROM products WHERE barcode = ?;', [barcode])) {
+      throw new AppError('Barcode is already used by another product.', 409, 'BARCODE_CONFLICT');
+    }
     const result = await connection.run(
       `INSERT INTO products
        (name, sku, barcode, category_id, description, is_active, can_be_sold, can_be_preordered,
@@ -370,7 +373,7 @@ export async function createProduct(productData, adminUserId) {
       [
         name,
         sku,
-        cleanOptional(field(productData, 'barcode')),
+        barcode,
         categoryId,
         cleanOptional(field(productData, 'description')),
         isActiveRaw ? 1 : 0,
@@ -496,6 +499,17 @@ export async function updateProduct(id, productData, adminUserId) {
     const prices = await normalizePrices(connection, field(productData, 'prices'), {
       required: false,
     });
+    const barcode =
+      field(productData, 'barcode') === undefined
+        ? old.barcode || old.sku
+        : cleanOptional(field(productData, 'barcode')) || old.barcode || old.sku;
+    const barcodeConflict = await connection.get(
+      'SELECT id FROM products WHERE barcode = ? AND id != ?;',
+      [barcode, id]
+    );
+    if (barcodeConflict) {
+      throw new AppError('Barcode is already used by another product.', 409, 'BARCODE_CONFLICT');
+    }
 
     await connection.run(
       `UPDATE products SET name = ?, sku = ?, barcode = ?, category_id = ?, description = ?,
@@ -505,9 +519,7 @@ export async function updateProduct(id, productData, adminUserId) {
       [
         name,
         sku,
-        field(productData, 'barcode') === undefined
-          ? old.barcode
-          : cleanOptional(field(productData, 'barcode')),
+        barcode,
         categoryId,
         field(productData, 'description') === undefined
           ? old.description
@@ -599,21 +611,6 @@ export async function getOrCreateProductQrToken(productId, { quantity, label_siz
   return withTransaction(async (connection) => {
     const product = await getProductDetails(productId, connection);
     if (!product) throw new AppError('Product not found.', 404, 'PRODUCT_NOT_FOUND');
-    const existing = await connection.get(
-      "SELECT token FROM secure_tokens WHERE token_type = 'product' AND reference_id = ?;",
-      [productId]
-    );
-    const token = existing?.token || generateSecureToken('product');
-    if (!existing) {
-      await connection.run(
-        "INSERT INTO secure_tokens (token, token_type, reference_id) VALUES (?, 'product', ?);",
-        [token, productId]
-      );
-      await connection.run(
-        "INSERT OR IGNORE INTO qr_tokens (token, type, reference_id) VALUES (?, 'product', ?);",
-        [token, productId]
-      );
-    }
     const qty = requireInteger(Number(quantity || 1), 'quantity', { min: 1, max: 500 });
     const labelSizes = {
       small: 'small',
@@ -634,7 +631,8 @@ export async function getOrCreateProductQrToken(productId, { quantity, label_siz
     });
     return {
       product: { id: product.id, name: product.name, sku: product.sku, barcode: product.barcode },
-      token,
+      barcode: product.barcode || product.sku,
+      token: product.barcode || product.sku,
       quantity: qty,
       label_size: labelSize,
     };

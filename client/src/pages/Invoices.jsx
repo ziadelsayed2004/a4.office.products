@@ -695,7 +695,7 @@ export default function Invoices() {
                 navigate(`/return-authorizations?orderId=${invoiceId(selected)}`);
               }}
             >
-              إصدار بطاقة مرتجع
+              إدارة بطاقات اعتماد المرتجع
             </Button>
           )}
           {selected && (
