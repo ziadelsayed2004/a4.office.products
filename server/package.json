@@ -21,6 +21,7 @@
     "test:smoke": "node src/tests/smoke.test.js",
     "test:services": "node src/tests/services.test.js && node src/tests/live-admin.test.js",
     "db:setup": "node src/db/setup.js",
+    "db:migrate": "node src/db/setup.js",
     "db:reset": "node src/db/reset.js --confirm-reset",
     "db:verify": "node src/db/verify.js",
     "db:backup": "node src/utils/run-backup.js",

@@ -92,27 +92,3 @@
   border-top: 0.2mm solid #aaa;
 }
 
-@media print {
-  @page {
-    size: 80mm 110mm;
-    margin: 0;
-  }
-
-  html,
-  body,
-  #root {
-    width: 80mm !important;
-    min-width: 80mm !important;
-    height: 110mm !important;
-    min-height: 110mm !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
-    background: #fff !important;
-  }
-
-  .return-card {
-    break-after: avoid;
-    break-inside: avoid;
-  }
-}

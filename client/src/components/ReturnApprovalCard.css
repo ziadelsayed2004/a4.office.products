@@ -17,6 +17,7 @@
   position: relative;
   box-sizing: border-box;
   display: grid;
+  text-align: right;
 }
 
 .return-approval-card::before {
@@ -91,6 +92,14 @@
   font: 700 7pt/1.2 monospace;
 }
 
+.return-approval-card .a4-ltr {
+  text-align: right;
+}
+
+.return-approval-card__brand div {
+  text-align: right;
+}
+
 .return-approval-card__owner {
   min-width: 0;
   padding: 1.5mm 2mm;
@@ -98,6 +107,7 @@
   border: 0.2mm solid #cfdfef;
   border-radius: 1.5mm;
   background: rgb(255 255 255 / 78%);
+  text-align: right;
 }
 
 .return-approval-card__owner strong {

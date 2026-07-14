@@ -23,6 +23,7 @@
     "deploy:check": "node server/scripts/validate-deployment.mjs",
     "security:audit": "npm audit --audit-level=high && npm audit --prefix client --audit-level=high && npm audit --prefix server --audit-level=high",
     "db:setup": "npm run db:setup --prefix server",
+    "db:migrate": "npm run db:migrate --prefix server",
     "db:reset": "node server/src/db/reset.js --confirm-reset",
     "db:verify": "npm run db:verify --prefix server",
     "db:backup": "npm run db:backup --prefix server",
