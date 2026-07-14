@@ -45,7 +45,8 @@ export async function login(username, password) {
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
   return withTransaction(async (connection) => {
     const session = await connection.run(
-      'INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?);',
+      `INSERT INTO sessions (user_id, token, expires_at, last_seen_at)
+       VALUES (?, ?, ?, CURRENT_TIMESTAMP);`,
       [user.id, refreshToken, expiresAt]
     );
     await writeAuditLog({
@@ -81,7 +82,26 @@ export async function refresh(refreshToken) {
     throw new AppError('Session has expired.', 401, 'REFRESH_TOKEN_EXPIRED');
   }
   if (session.is_active !== 1) throw new AppError('User is inactive.', 401, 'INACTIVE_USER');
+  await db.run('UPDATE sessions SET last_seen_at = CURRENT_TIMESTAMP WHERE id = ?;', [session.id]);
   return { accessToken: generateAccessToken(session, session.id) };
+}
+
+export async function heartbeat(userId, sessionId, connection = db) {
+  const result = await connection.run(
+    `UPDATE sessions SET last_seen_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND user_id = ? AND datetime(expires_at) > CURRENT_TIMESTAMP;`,
+    [sessionId, userId]
+  );
+  if (result.changes !== 1) {
+    throw new AppError('Session is no longer active.', 401, 'SESSION_REVOKED');
+  }
+  const session = await connection.get('SELECT last_seen_at FROM sessions WHERE id = ?;', [
+    sessionId,
+  ]);
+  return {
+    lastSeenAt: session.last_seen_at,
+    onlineUntil: new Date(Date.now() + 90_000).toISOString(),
+  };
 }
 
 export async function logout(refreshToken) {

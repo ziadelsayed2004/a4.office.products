@@ -166,6 +166,11 @@ describe('MainLayout fixed identity area', () => {
     const desktopPaper = document.querySelector('.main-layout__desktop-drawer-paper');
     expect(desktopPaper).not.toBeNull();
     assertDrawerOrder(desktopPaper);
+    expect(within(desktopPaper).queryByText('نقطة البيع')).not.toBeInTheDocument();
+    expect(within(desktopPaper).queryByText('شيفتي الحالية')).not.toBeInTheDocument();
+    expect(within(desktopPaper).queryByText('الإيصالات')).not.toBeInTheDocument();
+    expect(within(desktopPaper).getByText('المرتجعات')).toBeInTheDocument();
+    expect(within(desktopPaper).queryByText(/دون شيفت/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'فتح القائمة' }));
     await waitFor(() =>

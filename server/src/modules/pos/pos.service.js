@@ -346,6 +346,7 @@ export async function checkoutOrder({
         statusCode: 201,
         data: {
           id: orderId,
+          shift_id: shift.id,
           invoice_number: invoiceNumber,
           invoice_qr_token: invoiceToken,
           receipt_id: receiptResult.lastID,

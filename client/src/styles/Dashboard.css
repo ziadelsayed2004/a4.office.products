@@ -1,35 +1,208 @@
-.dashboard-top-product .metric-card__icon--small {
-  width: 38px;
-  height: 38px;
-  margin-inline-end: 10px;
+.dashboard-live-page {
+  --dashboard-panel-gap: var(--space-4);
 }
 
-.dashboard-top-product.MuiListItem-root {
-  min-height: 64px;
+.dashboard-live-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dashboard-alert-strip {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 38%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-warning) 8%, var(--color-surface));
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.dashboard-live-grid {
+  align-items: start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--dashboard-panel-gap);
+}
+
+.dashboard-live-panel {
+  min-width: 0;
+  margin: 0;
+}
+
+.dashboard-panel-heading {
+  margin-bottom: var(--space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  display: flex;
+}
+
+.dashboard-panel-heading .a4-section-title,
+.dashboard-panel-heading .a4-section-subtitle {
+  margin: 0;
+}
+
+.dashboard-shifts-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.dashboard-shift-card {
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    background-color 160ms ease;
+}
+
+.dashboard-shift-card:hover,
+.dashboard-shift-card:focus-visible {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.dashboard-shift-card__heading,
+.dashboard-shift-card__heading > div,
+.dashboard-shift-card__metrics,
+.dashboard-shift-card__payments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.dashboard-shift-card__heading {
+  margin-bottom: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dashboard-shift-card__heading > div {
+  align-items: baseline;
+}
+
+.dashboard-shift-card__heading span,
+.dashboard-shift-card > small,
+.dashboard-shift-card__payments {
+  color: var(--color-text-muted);
+}
+
+.dashboard-shift-card__metrics {
+  margin-bottom: var(--space-2);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dashboard-shift-card__metrics span {
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  display: grid;
+  gap: 2px;
+  font-size: 0.75rem;
+}
+
+.dashboard-shift-card__metrics b {
+  color: var(--color-primary);
+  font-size: 0.875rem;
+}
+
+.dashboard-shift-card__payments {
+  margin-top: var(--space-2);
+  font-size: 0.72rem;
+}
+
+.dashboard-activity-list .MuiListItemButton-root {
+  min-height: 70px;
   padding-inline: 0;
   gap: var(--space-2);
 }
 
-.dashboard-top-product .MuiListItemText-primary {
+.dashboard-activity-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  display: grid;
+}
+
+.dashboard-activity-icon.is-sale {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  color: var(--color-success);
+}
+
+.dashboard-activity-icon.is-return {
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  color: var(--color-danger);
+}
+
+.dashboard-activity-list .MuiListItemText-primary {
   color: var(--color-text);
-  font-size: 0.875rem;
   font-weight: 700;
 }
 
-.dashboard-top-product .MuiListItemText-secondary {
+.dashboard-activity-list .MuiListItemText-secondary {
   color: var(--color-text-muted);
   font-size: 0.75rem;
 }
 
-.dashboard-top-product > strong {
-  color: var(--color-primary);
-  font-size: 0.875rem;
+.dashboard-activity-list .MuiListItemButton-root > strong {
+  color: var(--color-success);
   white-space: nowrap;
 }
 
+.dashboard-activity-list .dashboard-negative {
+  color: var(--color-danger) !important;
+}
+
+.dashboard-last-updated {
+  margin: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  display: flex;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-live-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-live-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 600px) {
-  .dashboard-top-product.MuiListItem-root {
+  .dashboard-live-metrics,
+  .dashboard-shift-card__metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-panel-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboard-activity-list .MuiListItemButton-root {
     align-items: flex-start;
     flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-shift-card {
+    transition: none;
   }
 }

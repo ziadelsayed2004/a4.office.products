@@ -46,7 +46,7 @@ export default function Receipts() {
     setLoading(true);
     setError('');
     try {
-      const response = await api.get(`/api/pos/receipts/${encodeURIComponent(normalized)}`);
+      const response = await api.get(`/api/receipts/${encodeURIComponent(normalized)}`);
       setReceipt(response.data || null);
       setCode(normalized);
       setSearchParams({ code: normalized }, { replace: true });

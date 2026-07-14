@@ -182,9 +182,9 @@ const OPERATIONS = [
   {
     name: 'product labels',
     method: 'POST',
-    path: '/api/admin/products/1/qr-labels',
+    path: '/api/admin/products/1/barcode-labels',
     access: 'admin',
-    invalid: { path: '/api/admin/products/0/qr-labels', body: { quantity: 1 } },
+    invalid: { path: '/api/admin/products/0/barcode-labels', body: { quantity: 1 } },
   },
 
   {
@@ -360,21 +360,21 @@ const OPERATIONS = [
   {
     name: 'receipt detail',
     method: 'GET',
-    path: '/api/pos/receipts/1',
+    path: '/api/receipts/1',
     access: 'protected',
-    invalid: { path: '/api/pos/receipts/%20' },
+    invalid: { path: '/api/receipts/%20' },
   },
   {
     name: 'receipt print request',
     method: 'POST',
-    path: '/api/pos/receipts/1/print-request',
+    path: '/api/receipts/1/print-request',
     access: 'protected',
     invalid: { body: { copies: 0 } },
   },
   {
     name: 'receipt reprint',
     method: 'POST',
-    path: '/api/pos/receipts/1/reprint',
+    path: '/api/receipts/1/reprint',
     access: 'protected',
     invalid: { body: { copies: 0 } },
   },
@@ -726,6 +726,14 @@ async function run() {
       `${operation.name} must return validation details`
     );
   }
+
+  const adminPosReturnResponse = await fetch(`${baseUrl}/api/pos/returns/prepare`, {
+    method: 'POST',
+    headers: { ...authorization(admin.accessToken), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ invoiceCode: 'INV-RBAC-PROBE' }),
+  });
+  assert.equal(adminPosReturnResponse.status, 403, 'Admin must not execute POS returns');
+  assertErrorEnvelope(await json(adminPosReturnResponse), 'FORBIDDEN');
 
   const malformedResponse = await fetch(`${baseUrl}/api/auth/login`, {
     method: 'POST',

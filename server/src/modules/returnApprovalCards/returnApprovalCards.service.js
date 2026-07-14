@@ -45,15 +45,22 @@ const present = (row, includeToken = false) => ({
   status: row.status,
   ownerAdminId: row.owner_admin_id,
   ownerAdminName: row.owner_admin_name,
+  ownerAdminActive: row.owner_admin_role === 'Admin' && Number(row.owner_admin_active) === 1,
   tokenVersion: row.token_version,
-  printCount: row.print_count,
+  printCount: Number(row.print_count),
+  usageCount: Number(row.usage_count || 0),
   lastPrintedAt: row.last_printed_at,
   lastUsedAt: row.last_used_at,
   createdAt: row.created_at,
   ...(includeToken ? { qrToken: tokenFor(row) } : {}),
 });
 
-const select = `SELECT c.*, u.name AS owner_admin_name FROM return_approval_cards c JOIN users u ON u.id = c.owner_admin_id`;
+const select = `SELECT c.*, u.name AS owner_admin_name, u.role AS owner_admin_role,
+                       u.is_active AS owner_admin_active,
+                       (SELECT COUNT(*) FROM returns card_return
+                         WHERE card_return.approval_card_id = c.id) AS usage_count
+                  FROM return_approval_cards c
+                  JOIN users u ON u.id = c.owner_admin_id`;
 
 export async function listCards(connection = db) {
   return (await connection.all(`${select} ORDER BY c.created_at DESC, c.id DESC;`)).map((row) =>
@@ -89,10 +96,24 @@ export async function createCard({ label, adminId }) {
 }
 export async function setCardStatus(id, status, { adminId, reason = null }) {
   return withTransaction(async (connection) => {
-    const card = await connection.get('SELECT * FROM return_approval_cards WHERE id = ?;', [
-      Number(id),
-    ]);
+    const card = await connection.get(
+      `SELECT c.*, owner.role AS owner_admin_role, owner.is_active AS owner_admin_active
+         FROM return_approval_cards c
+         JOIN users owner ON owner.id = c.owner_admin_id
+        WHERE c.id = ?;`,
+      [Number(id)]
+    );
     if (!card) throw new AppError('Approval card not found.', 404, 'APPROVAL_CARD_NOT_FOUND');
+    if (
+      status === 'ACTIVE' &&
+      (card.owner_admin_role !== 'Admin' || Number(card.owner_admin_active) !== 1)
+    ) {
+      throw new AppError(
+        'Approval card owner must be an active Admin.',
+        409,
+        'APPROVAL_CARD_OWNER_INACTIVE'
+      );
+    }
     await connection.run(
       `UPDATE return_approval_cards SET status=?, disabled_at=${status === 'DISABLED' ? 'CURRENT_TIMESTAMP' : 'NULL'}, disabled_by=?, disabled_reason=?, updated_at=CURRENT_TIMESTAMP WHERE id=?;`,
       [
@@ -144,43 +165,144 @@ export async function resolveCardToken(token, connection = db) {
       data: present(row),
       message: 'Approval card is disabled.',
     };
+  if (row.owner_admin_role !== 'Admin' || Number(row.owner_admin_active) !== 1) {
+    return {
+      type: 'return_approval_card',
+      action: 'BLOCKED',
+      data: present(row),
+      message: 'Approval card owner is not an active Admin.',
+    };
+  }
   return { type: 'return_approval_card', action: 'VALID', data: present(row) };
 }
 export async function requireActiveCard(token, connection) {
   const resolved = await resolveCardToken(token, connection);
-  if (resolved.action !== 'VALID')
-    throw new AppError('Approval card is disabled.', 409, 'APPROVAL_CARD_DISABLED');
-  return connection.get('SELECT * FROM return_approval_cards WHERE id = ?;', [resolved.data.id]);
+  if (resolved.action !== 'VALID') {
+    if (resolved.data?.status !== 'ACTIVE') {
+      throw new AppError('Approval card is disabled.', 409, 'APPROVAL_CARD_DISABLED');
+    }
+    throw new AppError(
+      'Approval card owner must be an active Admin.',
+      409,
+      'APPROVAL_CARD_OWNER_INACTIVE'
+    );
+  }
+  return connection.get(
+    `SELECT c.*, u.name AS owner_admin_name
+       FROM return_approval_cards c
+       JOIN users u ON u.id = c.owner_admin_id
+      WHERE c.id = ? AND c.status = 'ACTIVE'
+        AND u.role = 'Admin' AND u.is_active = 1;`,
+    [resolved.data.id]
+  );
+}
+
+export async function listCardUses(id, filters = {}, connection = db) {
+  const cardId = Number(id);
+  if (!Number.isSafeInteger(cardId) || cardId < 1) {
+    throw new AppError('Approval card identifier is invalid.', 400, 'INVALID_APPROVAL_CARD_ID');
+  }
+  const card = await connection.get('SELECT id FROM return_approval_cards WHERE id = ?;', [cardId]);
+  if (!card) throw new AppError('Approval card not found.', 404, 'APPROVAL_CARD_NOT_FOUND');
+  const limit = Number(filters.limit ?? 50);
+  const page = Number(filters.page ?? 1);
+  const offset = Number(filters.offset ?? (page - 1) * limit);
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+    throw new AppError('limit must be between 1 and 100.', 400, 'INVALID_PAGINATION');
+  }
+  if (!Number.isSafeInteger(offset) || offset < 0) {
+    throw new AppError('offset must be zero or greater.', 400, 'INVALID_PAGINATION');
+  }
+  if (!Number.isSafeInteger(page) || page < 1) {
+    throw new AppError('page must be one or greater.', 400, 'INVALID_PAGINATION');
+  }
+  const [uses, count] = await Promise.all([
+    connection.all(
+      `SELECT r.id, r.return_number, r.order_id, o.invoice_number, r.shift_id,
+              r.cashier_id, cashier.name AS cashier_name, r.total_refunded,
+              r.approval_card_version, r.created_at
+         FROM returns r
+         JOIN orders o ON o.id = r.order_id
+         JOIN users cashier ON cashier.id = r.cashier_id
+        WHERE r.approval_card_id = ?
+        ORDER BY r.created_at DESC, r.id DESC LIMIT ? OFFSET ?;`,
+      [cardId, limit, offset]
+    ),
+    connection.get('SELECT COUNT(*) AS total FROM returns WHERE approval_card_id = ?;', [cardId]),
+  ]);
+  return {
+    uses: uses.map((row) => ({
+      id: row.id,
+      returnNumber: row.return_number,
+      orderId: row.order_id,
+      invoiceNumber: row.invoice_number,
+      shiftId: row.shift_id,
+      cashierId: row.cashier_id,
+      cashierName: row.cashier_name,
+      totalRefunded: Number(row.total_refunded),
+      approvalCardVersion: row.approval_card_version,
+      createdAt: row.created_at,
+    })),
+    total: Number(count?.total || 0),
+    pagination: { limit, offset, page: Math.floor(offset / limit) + 1 },
+  };
 }
 export async function requestPrint(id, input, actor) {
+  const cardId = Number(id);
+  const requestKey = String(input.requestKey || '').trim();
+  const copies = Number(input.copies ?? 1);
+  const reason = input.reason == null ? null : String(input.reason).trim() || null;
   return withTransaction(async (connection) => {
+    const card = await connection.get(
+      `SELECT c.*, owner.role AS owner_admin_role, owner.is_active AS owner_admin_active
+         FROM return_approval_cards c
+         JOIN users owner ON owner.id = c.owner_admin_id
+        WHERE c.id = ?;`,
+      [cardId]
+    );
+    if (!card || card.status !== 'ACTIVE') {
+      throw new AppError('Active approval card not found.', 409, 'APPROVAL_CARD_NOT_ACTIVE');
+    }
+    if (card.owner_admin_role !== 'Admin' || Number(card.owner_admin_active) !== 1) {
+      throw new AppError(
+        'Approval card owner must be an active Admin.',
+        409,
+        'APPROVAL_CARD_OWNER_INACTIVE'
+      );
+    }
     const existing = await connection.get(
       'SELECT * FROM return_approval_card_print_requests WHERE user_id=? AND request_key=?;',
-      [actor.id, input.requestKey]
+      [actor.id, requestKey]
     );
-    if (existing)
-      return { replayed: true, card: await getCard(id, connection), copies: existing.copies };
-    const card = await connection.get(
-      "SELECT * FROM return_approval_cards WHERE id=? AND status='ACTIVE';",
-      [Number(id)]
-    );
-    if (!card)
-      throw new AppError('Active approval card not found.', 409, 'APPROVAL_CARD_NOT_ACTIVE');
+    if (existing) {
+      const sameInput =
+        existing.card_id === cardId &&
+        existing.copies === copies &&
+        (existing.reason || null) === reason;
+      if (!sameInput) {
+        throw new AppError(
+          'requestKey was already used with different print input.',
+          409,
+          'PRINT_REQUEST_KEY_CONFLICT'
+        );
+      }
+      return { replayed: true, card: await getCard(cardId, connection), copies };
+    }
     await connection.run(
       'INSERT INTO return_approval_card_print_requests (card_id,user_id,request_key,copies,reason) VALUES (?,?,?,?,?);',
-      [Number(id), actor.id, input.requestKey, input.copies || 1, input.reason || null]
+      [cardId, actor.id, requestKey, copies, reason]
     );
     await connection.run(
       'UPDATE return_approval_cards SET print_count=print_count+?, last_printed_at=CURRENT_TIMESTAMP WHERE id=?;',
-      [input.copies || 1, Number(id)]
+      [copies, cardId]
     );
     await writeAuditLog({
       userId: actor.id,
       actionType: 'RETURN_APPROVAL_CARD_PRINT',
       entityType: 'return_approval_cards',
-      entityId: Number(id),
+      entityId: cardId,
       connection,
     });
-    return { replayed: false, card: await getCard(id, connection), copies: input.copies || 1 };
+    return { replayed: false, card: await getCard(cardId, connection), copies };
   });
 }

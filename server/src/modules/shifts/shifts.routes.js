@@ -72,5 +72,10 @@ router.post(
   validate({ params: idParams, body: rejectShiftBody }),
   shiftsController.rejectShiftCloseController
 );
+router.post(
+  '/:id/admin-close',
+  requireRole(['Admin']),
+  shiftsController.emergencyCloseShiftController
+);
 
 export default router;

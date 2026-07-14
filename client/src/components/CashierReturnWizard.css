@@ -1,0 +1,277 @@
+.cashier-return-wizard {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  gap: var(--space-4);
+  display: grid;
+}
+
+.cashier-return-wizard__head,
+.cashier-return-wizard__panel,
+.cashier-return-wizard__invoice {
+  padding: var(--space-4);
+  border-color: var(--border-color);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+}
+
+.cashier-return-wizard__head {
+  gap: var(--space-4);
+  display: grid;
+}
+
+.cashier-return-wizard__title {
+  justify-content: flex-start;
+  align-items: center;
+  gap: var(--space-3);
+  display: flex;
+}
+
+.cashier-return-wizard__title > span {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-xs);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  place-items: center;
+  flex: 0 0 auto;
+  display: grid;
+}
+
+.cashier-return-wizard__title h2,
+.cashier-return-wizard__title p {
+  margin: 0;
+}
+
+.cashier-return-wizard__title p {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+}
+
+.cashier-return-wizard__head > .MuiButton-root {
+  justify-self: end;
+  position: absolute;
+}
+
+.cashier-return-wizard__head .MuiStepLabel-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.cashier-return-wizard__panel,
+.cashier-return-wizard__review,
+.cashier-return-wizard__allocations,
+.cashier-return-wizard__items,
+.cashier-return-wizard__approval {
+  gap: var(--space-4);
+  display: grid;
+}
+
+.cashier-return-wizard__scan-row {
+  gap: var(--space-2);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  display: grid;
+}
+
+.cashier-return-wizard__scan-row > .MuiButton-root {
+  min-height: var(--control-height);
+}
+
+.cashier-return-wizard__invoice {
+  gap: var(--space-4);
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: center;
+  display: grid;
+}
+
+.cashier-return-wizard__invoice span,
+.cashier-return-wizard__invoice strong {
+  display: block;
+}
+
+.cashier-return-wizard__invoice span {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.cashier-return-wizard__candidates {
+  padding: var(--space-3);
+  gap: var(--space-2);
+  border: 1px dashed var(--color-warning);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--color-warning) 9%, var(--color-surface));
+  display: grid;
+}
+
+.cashier-return-wizard__candidates .MuiButton-root {
+  justify-content: flex-start;
+  text-align: right;
+}
+
+.cashier-return-wizard__items article {
+  padding: var(--space-3);
+  gap: var(--space-3);
+  grid-template-columns: minmax(180px, 1fr) 160px minmax(190px, 0.7fr) auto;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-alt);
+  display: grid;
+}
+
+.cashier-return-wizard__item-name strong,
+.cashier-return-wizard__item-name span {
+  display: block;
+}
+
+.cashier-return-wizard__item-name span {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.cashier-return-wizard__quantity {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+  align-items: center;
+  display: flex;
+}
+
+.cashier-return-wizard__quantity .MuiTextField-root {
+  width: 60px;
+}
+
+.cashier-return-wizard__quantity input {
+  padding-inline: 2px;
+  text-align: center;
+}
+
+.cashier-return-wizard__no-restock {
+  grid-column: 1 / -1;
+}
+
+.cashier-return-wizard__empty {
+  padding: var(--space-5);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.cashier-return-wizard__actions {
+  justify-content: flex-end;
+  display: flex;
+}
+
+.cashier-return-wizard__actions .MuiButton-root {
+  min-height: 48px;
+}
+
+.cashier-return-wizard__review-head {
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  display: flex;
+}
+
+.cashier-return-wizard__review-head span,
+.cashier-return-wizard__review-head strong {
+  display: block;
+}
+
+.cashier-return-wizard__review-head span {
+  color: var(--color-text-muted);
+}
+
+.cashier-return-wizard__review-head strong {
+  color: var(--color-success);
+  font-size: 1.6rem;
+}
+
+.cashier-return-wizard__review-items {
+  gap: var(--space-2);
+  display: grid;
+}
+
+.cashier-return-wizard__review-items > div,
+.cashier-return-wizard__allocations section > div,
+.cashier-return-wizard__approved {
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  display: flex;
+}
+
+.cashier-return-wizard__review-items > div,
+.cashier-return-wizard__allocations section {
+  padding: var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+}
+
+.cashier-return-wizard__allocations section {
+  gap: var(--space-3);
+  background: var(--color-surface-alt);
+  display: grid;
+}
+
+.cashier-return-wizard__approval {
+  padding-top: var(--space-2);
+}
+
+.cashier-return-wizard__approved {
+  padding: var(--space-3);
+  border: 1px solid var(--color-success);
+  border-radius: var(--radius-xs);
+  background: var(--color-success-soft);
+}
+
+.cashier-return-wizard__approved > svg {
+  color: var(--color-success);
+}
+
+.cashier-return-wizard__approved div {
+  margin-inline-end: auto;
+}
+
+.cashier-return-wizard__approved strong,
+.cashier-return-wizard__approved span {
+  display: block;
+}
+
+@media (max-width: 760px) {
+  .cashier-return-wizard__head > .MuiButton-root {
+    justify-self: stretch;
+    position: static;
+  }
+
+  .cashier-return-wizard__head .MuiStepper-root {
+    display: none;
+  }
+
+  .cashier-return-wizard__scan-row,
+  .cashier-return-wizard__invoice,
+  .cashier-return-wizard__items article {
+    grid-template-columns: 1fr;
+  }
+
+  .cashier-return-wizard__scan-row > .MuiButton-root {
+    width: 100%;
+    min-height: var(--control-height-mobile);
+  }
+
+  .cashier-return-wizard__quantity {
+    width: max-content;
+  }
+
+  .cashier-return-wizard__review-head,
+  .cashier-return-wizard__approved {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cashier-return-wizard__approved div {
+    margin-inline-end: 0;
+  }
+}

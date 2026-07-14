@@ -8,10 +8,18 @@ import { backupDatabase } from '../utils/backup.js';
 import * as workflowHardening from './migrations/001_workflow_hardening.js';
 import * as returnAuthorizations from './migrations/002_return_authorizations.js';
 import * as approvalCardsBarcodes from './migrations/003_approval_cards_barcodes.js';
+import * as directReturnsAdminPrinting from './migrations/004_direct_returns_admin_printing.js';
+import * as liveAdminActivity from './migrations/005_live_admin_activity.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const migrations = [workflowHardening, returnAuthorizations, approvalCardsBarcodes];
+const migrations = [
+  workflowHardening,
+  returnAuthorizations,
+  approvalCardsBarcodes,
+  directReturnsAdminPrinting,
+  liveAdminActivity,
+];
 
 async function tableExists(name) {
   return Boolean(
@@ -100,6 +108,10 @@ async function validateTargetSchema() {
   const productColumns = await db.all('PRAGMA table_info(products);');
   if (!productColumns.some((column) => column.name === 'availability_policy')) {
     throw new Error('Post-migration validation failed: canonical product policy is missing.');
+  }
+  const sessionColumns = await db.all('PRAGMA table_info(sessions);');
+  if (!sessionColumns.some((column) => column.name === 'last_seen_at')) {
+    throw new Error('Post-migration validation failed: sessions.last_seen_at is missing.');
   }
   const paymentMethodColumns = await db.all('PRAGMA table_info(payment_methods);');
   for (const column of ['is_system', 'refund_mode']) {

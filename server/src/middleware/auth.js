@@ -42,6 +42,7 @@ export const authenticate = async (req, res, next) => {
     // claims cannot outlive an Admin role change.
     req.user = {
       id: user.id,
+      sessionId: user.active_session_id,
       username: user.username,
       role: user.role,
       name: user.name,

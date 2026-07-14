@@ -35,7 +35,9 @@ import {
 } from './modules/returnAuthorizations/returnAuthorizations.routes.js';
 import { isChromiumAvailable } from './utils/pdf.js';
 import returnApprovalCardRoutes from './modules/returnApprovalCards/returnApprovalCards.routes.js';
-import cashierReturnRoutes from './modules/cashierReturns/cashierReturns.routes.js';
+import cashierReturnRoutes, {
+  adminReturnRoutes,
+} from './modules/cashierReturns/cashierReturns.routes.js';
 
 const app = express();
 app.set('trust proxy', config.trustProxy);
@@ -59,6 +61,7 @@ app.use('/api/customers', customersRoutes);
 app.use('/api/admin/customers', customersAdminRoutes);
 app.use('/api/pos', posRoutes);
 app.use('/api/pos/receipts', receiptRoutes);
+app.use('/api/receipts', receiptRoutes);
 app.use('/api/admin/invoices', adminInvoiceRoutes);
 app.use('/api/pos/invoices', posInvoiceRoutes);
 app.use('/api/pos/preorders', preorderRoutes);
@@ -66,6 +69,7 @@ app.use('/api/admin/preorders', preorderAdminRoutes);
 app.use('/api/admin/return-authorizations', adminReturnAuthorizationRoutes);
 app.use('/api/pos/return-authorizations', posReturnAuthorizationRoutes);
 app.use('/api/admin/return-approval-cards', returnApprovalCardRoutes);
+app.use('/api/admin/returns', adminReturnRoutes);
 app.use('/api/pos/returns', cashierReturnRoutes);
 app.use('/api/shifts', shiftsRoutes);
 app.use('/api/admin', reportsRoutes);
@@ -96,7 +100,7 @@ app.get('/api/health', async (req, res) => {
         journalMode: journal?.journal_mode,
         foreignKeys: foreignKeys?.foreign_keys === 1,
       },
-      migrations: { ready: Number(migrations?.count || 0) >= 3 },
+      migrations: { ready: Number(migrations?.count || 0) >= 5 },
       pdf: { available: isChromiumAvailable() },
     });
   } catch (error) {

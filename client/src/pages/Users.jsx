@@ -4,6 +4,7 @@ import {
   AddRounded,
   EditRounded,
   KeyRounded,
+  LogoutRounded,
   PersonOffRounded,
   PersonRounded,
   RefreshRounded,
@@ -19,7 +20,7 @@ import { FormSection } from '../components/forms/FormSection.jsx';
 import { ConfirmDialog } from '../components/ConfirmDialog.jsx';
 import { LoadingState } from '../components/LoadingState.jsx';
 import { AppSnackbar } from '../components/AppSnackbar.jsx';
-import { dateTime } from '../utils/formatters.js';
+import { dateTime, money } from '../utils/formatters.js';
 import '../styles/Users.css';
 
 const emptyForm = { username: '', password: '', role: 'Cashier', name: '', phone: '' };
@@ -35,6 +36,7 @@ export default function Users() {
   const [passwordUser, setPasswordUser] = useState(null);
   const [newPassword, setNewPassword] = useState('');
   const [toggleUser, setToggleUser] = useState(null);
+  const [revokeUser, setRevokeUser] = useState(null);
   const load = async () => {
     setLoading(true);
     try {
@@ -67,6 +69,8 @@ export default function Users() {
   const save = async () => {
     if (!form.name.trim() || !form.username.trim() || (!editing && !form.password))
       return setToast({ severity: 'error', message: 'أكمل البيانات المطلوبة.' });
+    if (!editing && form.password.length < 8)
+      return setToast({ severity: 'error', message: 'كلمة المرور يجب ألا تقل عن 8 أحرف.' });
     setSaving(true);
     try {
       if (editing)
@@ -86,8 +90,8 @@ export default function Users() {
     }
   };
   const changePassword = async () => {
-    if (newPassword.length < 6)
-      return setToast({ severity: 'error', message: 'كلمة المرور يجب ألا تقل عن 6 أحرف.' });
+    if (newPassword.length < 8)
+      return setToast({ severity: 'error', message: 'كلمة المرور يجب ألا تقل عن 8 أحرف.' });
     setSaving(true);
     try {
       await api.patch(`/api/admin/users/${passwordUser.id}/password`, { password: newPassword });
@@ -109,6 +113,20 @@ export default function Users() {
       );
       setToast({ message: toggleUser.is_active ? 'تم تعطيل الحساب.' : 'تم تفعيل الحساب.' });
       setToggleUser(null);
+      await load();
+    } catch (e) {
+      setToast({ severity: 'error', message: e.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+  const revokeSessions = async () => {
+    if (!revokeUser) return;
+    setSaving(true);
+    try {
+      await api.post(`/api/admin/users/${revokeUser.id}/revoke-sessions`, {});
+      setRevokeUser(null);
+      setToast({ message: 'تم إنهاء كل جلسات الحساب.' });
       await load();
     } catch (e) {
       setToast({ severity: 'error', message: e.message });
@@ -139,7 +157,50 @@ export default function Users() {
         />
       ),
     },
-    { key: 'created_at', label: 'تاريخ الإنشاء', render: (r) => dateTime(r.created_at) },
+    {
+      key: 'work_status',
+      label: 'التشغيل',
+      render: (r) => {
+        const shiftId = r.openShiftId || r.open_shift_id || r.openShift?.id;
+        return shiftId ? (
+          <StatusChip status="OPEN" label={`شيفت #${shiftId}`} />
+        ) : (
+          <StatusChip status="inactive" label="دون شيفت" />
+        );
+      },
+    },
+    {
+      key: 'online',
+      label: 'الاتصال',
+      render: (r) => {
+        const online = Boolean(r.isOnline || r.is_online);
+        const sessions = Number(r.activeSessionsCount ?? r.active_sessions_count ?? 0);
+        return (
+          <div className="users-connection">
+            <StatusChip
+              status={online ? 'active' : 'inactive'}
+              label={online ? 'متصل الآن' : 'غير متصل'}
+            />
+            <small>{sessions} جلسة سارية</small>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'today_sales',
+      label: 'مبيعات اليوم',
+      render: (r) => money(r.todaySales ?? r.today_sales ?? 0),
+    },
+    {
+      key: 'last_seen_at',
+      label: 'الدخول والنشاط',
+      render: (r) => (
+        <div className="users-activity">
+          <span>نشاط: {dateTime(r.lastSeenAt || r.last_seen_at)}</span>
+          <small>دخول: {dateTime(r.lastLoginAt || r.last_login_at)}</small>
+        </div>
+      ),
+    },
     {
       key: 'actions',
       label: 'الإجراءات',
@@ -168,6 +229,11 @@ export default function Users() {
               )}
             </IconButton>
           </Tooltip>
+          <Tooltip title="إنهاء الجلسات">
+            <IconButton size="small" color="warning" onClick={() => setRevokeUser(r)}>
+              <LogoutRounded fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </div>
       ),
     },
@@ -176,7 +242,7 @@ export default function Users() {
     <div className="a4-page">
       <PageHeader
         title="المستخدمون"
-        description="إدارة حسابات الأدمن والكاشير. لا يمكن للكاشير تعديل بيانات حسابه بنفسه."
+        description="إدارة الحسابات والجلسات، ومتابعة الاتصال والشيفت ومبيعات اليوم دون كشف أي بيانات سرية."
         actions={
           <>
             <Button variant="outlined" startIcon={<RefreshRounded />} onClick={load}>
@@ -274,6 +340,15 @@ export default function Users() {
         loading={saving}
         onClose={() => setToggleUser(null)}
         onConfirm={toggle}
+      />
+      <ConfirmDialog
+        open={Boolean(revokeUser)}
+        title="إنهاء جلسات الحساب"
+        description={`سيتم تسجيل خروج ${revokeUser?.name || ''} من كل الأجهزة. لا يغلق هذا الإجراء الشيفت المفتوح.`}
+        danger
+        loading={saving}
+        onClose={() => setRevokeUser(null)}
+        onConfirm={revokeSessions}
       />
       <AppSnackbar state={toast} onClose={() => setToast(null)} />
     </div>

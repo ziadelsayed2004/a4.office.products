@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token TEXT UNIQUE NOT NULL,
     expires_at DATETIME NOT NULL,
+    last_seen_at DATETIME,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -387,6 +388,8 @@ CREATE INDEX IF NOT EXISTS idx_preorders_number ON preorders(preorder_number);
 CREATE INDEX IF NOT EXISTS idx_preorders_qr_token ON preorders(qr_pickup_token);
 CREATE INDEX IF NOT EXISTS idx_shifts_user ON shifts(user_id);
 CREATE INDEX IF NOT EXISTS idx_shifts_status ON shifts(status);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_activity ON sessions(user_id, last_seen_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_payments_reference ON payments(reference_type, reference_id);
 CREATE INDEX IF NOT EXISTS idx_inv_ledger_product ON inventory_ledger(product_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);

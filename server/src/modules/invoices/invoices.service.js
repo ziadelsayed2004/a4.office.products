@@ -634,3 +634,24 @@ export async function getInvoiceByExactCredential(criteria, actor, connection = 
   const invoiceId = await resolveExactInvoiceId(criteria, connection);
   return getInvoiceDetail(invoiceId, actor, { credential: criteria, connection });
 }
+
+export async function authorizeInvoicePdfOutput(actor, connection = db) {
+  if (actor?.role === 'Admin') {
+    return { shiftId: null, actorRoleSnapshot: 'Admin', adminOverride: true };
+  }
+  if (actor?.role !== 'Cashier') {
+    throw new AppError('Invoice PDF export is forbidden.', 403, 'FORBIDDEN');
+  }
+  const shift = await connection.get(
+    "SELECT id FROM shifts WHERE user_id = ? AND status = 'OPEN' ORDER BY id DESC LIMIT 1;",
+    [actor.id]
+  );
+  if (!shift) {
+    throw new AppError(
+      'An OPEN shift owned by the acting cashier is required to export an invoice PDF.',
+      409,
+      'OPEN_OWN_SHIFT_REQUIRED'
+    );
+  }
+  return { shiftId: shift.id, actorRoleSnapshot: 'Cashier', adminOverride: false };
+}

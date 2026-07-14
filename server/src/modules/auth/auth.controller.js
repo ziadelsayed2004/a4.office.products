@@ -46,3 +46,12 @@ export async function meController(req, res, next) {
     return next(error);
   }
 }
+
+export async function heartbeatController(req, res, next) {
+  try {
+    const data = await authService.heartbeat(req.user.id, req.user.sessionId);
+    return res.status(200).json({ status: 'success', data });
+  } catch (error) {
+    return next(error);
+  }
+}

@@ -23,6 +23,8 @@ export const getPaymentsReportController = (req, res, next) =>
   send(res, next, reportsService.getPaymentsReport(req.query));
 export const getCashiersReportController = (req, res, next) =>
   send(res, next, reportsService.getCashiersReport(req.query));
+export const getReturnsReportController = (req, res, next) =>
+  send(res, next, reportsService.getReturnsReport(req.query));
 
 export async function exportReportController(req, res, next) {
   try {
@@ -41,6 +43,20 @@ export async function exportReportController(req, res, next) {
         ['العميل', 'customer_name'],
         ['الإجمالي بالقرش', 'total'],
         ['التاريخ', 'created_at'],
+      ];
+    } else if (type === 'returns') {
+      report = await reportsService.getReturnsReport(req.query);
+      headers = [
+        ['رقم المرتجع', 'returnNumber'],
+        ['رقم الفاتورة', 'invoiceNumber'],
+        ['رقم الإيصال', 'receiptNumber'],
+        ['الكاشير', 'cashierName'],
+        ['الشيفت', 'shiftId'],
+        ['المبلغ المسترد بالقرش', 'totalRefunded'],
+        ['كارت الاعتماد', 'approvalCardNumber'],
+        ['نسخة الكارت', 'approvalCardVersion'],
+        ['سبب المرتجع', 'reason'],
+        ['التاريخ', 'createdAt'],
       ];
     } else if (type === 'preorders') {
       report = await reportsService.getPreordersReport(req.query);

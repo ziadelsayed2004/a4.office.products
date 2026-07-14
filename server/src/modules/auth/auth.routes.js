@@ -13,5 +13,6 @@ router.post('/logout', validate({ body: logoutBody }), authController.logoutCont
 
 // Protected routes
 router.get('/me', authenticate, authController.meController);
+router.post('/heartbeat', authenticate, authController.heartbeatController);
 
 export default router;

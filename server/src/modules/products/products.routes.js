@@ -46,6 +46,12 @@ adminRouter.delete(
   productsController.deleteProductController
 );
 adminRouter.post(
+  '/:id/barcode-labels',
+  validate({ params: idParams, body: qrLabelsBody }),
+  productsController.generateQrLabelsController
+);
+// Temporary compatibility alias for clients deployed before barcode naming was standardized.
+adminRouter.post(
   '/:id/qr-labels',
   validate({ params: idParams, body: qrLabelsBody }),
   productsController.generateQrLabelsController

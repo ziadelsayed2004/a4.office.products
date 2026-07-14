@@ -5,6 +5,7 @@ import {
   getInvoiceDetail,
   listInvoices,
 } from '../invoices/invoices.service.js';
+import { listAdminReturns } from '../cashierReturns/cashierReturns.service.js';
 
 const ADMIN_ACTOR = { id: 0, role: 'Admin' };
 
@@ -337,6 +338,30 @@ export async function getCashiersReport(filters = {}) {
       cashier_count: rows.length,
       invoice_total: rows.reduce((sum, row) => sum + row.invoice_total, 0),
     },
+  };
+}
+
+export async function getReturnsReport(filters = {}) {
+  const rows = [];
+  let total = 0;
+  let offset = 0;
+  do {
+    const page = await listAdminReturns({ ...filters, limit: 100, offset });
+    total = page.total;
+    rows.push(...page.returns);
+    offset += page.returns.length;
+    if (page.returns.length === 0) break;
+  } while (offset < total);
+
+  return {
+    summary: {
+      returns_count: total,
+      total_refunded: rows.reduce((sum, row) => sum + Number(row.totalRefunded || 0), 0),
+      unique_invoices: new Set(rows.map((row) => row.orderId)).size,
+      approval_cards_used: new Set(rows.map((row) => row.approvalCardId).filter(Boolean)).size,
+    },
+    rows,
+    total,
   };
 }
 

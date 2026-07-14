@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import db, { withTransaction } from '../../db/index.js';
 import { writeAuditLog } from '../../utils/auditLogger.js';
 import { AppError } from '../../utils/errors.js';
+import { addCalendarDay, cairoMidnightUtc } from '../invoices/invoices.service.js';
 
 const ROLES = new Set(['Admin', 'Cashier']);
 
@@ -39,9 +40,69 @@ async function assertAdminWillRemain(connection, user) {
   }
 }
 
+async function assertNoUnfinishedCashierShift(connection, user) {
+  if (user.role !== 'Cashier') return;
+  const shift = await connection.get(
+    `SELECT id, status FROM shifts
+      WHERE user_id = ? AND status IN ('OPEN', 'PENDING_ADMIN_REVIEW')
+      ORDER BY id DESC LIMIT 1;`,
+    [user.id]
+  );
+  if (shift) {
+    throw new AppError(
+      'A Cashier with an unfinished shift cannot be disabled or assigned another role.',
+      409,
+      'USER_HAS_UNFINISHED_SHIFT',
+      { shiftId: shift.id, shiftStatus: shift.status }
+    );
+  }
+}
+
+function cairoToday(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Cairo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 export async function getAllUsers(connection = db) {
+  const date = cairoToday();
+  const start = cairoMidnightUtc(date);
+  const end = cairoMidnightUtc(addCalendarDay(date));
   return connection.all(
-    'SELECT id, username, role, name, phone, is_active, created_at, updated_at FROM users ORDER BY created_at DESC;'
+    `SELECT u.id, u.username, u.role, u.name, u.phone, u.is_active,
+            u.created_at, u.updated_at,
+            (SELECT MAX(a.created_at) FROM audit_logs a
+              WHERE a.user_id = u.id AND a.action_type = 'LOGIN') AS last_login_at,
+            (SELECT MAX(s.last_seen_at) FROM sessions s
+              WHERE s.user_id = u.id AND datetime(s.expires_at) > CURRENT_TIMESTAMP) AS last_seen_at,
+            (SELECT COUNT(*) FROM sessions s
+              WHERE s.user_id = u.id AND datetime(s.expires_at) > CURRENT_TIMESTAMP) AS active_sessions_count,
+            CASE WHEN EXISTS (
+              SELECT 1 FROM sessions s WHERE s.user_id = u.id
+               AND datetime(s.expires_at) > CURRENT_TIMESTAMP
+               AND datetime(s.last_seen_at) >= datetime('now', '-90 seconds')
+            ) THEN 1 ELSE 0 END AS is_online,
+            (SELECT id FROM shifts sh WHERE sh.user_id = u.id AND sh.status = 'OPEN'
+              ORDER BY sh.id DESC LIMIT 1) AS open_shift_id,
+            (SELECT opened_at FROM shifts sh WHERE sh.user_id = u.id AND sh.status = 'OPEN'
+              ORDER BY sh.id DESC LIMIT 1) AS open_shift_opened_at,
+            (SELECT id FROM shifts sh WHERE sh.user_id = u.id
+              AND sh.status IN ('OPEN', 'PENDING_ADMIN_REVIEW')
+              ORDER BY sh.id DESC LIMIT 1) AS unfinished_shift_id,
+            (SELECT status FROM shifts sh WHERE sh.user_id = u.id
+              AND sh.status IN ('OPEN', 'PENDING_ADMIN_REVIEW')
+              ORDER BY sh.id DESC LIMIT 1) AS unfinished_shift_status,
+            (SELECT COUNT(*) FROM orders o WHERE o.cashier_id = u.id
+              AND o.created_at >= ? AND o.created_at < ?) AS today_sales_count,
+            (SELECT COALESCE(SUM(o.total), 0) FROM orders o WHERE o.cashier_id = u.id
+              AND o.created_at >= ? AND o.created_at < ?) AS today_sales
+       FROM users u ORDER BY u.created_at DESC;`,
+    [start, end, start, end]
   );
 }
 
@@ -110,6 +171,7 @@ export async function updateUser(id, { role, name, phone }, adminUserId) {
       throw new AppError('Phone is too long.', 400, 'INVALID_PHONE');
     if (oldUser.role === 'Admin' && finalRole !== 'Admin')
       await assertAdminWillRemain(connection, oldUser);
+    if (finalRole !== oldUser.role) await assertNoUnfinishedCashierShift(connection, oldUser);
 
     await connection.run(
       `UPDATE users SET role = ?, name = ?, phone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`,
@@ -161,6 +223,7 @@ export async function setUserActiveStatus(id, isActive, adminUserId) {
     const newStatus = isActive ? 1 : 0;
     if (user.is_active === newStatus) return true;
     if (newStatus === 0) await assertAdminWillRemain(connection, user);
+    if (newStatus === 0) await assertNoUnfinishedCashierShift(connection, user);
 
     await connection.run(
       'UPDATE users SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;',
@@ -178,5 +241,61 @@ export async function setUserActiveStatus(id, isActive, adminUserId) {
       connection,
     });
     return true;
+  });
+}
+
+export async function listUserSessions(userId, connection = db) {
+  const id = Number(userId);
+  if (!Number.isSafeInteger(id) || id < 1)
+    throw new AppError('Invalid user identifier.', 400, 'INVALID_USER_ID');
+  const user = await connection.get('SELECT id FROM users WHERE id = ?;', [id]);
+  if (!user) throw new AppError('User not found.', 404, 'USER_NOT_FOUND');
+  return connection.all(
+    `SELECT id, created_at, expires_at, last_seen_at,
+            CASE WHEN datetime(expires_at) > CURRENT_TIMESTAMP
+              AND datetime(last_seen_at) >= datetime('now', '-90 seconds')
+              THEN 1 ELSE 0 END AS is_online
+       FROM sessions WHERE user_id = ? ORDER BY created_at DESC, id DESC;`,
+    [id]
+  );
+}
+
+export async function revokeUserSessions(userId, adminUserId, sessionId = null) {
+  const id = Number(userId);
+  const selectedSessionId = sessionId === null ? null : Number(sessionId);
+  if (!Number.isSafeInteger(id) || id < 1)
+    throw new AppError('Invalid user identifier.', 400, 'INVALID_USER_ID');
+  if (
+    selectedSessionId !== null &&
+    (!Number.isSafeInteger(selectedSessionId) || selectedSessionId < 1)
+  ) {
+    throw new AppError('Invalid session identifier.', 400, 'INVALID_SESSION_ID');
+  }
+  return withTransaction(async (connection) => {
+    const user = await getUserById(id, connection);
+    if (!user) throw new AppError('User not found.', 404, 'USER_NOT_FOUND');
+    let result;
+    if (selectedSessionId === null) {
+      result = await connection.run('DELETE FROM sessions WHERE user_id = ?;', [id]);
+    } else {
+      result = await connection.run('DELETE FROM sessions WHERE id = ? AND user_id = ?;', [
+        selectedSessionId,
+        id,
+      ]);
+      if (result.changes !== 1) throw new AppError('Session not found.', 404, 'SESSION_NOT_FOUND');
+    }
+    await writeAuditLog({
+      userId: adminUserId,
+      actionType: 'USER_SESSIONS_REVOKE',
+      entityType: 'users',
+      entityId: id,
+      afterValues: {
+        revokedCount: result.changes,
+        sessionId: selectedSessionId,
+      },
+      notes: `Revoked ${result.changes} session(s) for ${user.username}`,
+      connection,
+    });
+    return { revokedCount: result.changes, sessionId: selectedSessionId };
   });
 }

@@ -19,7 +19,6 @@ import {
 } from '@mui/material';
 import {
   AddRounded,
-  AssignmentReturnRounded,
   CloseRounded,
   PointOfSaleRounded,
   QrCodeScannerRounded,
@@ -36,6 +35,7 @@ import { PaymentEntry, paymentRowsToPayload } from '../components/PaymentEntry.j
 import { Field } from '../components/forms/Field.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
 import { AppSnackbar } from '../components/AppSnackbar.jsx';
+import { CashierReturnWizard } from '../components/CashierReturnWizard.jsx';
 import { money, number, statusLabel } from '../utils/formatters.js';
 import { createIdempotencyKey, parsePiasters, piastersToInput } from '../utils/money.js';
 import {
@@ -98,10 +98,6 @@ export default function POS() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [pickupOpen, setPickupOpen] = useState(false);
   const [pickupData, setPickupData] = useState(null);
-  const [returnOpen, setReturnOpen] = useState(false);
-  const [returnData, setReturnData] = useState(null);
-  const [refundReferences, setRefundReferences] = useState({});
-  const [returnKey, setReturnKey] = useState(() => createIdempotencyKey('return'));
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [splitPayment, setSplitPayment] = useState(false);
   const [quickMethodCode, setQuickMethodCode] = useState('');
@@ -156,9 +152,6 @@ export default function POS() {
     selectedDeposit = minimumDeposit;
   }
   const due = mode === MODES.PREORDER ? selectedDeposit : total;
-  const returnAuthorization = returnData?.authorization || returnData || {};
-  const returnItems = returnAuthorization.items || returnData?.items || [];
-  const returnAllocations = returnAuthorization.allocations || returnData?.allocations || [];
 
   const draftKey = (draftMode) =>
     `${DRAFT_PREFIX}.${user?.id || 'anonymous'}.${currentShift?.id || 'no-shift'}.${draftMode}`;
@@ -386,33 +379,7 @@ export default function POS() {
     try {
       const resolved = resolvePayload(await api.post('/api/pos/scan/resolve', { code: clean }));
       if (resolved.type === 'invoice') {
-        if (mode !== MODES.RETURN) navigate(`/invoices?token=${encodeURIComponent(clean)}`);
-        else {
-          const invoice = resolved.data;
-          const items = (invoice.items || [])
-            .filter((item) => Number(item.remaining_returnable_quantity ?? item.quantity) > 0)
-            .map((item) => ({
-              orderItemId: item.order_item_id || item.id,
-              quantity: Number(item.remaining_returnable_quantity ?? item.quantity),
-              disposition: 'RESTOCK',
-            }));
-          const quote = (
-            await api.post('/api/pos/returns/quote', {
-              orderId: invoice.id,
-              items,
-              reason: 'Customer return',
-            })
-          ).data;
-          setReturnData({
-            ...quote,
-            invoice,
-            request: { orderId: invoice.id, items, reason: 'Customer return' },
-            approvalCardToken: '',
-          });
-          setRefundReferences({});
-          setReturnKey(createIdempotencyKey('return'));
-          setToast({ message: 'تم تجهيز المرتجع. راجع التفاصيل ثم امسح بطاقة اعتماد الأدمن.' });
-        }
+        navigate(`/invoices?token=${encodeURIComponent(clean)}`);
       } else if (resolved.type === 'preorder') {
         const value = resolved.data.preorder ? resolved.data : resolved.raw;
         setPickupData(value);
@@ -420,21 +387,7 @@ export default function POS() {
         setPickupKey(createIdempotencyKey('pickup'));
         setPickupOpen(true);
       } else if (resolved.type === 'return_approval_card') {
-        if (!returnData?.request) {
-          setToast({ severity: 'warning', message: 'امسح الفاتورة وجهّز المرتجع أولاً.' });
-        } else if (resolved.raw.action !== 'VALID') {
-          setToast({
-            severity: 'error',
-            message: resolved.raw.message || 'بطاقة الاعتماد متوقفة.',
-          });
-        } else {
-          setReturnData((value) => ({
-            ...value,
-            approvalCardToken: clean,
-            approvalCard: resolved.data,
-          }));
-          setReturnOpen(true);
-        }
+        setToast({ severity: 'warning', message: 'افتح وضع المرتجع قبل مسح بطاقة الاعتماد.' });
       } else if (resolved.type === 'return_authorization') {
         setToast({
           severity: 'error',
@@ -477,7 +430,7 @@ export default function POS() {
 
   useScannerCapture({
     onScan: resolveScan,
-    disabled: checkoutOpen || pickupOpen || returnOpen,
+    disabled: checkoutOpen || pickupOpen || mode === MODES.RETURN,
     restoreFocusRef: searchRef,
   });
 
@@ -536,7 +489,6 @@ export default function POS() {
       if (event.key === 'Escape') {
         setCheckoutOpen(false);
         setPickupOpen(false);
-        setReturnOpen(false);
         setMobileCartOpen(false);
         return;
       }
@@ -653,50 +605,28 @@ export default function POS() {
     }
   };
 
-  const completeReturn = async () => {
-    if (!(returnData?.approvalCardToken || returnData?.token) || loading) return;
-    const authorization = returnData.authorization || returnData;
-    const allocations = authorization.allocations || returnData.allocations || [];
-    const references = allocations
-      .filter(
-        (allocation) =>
-          String(allocation.refund_mode || allocation.refundMode).toUpperCase() ===
-          'EXTERNAL_REFERENCE'
-      )
-      .map((allocation) => ({
-        allocationId: allocation.paymentMethodId || allocation.payment_method_id || allocation.id,
-        referenceNumber: String(refundReferences[allocation.id] || '').trim(),
-      }));
-    if (references.some((reference) => !reference.referenceNumber)) {
-      setToast({ severity: 'warning', message: 'أدخل مرجع الرد الخارجي لكل طريقة غير نقدية.' });
-      return;
-    }
-    setLoading(true);
-    try {
-      const response = await api.post(
-        '/api/pos/returns/execute',
-        {
-          ...returnData.request,
-          approvalCardToken: returnData.approvalCardToken,
-          refundReferences: references,
-        },
-        { headers: { 'Idempotency-Key': returnKey } }
+  const completeReturn = async (result) => {
+    setSuccess({
+      ...result,
+      receipt_id: result.receiptId || result.receipt_id,
+      receipt_number: result.receiptNumber || result.receipt_number,
+      returnNumber: result.returnNumber || result.return_number,
+      workflow: MODES.RETURN,
+    });
+    setCheckoutOpen(true);
+    await loadShift();
+    const receiptId = result.receiptId || result.receipt_id;
+    if (receiptId) {
+      printReceiptInFrame({
+        receiptId,
+        copies: printSettings.copies || printSettings.receipt_copies,
+        isReprint: false,
+      }).catch((printError) =>
+        setToast({
+          severity: 'warning',
+          message: `تم المرتجع وحُفظ الإيصال، لكن المتصفح منع أو تعذر فتح الطباعة: ${printError.message} استخدم زر «عرض مستند الطباعة» للمحاولة مرة أخرى.`,
+        })
       );
-      setReturnOpen(false);
-      setReturnData(null);
-      setRefundReferences({});
-      setSuccess({
-        ...response.data,
-        receipt_id: response.data.receiptId,
-        receipt_number: response.data.receiptNumber,
-        workflow: MODES.RETURN,
-      });
-      setCheckoutOpen(true);
-      await loadShift();
-    } catch (error) {
-      setToast({ severity: 'error', message: error.message });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -749,30 +679,30 @@ export default function POS() {
           <Tab value={MODES.RETURN} label="مرتجع" />
         </Tabs>
       </Paper>
-      <div className="pos-scanbar">
-        <Field label="المسح الموحد: منتج أو حجز أو فاتورة أو بطاقة مرتجع">
-          <TextField
-            inputRef={searchRef}
-            value={scanCode}
-            onChange={(event) => setScanCode(event.target.value)}
-            onKeyDown={(event) => event.key === 'Enter' && resolveScan(scanCode)}
-            placeholder="امسح الرمز ثم Enter"
-            slotProps={{ input: { endAdornment: <QrCodeScannerRounded /> } }}
-          />
-        </Field>
-      </div>
+      {mode !== MODES.RETURN && (
+        <div className="pos-scanbar">
+          <Field label="المسح الموحد: منتج أو حجز أو فاتورة">
+            <TextField
+              inputRef={searchRef}
+              value={scanCode}
+              onChange={(event) => setScanCode(event.target.value)}
+              onKeyDown={(event) => event.key === 'Enter' && resolveScan(scanCode)}
+              placeholder="امسح الرمز ثم Enter"
+              slotProps={{ input: { endAdornment: <QrCodeScannerRounded /> } }}
+            />
+          </Field>
+        </div>
+      )}
 
-      {[MODES.PICKUP, MODES.RETURN].includes(mode) ? (
+      {mode === MODES.RETURN ? (
+        <CashierReturnWizard onComplete={completeReturn} />
+      ) : mode === MODES.PICKUP ? (
         <Paper className="pickup-scanner" variant="outlined">
           <div className="pickup-scanner__icon">
-            {mode === MODES.RETURN ? <AssignmentReturnRounded /> : <QrCodeScannerRounded />}
+            <QrCodeScannerRounded />
           </div>
-          <h2>{mode === MODES.RETURN ? 'تنفيذ مرتجع مصرح' : 'استلام حجز مسبق'}</h2>
-          <p>
-            {mode === MODES.RETURN
-              ? 'امسح بطاقة المرتجع التي أصدرها المدير. المسح للمعاينة فقط ولن يغيّر المال أو المخزون قبل التأكيد.'
-              : 'امسح رمز الحجز من الشريط الموحد، ثم راجع المخزون والتحصيل قبل التسليم.'}
-          </p>
+          <h2>استلام حجز مسبق</h2>
+          <p>امسح رمز الحجز من الشريط الموحد، ثم راجع المخزون والتحصيل قبل التسليم.</p>
           <Button
             variant="contained"
             startIcon={<QrCodeScannerRounded />}
@@ -1243,98 +1173,6 @@ export default function POS() {
         </DialogActions>
       </Dialog>
 
-      <Dialog
-        open={returnOpen}
-        onClose={loading ? undefined : () => setReturnOpen(false)}
-        fullScreen={fullScreen}
-        fullWidth
-        maxWidth="md"
-      >
-        <DialogTitle>مراجعة واعتماد المرتجع</DialogTitle>
-        <DialogContent dividers>
-          <div className="return-review">
-            <Alert severity="warning">
-              راجع البنود والمبلغ ثم أكّد العملية ببطاقة اعتماد الأدمن الممسوحة.
-            </Alert>
-            <div className="return-review__summary">
-              <div>
-                <span>الفاتورة</span>
-                <strong className="a4-ltr">
-                  {returnAuthorization.invoiceNumber || returnAuthorization.invoice_number || '—'}
-                </strong>
-              </div>
-              <div>
-                <span>إجمالي الرد</span>
-                <strong>
-                  {money(returnAuthorization.totalRefund || returnAuthorization.total_refund || 0)}
-                </strong>
-              </div>
-              <div>
-                <span>بطاقة الاعتماد</span>
-                <strong>{returnData?.approvalCard?.label || 'نشطة'}</strong>
-              </div>
-            </div>
-            <div className="return-review__items">
-              {returnItems.map((item) => (
-                <div key={item.id || item.orderItemId || item.order_item_id}>
-                  <span>
-                    {item.productName || item.product_name} × {number(item.quantity)}
-                  </span>
-                  <strong>
-                    {String(item.disposition).toUpperCase() === 'RESTOCK'
-                      ? 'يعود للمخزون'
-                      : 'لا يعود للمخزون'}
-                  </strong>
-                </div>
-              ))}
-            </div>
-            <div className="return-review__allocations">
-              {returnAllocations.map((allocation) => {
-                const refundMode = String(
-                  allocation.refundMode || allocation.refund_mode || ''
-                ).toUpperCase();
-                return (
-                  <section key={allocation.id}>
-                    <div>
-                      <strong>
-                        {allocation.methodName ||
-                          allocation.method_name ||
-                          allocation.methodCode ||
-                          allocation.method_code}
-                      </strong>
-                      <span>{money(allocation.amount)}</span>
-                    </div>
-                    {refundMode === 'CASH_DRAWER' ? (
-                      <Alert severity="warning">سيخرج هذا المبلغ من عهدة الشيفت مرة واحدة.</Alert>
-                    ) : (
-                      <Field label="مرجع الرد الخارجي" required ltr>
-                        <TextField
-                          value={refundReferences[allocation.id] || ''}
-                          onChange={(event) => {
-                            setRefundReferences((value) => ({
-                              ...value,
-                              [allocation.id]: event.target.value,
-                            }));
-                            setReturnKey(createIdempotencyKey('return'));
-                          }}
-                        />
-                      </Field>
-                    )}
-                  </section>
-                );
-              })}
-            </div>
-          </div>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setReturnOpen(false)} disabled={loading}>
-            إغلاق
-          </Button>
-          <Button variant="contained" onClick={completeReturn} disabled={loading}>
-            {loading ? 'جاري تنفيذ المرتجع...' : 'تأكيد استلام ورد المبلغ'}
-          </Button>
-        </DialogActions>
-      </Dialog>
       <AppSnackbar state={toast} onClose={() => setToast(null)} />
     </div>
   );

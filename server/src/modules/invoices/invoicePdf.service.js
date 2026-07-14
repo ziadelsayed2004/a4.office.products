@@ -1,9 +1,10 @@
-import { getInvoiceDetail } from './invoices.service.js';
+import { authorizeInvoicePdfOutput, getInvoiceDetail } from './invoices.service.js';
 import { escapeHtml, printableDocument, renderPdf } from '../../utils/pdf.js';
 
 const money = (value) => `${(Number(value || 0) / 100).toFixed(2)} EGP`;
 
 export async function generateInvoicePdf(invoiceId, actor, options = {}) {
+  const outputAuthorization = await authorizeInvoicePdfOutput(actor);
   const invoice = await getInvoiceDetail(invoiceId, actor, options);
   const rows = invoice.items
     .map(
@@ -17,5 +18,5 @@ export async function generateInvoicePdf(invoiceId, actor, options = {}) {
     subtitle: invoice.status,
     body,
   });
-  return { buffer: await renderPdf(html), invoice };
+  return { buffer: await renderPdf(html), invoice, outputAuthorization };
 }

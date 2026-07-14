@@ -132,6 +132,24 @@ async function authorizedFetch(path, options) {
   return response;
 }
 
+export async function openAuthorizedStream(path, options = {}) {
+  let response;
+  try {
+    response = await authorizedFetch(path, { method: 'GET', ...options });
+  } catch (error) {
+    if (error?.status) throw error;
+    throw new Error('تعذر فتح قناة التحديث المباشر.');
+  }
+  if (!response.ok) {
+    const payload = await parseResponse(response);
+    const error = new Error(payload?.error || payload?.message || 'تعذر فتح قناة التحديث المباشر.');
+    error.status = response.status;
+    error.code = payload?.code;
+    throw error;
+  }
+  return response;
+}
+
 async function request(path, options = {}) {
   let response;
   try {

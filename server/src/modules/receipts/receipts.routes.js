@@ -8,7 +8,7 @@ import { receiptIdentifierParams, receiptPrintBody } from '../../validation/sche
 const router = Router();
 
 // Protect all receipt endpoints under token verification
-router.use(authenticate, requireRole(['Cashier']));
+router.use(authenticate, requireRole(['Cashier', 'Admin']));
 
 router.get(
   '/:id',

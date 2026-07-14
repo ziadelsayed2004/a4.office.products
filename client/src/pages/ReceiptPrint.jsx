@@ -76,7 +76,7 @@ export default function ReceiptPrint() {
     setError('');
 
     Promise.all([
-      api.get(`/api/pos/receipts/${encodeURIComponent(receiptId)}`),
+      api.get(`/api/receipts/${encodeURIComponent(receiptId)}`),
       api.get('/api/printer-settings').catch((settingsError) => {
         throw new Error(`${PRINTER_SETTINGS_UNAVAILABLE_MESSAGE} ${settingsError.message}`);
       }),

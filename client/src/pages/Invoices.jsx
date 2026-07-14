@@ -140,6 +140,7 @@ export default function Invoices() {
   const [toast, setToast] = useState(null);
 
   const hasOpenShift = currentShift?.status === 'OPEN';
+  const canPrint = isAdmin || hasOpenShift;
   const receipts = useMemo(() => {
     if (Array.isArray(selected?.receipts) && selected.receipts.length) return selected.receipts;
     const id = first(selected?.receipt_id, selected?.receiptId);
@@ -288,7 +289,7 @@ export default function Invoices() {
           )
         : receiptId(selectedReceipt);
     if (!id) return;
-    if (!hasOpenShift) {
+    if (!canPrint) {
       setToast({ severity: 'warning', message: 'يلزم شيفت مفتوح خاص بك لطلب الطباعة.' });
       return;
     }
@@ -313,12 +314,21 @@ export default function Invoices() {
 
   useEffect(() => {
     const token = searchParams.get('token')?.trim();
-    if (token) {
+    if (token && !isAdmin) {
       const tokenLookup = { type: 'token', value: token, shiftId: '' };
       setLookup(tokenLookup);
       lookupExactInvoice(tokenLookup);
-    } else if (isAdmin) loadAdmin(1, initialAdminFilters);
-    else loadOwnShift(1);
+    } else if (isAdmin) {
+      const linkedFilters = {
+        ...initialAdminFilters,
+        invoiceNumber: searchParams.get('invoiceNumber')?.trim() || '',
+        receiptNumber: searchParams.get('receiptNumber')?.trim() || '',
+        shiftId: searchParams.get('shiftId')?.trim() || '',
+        cashierId: searchParams.get('cashierId')?.trim() || '',
+      };
+      setAdminFilters(linkedFilters);
+      loadAdmin(1, linkedFilters);
+    } else loadOwnShift(1);
   }, [isAdmin]);
 
   const columns = useMemo(
@@ -609,7 +619,7 @@ export default function Invoices() {
       )}
 
       {error && <Alert severity="error">{error}</Alert>}
-      {!hasOpenShift && (
+      {!isAdmin && !hasOpenShift && (
         <Alert severity="info">
           عرض الفواتير متاح بدون شيفت مفتوح. الطباعة وإعادتها تحتاجان شيفتاً مفتوحاً خاصاً بك.
         </Alert>
@@ -676,7 +686,7 @@ export default function Invoices() {
                   />
                 </Field>
               </div>
-              {!hasOpenShift && (
+              {!isAdmin && !hasOpenShift && (
                 <Alert severity="warning">الطباعة معطلة حتى تفتح شيفتاً خاصاً بك.</Alert>
               )}
             </section>
@@ -692,7 +702,7 @@ export default function Invoices() {
               startIcon={<AssignmentReturnRounded />}
               onClick={() => {
                 setDetailOpen(false);
-                navigate(`/return-authorizations?orderId=${invoiceId(selected)}`);
+                navigate('/returns?tab=cards');
               }}
             >
               إدارة بطاقات اعتماد المرتجع
@@ -703,7 +713,7 @@ export default function Invoices() {
               variant="outlined"
               startIcon={<PictureAsPdfRounded />}
               onClick={downloadInvoicePdf}
-              disabled={exportingPdf}
+              disabled={exportingPdf || (!isAdmin && !hasOpenShift)}
             >
               {exportingPdf ? 'جاري إنشاء PDF...' : 'تنزيل PDF'}
             </Button>
@@ -713,7 +723,7 @@ export default function Invoices() {
               variant="contained"
               startIcon={<PrintRounded />}
               onClick={printSelectedReceipt}
-              disabled={printing || !hasOpenShift}
+              disabled={printing || !canPrint}
             >
               {printing ? 'جاري تجهيز الطباعة...' : 'طباعة الإيصال'}
             </Button>

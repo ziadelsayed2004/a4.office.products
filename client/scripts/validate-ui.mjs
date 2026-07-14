@@ -75,8 +75,8 @@ const requiredPages = [
   'ReceiptPrint',
   'AuditLogs',
   'PrinterSettings',
-  'ReturnAuthorizations',
-  'ReturnAuthorizationPrint',
+  'Returns',
+  'ReturnApprovalCardPrint',
 ];
 
 const visualComponents = [
@@ -93,6 +93,7 @@ const visualComponents = [
   'PageHeader',
   'StatusChip',
   'ReturnAuthorizationCard',
+  'ReturnApprovalCard',
 ];
 
 const formComponents = ['Field', 'FieldGrid', 'FormActions', 'FormSection'];
@@ -250,7 +251,14 @@ for (const page of requiredPages) {
   const relativePage = `src/pages/${page}.jsx`;
   assert(exists(relativePage), `Page exists: ${page}.`);
   const pageSource = read(relativePage);
-  const expectedCss = page === 'POS' ? '../styles/POSPage.css' : `../styles/${page}.css`;
+  const expectedCss =
+    page === 'POS'
+      ? '../styles/POSPage.css'
+      : page === 'Returns'
+        ? '../styles/ReturnAuthorizations.css'
+        : page === 'ReturnApprovalCardPrint'
+          ? '../styles/ReturnAuthorizationPrint.css'
+          : `../styles/${page}.css`;
   assert(pageSource.includes(expectedCss), `${page} imports its page stylesheet.`);
   assert(new RegExp(`pages/${page}\\.jsx`).test(app), `Page is lazy-routed: ${page}.`);
   assert(

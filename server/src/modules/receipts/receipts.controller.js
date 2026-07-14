@@ -32,6 +32,7 @@ async function sendPrintRequest(req, res, next, isReprint) {
         request_id: result.request_id,
         print_count: result.print_count,
         copies: result.copies,
+        admin_override: result.admin_override,
       },
     });
   } catch (error) {

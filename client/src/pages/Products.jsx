@@ -37,6 +37,7 @@ import '../styles/Products.css';
 
 const STOCK_ONLY = 'STOCK_ONLY';
 const PREORDER_WHEN_OUT = 'STOCK_WITH_PREORDER_WHEN_OUT_OF_STOCK';
+const CODE128_VALUE = /^[\x20-\x7e]{1,80}$/;
 const INITIAL_FILTERS = Object.freeze({
   q: '',
   categoryId: '',
@@ -266,14 +267,30 @@ export default function Products() {
       setToast({ severity: 'error', message: 'أدخل سعراً لكل فئة سعر نشطة.' });
       return;
     }
+    const barcodeValue = form.barcode.trim() || form.sku.trim();
+    if (!CODE128_VALUE.test(barcodeValue)) {
+      setToast({
+        severity: 'error',
+        message:
+          'قيمة الباركود (أو SKU عند تركها فارغة) يجب أن تكون من 1 إلى 80 حرفاً إنجليزياً أو رقماً أو رمزاً قابلاً لطباعة CODE128.',
+      });
+      return;
+    }
     setSaving(true);
     try {
       const payload = buildPayload();
+      let savedProduct = null;
       if (editing) await api.patch(`/api/admin/products/${editing.id}`, payload);
-      else await api.post('/api/admin/products', payload);
-      setToast({ message: editing ? 'تم تحديث المنتج.' : 'تم إنشاء المنتج.' });
+      else savedProduct = (await api.post('/api/admin/products', payload)).data;
       setDrawer(false);
       await load();
+      if (editing) {
+        setToast({ message: 'تم تحديث المنتج.' });
+      } else {
+        setToast({ message: 'تم إنشاء المنتج. اختر عدد ملصقات الباركود لطباعتها الآن.' });
+        setQrForm(labelDefaults);
+        setQrProduct(savedProduct);
+      }
     } catch (saveError) {
       setToast({ severity: 'error', message: saveError.message });
     } finally {
@@ -284,7 +301,8 @@ export default function Products() {
   const printQr = async () => {
     setSaving(true);
     try {
-      const result = (await api.post(`/api/admin/products/${qrProduct.id}/qr-labels`, qrForm)).data;
+      const result = (await api.post(`/api/admin/products/${qrProduct.id}/barcode-labels`, qrForm))
+        .data;
       setQrProduct(null);
       await printProductLabelsInFrame({
         productId: result.product.id,
@@ -292,7 +310,7 @@ export default function Products() {
         quantity: result.quantity,
         size: result.label_size,
       });
-      setToast({ message: 'تم تسجيل طلب الملصقات وفتح مستند الطباعة المعزول.' });
+      setToast({ message: 'تم تسجيل طلب ملصقات الباركود وفتح مستند الطباعة.' });
     } catch (printError) {
       setToast({ severity: 'error', message: printError.message });
     } finally {
@@ -389,7 +407,7 @@ export default function Products() {
                 <EditRounded fontSize="small" />
               </IconButton>
             </Tooltip>
-            <Tooltip title="طباعة رمز المنتج">
+            <Tooltip title="طباعة ملصقات باركود">
               <IconButton size="small" onClick={() => openLabelPrint(row)}>
                 <PrintRounded fontSize="small" />
               </IconButton>
@@ -535,9 +553,12 @@ export default function Products() {
             <Field label="الباركود" ltr>
               <TextField
                 value={form.barcode}
+                placeholder="يُستخدم SKU تلقائياً عند تركه فارغاً"
+                helperText="CODE128: أحرف إنجليزية وأرقام ورموز، بحد أقصى 80 حرفاً."
                 onChange={(event) =>
                   setForm((value) => ({ ...value, barcode: event.target.value }))
                 }
+                slotProps={{ htmlInput: { maxLength: 80 } }}
               />
             </Field>
             <Field label="التصنيف" required>
@@ -834,7 +855,7 @@ export default function Products() {
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title="حذف المنتج نهائيًا"
-        description={`سيُحذف «${deleteTarget?.name || ''}» وأسعاره ورموز QR الخاصة به فقط إذا لم يدخل مطلقًا في بيع أو حجز أو حركة مخزون أو مرتجع. وإلا سيظل محفوظًا ويمكن تعطيله.`}
+        description={`سيُحذف «${deleteTarget?.name || ''}» وأسعاره وبيانات الباركود الخاصة به فقط إذا لم يدخل مطلقًا في بيع أو حجز أو حركة مخزون أو مرتجع. وإلا سيظل محفوظًا ويمكن تعطيله.`}
         confirmLabel="حذف المنتج"
         danger
         loading={deleting}
@@ -844,11 +865,11 @@ export default function Products() {
 
       <EntityDrawer
         open={Boolean(qrProduct)}
-        title="طباعة ملصقات المنتج"
+        title="طباعة ملصقات الباركود الآن"
         subtitle={qrProduct?.name}
         onClose={() => setQrProduct(null)}
         onSubmit={printQr}
-        submitLabel="فتح مستند الطباعة"
+        submitLabel="طباعة الباركود"
         loading={saving}
       >
         <FieldGrid>

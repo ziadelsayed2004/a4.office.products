@@ -1,26 +1,68 @@
 .return-card-print-page {
   min-height: 100vh;
-  padding: var(--space-4);
+  padding: 10mm;
+  justify-content: center;
+  gap: 6mm;
   background: #eef1f5;
+  display: grid;
+}
+
+.return-card-print-page--a4 {
+  grid-template-columns: repeat(auto-fit, minmax(91.6mm, max-content));
+}
+
+.return-card-print-page--direct {
+  grid-template-columns: max-content;
+}
+
+.return-approval-card-cut {
+  width: 91.6mm;
+  height: 60mm;
+  padding: 3mm;
+  box-sizing: border-box;
+  background:
+    linear-gradient(#475b70, #475b70) top left / 6mm 0.2mm no-repeat,
+    linear-gradient(#475b70, #475b70) top left / 0.2mm 6mm no-repeat,
+    linear-gradient(#475b70, #475b70) top right / 6mm 0.2mm no-repeat,
+    linear-gradient(#475b70, #475b70) top right / 0.2mm 6mm no-repeat,
+    linear-gradient(#475b70, #475b70) bottom left / 6mm 0.2mm no-repeat,
+    linear-gradient(#475b70, #475b70) bottom left / 0.2mm 6mm no-repeat,
+    linear-gradient(#475b70, #475b70) bottom right / 6mm 0.2mm no-repeat,
+    linear-gradient(#475b70, #475b70) bottom right / 0.2mm 6mm no-repeat;
+}
+
+.return-card-print-page--direct .return-approval-card-cut {
+  width: 85.6mm;
+  height: 54mm;
+  padding: 0;
+  background: none;
+}
+
+.return-card-print-page > .MuiAlert-root {
+  width: min(100%, 620px);
+  height: max-content;
+  grid-column: 1 / -1;
 }
 
 .return-card-print-page__actions {
   width: min(100%, 80mm);
-  margin: 0 auto var(--space-4);
   justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
   display: flex;
 }
 
 @media print {
   .return-card-print-page {
-    width: 80mm;
-    min-height: 110mm;
-    padding: 0;
-    background: #fff;
+    min-height: 0;
+    background: #ffffff;
   }
 
-  .return-card-print-page__actions,
-  .return-card-print-page .MuiAlert-root {
+  .return-card-print-page > .MuiAlert-root {
+    display: none !important;
+  }
+
+  .return-card-print-page__actions {
     display: none !important;
   }
 }

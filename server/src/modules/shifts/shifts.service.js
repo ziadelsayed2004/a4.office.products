@@ -410,6 +410,121 @@ export async function rejectShiftClose(adminId, shiftId, reason) {
   });
 }
 
+export async function emergencyCloseShift(adminId, shiftId, { actuals, reason } = {}) {
+  const id = requireInteger(Number(shiftId), 'shiftId', { min: 1 });
+  const cleanReason = String(reason || '').trim();
+  if (!cleanReason || cleanReason.length > 500) {
+    throw new AppError(
+      'An emergency close reason between 1 and 500 characters is required.',
+      400,
+      'SHIFT_EMERGENCY_REASON_REQUIRED'
+    );
+  }
+
+  return withTransaction(async (connection) => {
+    const shift = await connection.get('SELECT * FROM shifts WHERE id = ?;', [id]);
+    if (!shift) throw new AppError('Shift not found.', 404, 'SHIFT_NOT_FOUND');
+    if (!['OPEN', 'PENDING_ADMIN_REVIEW'].includes(shift.status)) {
+      throw new AppError(
+        'Only an unfinished shift can be closed administratively.',
+        409,
+        'SHIFT_NOT_UNFINISHED'
+      );
+    }
+
+    const system = await getShiftSystemSnapshot(connection, shift);
+    const activeMethods = Object.keys(system.methods).map((code) => ({ code }));
+    const normalized = normalizeActuals(actuals, activeMethods);
+    const variances = Object.fromEntries(
+      activeMethods.map(({ code }) => [code, normalized[code] - (system.methods[code] || 0)])
+    );
+
+    if (shift.status === 'PENDING_ADMIN_REVIEW') {
+      await connection.run(
+        `UPDATE shift_close_revisions
+            SET status = 'REJECTED', admin_id = ?, admin_reason = ?, reviewed_at = CURRENT_TIMESTAMP
+          WHERE shift_id = ? AND status = 'SUBMITTED';`,
+        [adminId, `Superseded by emergency close: ${cleanReason}`, id]
+      );
+    }
+    const row = await connection.get(
+      `SELECT COALESCE(MAX(revision_number), 0) + 1 AS next
+         FROM shift_close_revisions WHERE shift_id = ?;`,
+      [id]
+    );
+    const revision = await connection.run(
+      `INSERT INTO shift_close_revisions
+       (shift_id, revision_number, submitted_by, status, system_totals_json,
+        declared_totals_json, variances_json, cashier_note, admin_id, admin_reason, reviewed_at)
+       VALUES (?, ?, ?, 'APPROVED', ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`,
+      [
+        id,
+        row.next,
+        adminId,
+        JSON.stringify(system),
+        JSON.stringify(normalized),
+        JSON.stringify(variances),
+        'Emergency administrative close',
+        adminId,
+        cleanReason,
+      ]
+    );
+    const update = await connection.run(
+      `UPDATE shifts
+          SET status = 'CLOSED', closed_at = CURRENT_TIMESTAMP,
+              approved_close_revision_id = ?, admin_notes = ?,
+              system_total_cash = ?, system_total_card = ?, system_total_instapay = ?,
+              system_total_wallet = ?, system_total_transfer = ?,
+              cashier_declared_cash = ?, cashier_declared_card = ?,
+              cashier_declared_instapay = ?, cashier_declared_wallet = ?,
+              cashier_declared_transfer = ?, actual_closed_cash = ?,
+              updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND status IN ('OPEN', 'PENDING_ADMIN_REVIEW');`,
+      [
+        revision.lastID,
+        cleanReason,
+        system.methods.Cash || 0,
+        system.methods.Card || 0,
+        system.methods.InstaPay || 0,
+        system.methods.Wallet || 0,
+        system.methods.Transfer || 0,
+        normalized.Cash || 0,
+        normalized.Card || 0,
+        normalized.InstaPay || 0,
+        normalized.Wallet || 0,
+        normalized.Transfer || 0,
+        normalized.Cash || 0,
+        id,
+      ]
+    );
+    if (update.changes !== 1)
+      throw new AppError('Shift state changed concurrently.', 409, 'SHIFT_STATE_CONFLICT');
+    await connection.run(
+      `INSERT INTO cash_movements (shift_id, user_id, type, amount, notes)
+       VALUES (?, ?, 'CLOSING', ?, ?);`,
+      [id, shift.user_id, normalized.Cash || 0, `Emergency close: ${cleanReason}`]
+    );
+    await writeAuditLog({
+      userId: adminId,
+      shiftId: id,
+      actionType: 'SHIFT_EMERGENCY_CLOSE',
+      entityType: 'shift_close_revisions',
+      entityId: revision.lastID,
+      beforeValues: { status: shift.status },
+      afterValues: {
+        status: 'CLOSED',
+        reason: cleanReason,
+        systemTotals: system,
+        actuals: normalized,
+        variances,
+      },
+      notes: cleanReason,
+      connection,
+    });
+    return getShiftDetails(id, connection);
+  });
+}
+
 export async function registerCashMovement(userId, { type, amount, notes }, idempotencyKey) {
   if (!['PAY_IN', 'PAY_OUT'].includes(type))
     throw new AppError('Movement type must be PAY_IN or PAY_OUT.', 400, 'INVALID_CASH_MOVEMENT');
@@ -452,7 +567,12 @@ export async function registerCashMovement(userId, { type, amount, notes }, idem
 }
 
 export async function listAllShifts(filters = {}, connection = db) {
-  let sql = `SELECT s.*, u.name AS cashier_name, u.username AS cashier_username
+  let sql = `SELECT s.*, u.name AS cashier_name, u.username AS cashier_username,
+                    MAX(
+                      COALESCE((SELECT MAX(o.created_at) FROM orders o WHERE o.shift_id = s.id), s.opened_at),
+                      COALESCE((SELECT MAX(r.created_at) FROM returns r WHERE r.shift_id = s.id), s.opened_at),
+                      COALESCE((SELECT MAX(cm.created_at) FROM cash_movements cm WHERE cm.shift_id = s.id), s.opened_at)
+                    ) AS last_activity_at
                FROM shifts s JOIN users u ON u.id = s.user_id WHERE 1 = 1`;
   const params = [];
   if (filters.status) {
@@ -472,7 +592,21 @@ export async function listAllShifts(filters = {}, connection = db) {
     params.push(cairoMidnightUtc(addCalendarDay(filters.endDate)));
   }
   sql += ' ORDER BY s.id DESC LIMIT 500;';
-  return connection.all(sql, params);
+  const rows = await connection.all(sql, params);
+  await Promise.all(
+    rows.map(async (shift) => {
+      if (!['OPEN', 'PENDING_ADMIN_REVIEW'].includes(shift.status)) return;
+      const snapshot = await getShiftSystemSnapshot(connection, shift);
+      shift.system_total_cash = snapshot.methods.Cash || 0;
+      shift.system_total_card = snapshot.methods.Card || 0;
+      shift.system_total_instapay = snapshot.methods.InstaPay || 0;
+      shift.system_total_wallet = snapshot.methods.Wallet || 0;
+      shift.system_total_transfer = snapshot.methods.Transfer || 0;
+      shift.payment_breakdown = snapshot.methods;
+      shift.system_totals = snapshot;
+    })
+  );
+  return rows;
 }
 
 export async function getShiftDetails(shiftId, connection = db) {
@@ -482,18 +616,46 @@ export async function getShiftDetails(shiftId, connection = db) {
     [shiftId]
   );
   if (!shift) throw new AppError('Shift not found.', 404, 'SHIFT_NOT_FOUND');
-  const [summary, revisions, movements] = await Promise.all([
+  const [summary, revisions, movements, invoices, returns] = await Promise.all([
     getShiftSystemSnapshot(connection, shift),
     connection.all(
       'SELECT * FROM shift_close_revisions WHERE shift_id = ? ORDER BY revision_number DESC;',
       [shift.id]
     ),
     connection.all('SELECT * FROM cash_movements WHERE shift_id = ? ORDER BY id;', [shift.id]),
+    connection.all(
+      `SELECT o.id, o.invoice_number, o.origin, o.status, o.subtotal, o.discount, o.total,
+              o.customer_name_snapshot, o.created_at,
+              (SELECT receipt_number FROM receipts rc
+                WHERE (rc.reference_type = 'order_sale' AND rc.reference_id = o.id)
+                   OR (rc.reference_type = 'preorder_pickup' AND EXISTS (
+                     SELECT 1 FROM preorders receipt_preorder
+                      WHERE receipt_preorder.id = rc.reference_id
+                        AND receipt_preorder.pickup_order_id = o.id
+                   ))
+                ORDER BY rc.id DESC LIMIT 1) AS receipt_number,
+              COALESCE((SELECT SUM(r.total_refunded) FROM returns r WHERE r.order_id = o.id), 0)
+                AS total_refunded
+         FROM orders o WHERE o.shift_id = ? ORDER BY o.created_at DESC;`,
+      [shift.id]
+    ),
+    connection.all(
+      `SELECT r.id, r.return_number, r.order_id, o.invoice_number, r.total_refunded,
+              r.notes, r.created_at, r.cashier_id, u.name AS cashier_name
+         FROM returns r
+         JOIN orders o ON o.id = r.order_id
+         JOIN users u ON u.id = r.cashier_id
+        WHERE r.shift_id = ? ORDER BY r.created_at DESC;`,
+      [shift.id]
+    ),
   ]);
   return {
     shift,
     systemTotals: summary,
+    paymentBreakdown: summary.methods,
     closeRevisions: revisions.map(parseRevision),
     cashMovements: movements,
+    invoices,
+    returns,
   };
 }

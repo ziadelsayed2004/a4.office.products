@@ -207,6 +207,24 @@
   text-align: right !important;
 }
 
+.sidebar-group-toggle {
+  width: 100%;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sidebar-group-toggle svg {
+  font-size: 1rem;
+}
+
 .sidebar-list-item {
   display: block !important;
 }

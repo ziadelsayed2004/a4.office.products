@@ -49,8 +49,14 @@ curl -fsS https://a4office.cloud/api/health
 
 For release rollback, restore the prior checkout and its matching pre-deployment database backup when the failed release applied migrations. Never run `db:reset` in production.
 
+## Live updates and process topology
+
+The supported production topology is one PM2 fork process. Admin live updates use an authenticated SSE invalidation stream backed by an in-memory event bus; Nginx therefore keeps `proxy_buffering off`. The client reloads authoritative HTTP data after an event, falls back to polling every 15 seconds after a stream failure, pauses while hidden, and resynchronizes when visible. User presence is reported by a visible-app heartbeat every 30 seconds and is considered offline after 90 seconds.
+
+Do not increase the PM2 instance count with the in-memory event bus: events emitted in one process would not reach streams attached to another process. Before horizontal or cluster scaling, replace the event transport with Redis/pub-sub (or an equivalent shared broker) while retaining the same SSE contract and polling fallback.
+
 ## Printing
 
-Thermal receipts, QR labels and return cards use browser printing. Invoice and report PDFs use `/usr/bin/chromium` with local Arabic fonts. PDF data comes only from authorized server records; values are escaped, jobs and record counts are bounded, and results are streamed without persistent temporary files.
+Thermal receipts, Admin-only CODE128 product labels, and reusable ID-1 (`85.6×54mm`) return-approval cards use browser printing. Invoice and report PDFs use `/usr/bin/chromium` with local Arabic fonts. PDF data comes only from authorized server records; values are escaped, jobs and record counts are bounded, and results are streamed without persistent temporary files. Cashier receipt/PDF output requires that Cashier's own `OPEN` shift; Admin output is an audited no-shift override.
 
 If PDF readiness is false, check Chromium executable permissions for `a4pos`, Noto fonts, available memory, and PM2 error logs.

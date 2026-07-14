@@ -6,6 +6,7 @@ import {
   Badge,
   Box,
   Chip,
+  Collapse,
   Divider,
   Drawer,
   IconButton,
@@ -32,6 +33,8 @@ import {
   DashboardRounded,
   DescriptionRounded,
   EventAvailableRounded,
+  ExpandLessRounded,
+  ExpandMoreRounded,
   GroupsRounded,
   HistoryRounded,
   Inventory2Rounded,
@@ -73,6 +76,7 @@ const titles = {
     'بطاقات اعتماد المرتجع',
     'إدارة بطاقات التأكيد الإدارية المستمرة وتغيير QR',
   ],
+  '/returns': ['المرتجعات', 'مراجعة عمليات المرتجع وإدارة بطاقات الاعتماد والطباعة'],
   '/shifts': ['مراجعة الشيفتات', 'اعتماد أو رفض طلبات تقفيل الكاشير'],
   '/users': ['المستخدمون', 'إدارة حسابات الأدمن والكاشير'],
   '/reports': ['التقارير', 'تقارير المبيعات والحجوزات والمخزون والشيفتات'],
@@ -91,6 +95,7 @@ export function MainLayout() {
   );
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState(null);
+  const [openGroups, setOpenGroups] = useState({});
   const activeItemRef = useRef(null);
 
   useEffect(() => {
@@ -109,6 +114,7 @@ export function MainLayout() {
   const menu = useMemo(() => {
     const cashier = [
       {
+        key: 'cashier',
         section: t('nav.cashier'),
         items: [
           { label: t('nav.pos'), path: '/pos', icon: <PointOfSaleRounded /> },
@@ -133,12 +139,39 @@ export function MainLayout() {
     if (!isAdmin) return cashier;
     return [
       {
+        key: 'home',
         section: t('nav.home'),
         items: [{ label: t('nav.dashboard'), path: '/', icon: <DashboardRounded /> }],
       },
-      ...cashier,
       {
-        section: t('nav.catalog'),
+        key: 'sales',
+        section: 'المبيعات والتشغيل',
+        items: [
+          {
+            label: t('nav.invoices'),
+            path: '/invoices',
+            icon: <DescriptionRounded />,
+          },
+          {
+            label: t('nav.shifts'),
+            path: '/shifts',
+            icon: <SwapHorizRounded />,
+          },
+          {
+            label: t('nav.preorders'),
+            path: '/preorders',
+            icon: <BadgeRounded />,
+          },
+          {
+            label: 'المرتجعات',
+            path: '/returns',
+            icon: <AssignmentReturnRounded />,
+          },
+        ],
+      },
+      {
+        key: 'catalog',
+        section: 'الكتالوج والمخزون',
         items: [
           {
             label: t('nav.products'),
@@ -146,55 +179,21 @@ export function MainLayout() {
             icon: <ShoppingBasketRounded />,
           },
           {
-            label: t('nav.categories'),
-            path: '/categories',
-            icon: <CategoryRounded />,
-          },
-          {
-            label: t('nav.priceTiers'),
-            path: '/price-tiers',
-            icon: <SellRounded />,
-          },
-          {
             label: t('nav.inventory'),
             path: '/inventory',
             icon: <Inventory2Rounded />,
-          },
-        ],
-      },
-      {
-        section: t('nav.operations'),
-        items: [
-          {
-            label: t('nav.preorders'),
-            path: '/preorders',
-            icon: <BadgeRounded />,
           },
           {
             label: t('nav.customers'),
             path: '/customers',
             icon: <GroupsRounded />,
           },
-          {
-            label: t('nav.payments'),
-            path: '/payments',
-            icon: <PaymentsRounded />,
-          },
-          {
-            label: 'بطاقات المرتجع',
-            path: '/return-authorizations',
-            icon: <AssignmentReturnRounded />,
-          },
         ],
       },
       {
-        section: t('nav.management'),
+        key: 'oversight',
+        section: 'الرقابة',
         items: [
-          {
-            label: t('nav.shifts'),
-            path: '/shifts',
-            icon: <SwapHorizRounded />,
-          },
           {
             label: t('nav.users'),
             path: '/users',
@@ -206,6 +205,27 @@ export function MainLayout() {
             icon: <AssessmentRounded />,
           },
           { label: t('nav.audit'), path: '/logs', icon: <HistoryRounded /> },
+        ],
+      },
+      {
+        key: 'settings',
+        section: 'الإعدادات',
+        items: [
+          {
+            label: t('nav.categories'),
+            path: '/categories',
+            icon: <CategoryRounded />,
+          },
+          {
+            label: t('nav.priceTiers'),
+            path: '/price-tiers',
+            icon: <SellRounded />,
+          },
+          {
+            label: t('nav.payments'),
+            path: '/payments',
+            icon: <PaymentsRounded />,
+          },
           {
             label: t('nav.printers'),
             path: '/printer-settings',
@@ -215,6 +235,14 @@ export function MainLayout() {
       },
     ];
   }, [isAdmin]);
+
+  useEffect(() => {
+    const activeGroup = menu.find((group) =>
+      group.items.some((item) => item.path === location.pathname)
+    );
+    if (!activeGroup || openGroups[activeGroup.key] !== false) return;
+    setOpenGroups((current) => ({ ...current, [activeGroup.key]: true }));
+  }, [location.pathname, menu, openGroups]);
 
   const go = (path) => {
     navigate(path);
@@ -236,6 +264,9 @@ export function MainLayout() {
 
   const renderDrawer = ({ mobile = false } = {}) => {
     const drawerCollapsed = !mobile && collapsed;
+    const profileStatus = isAdmin
+      ? 'مدير النظام'
+      : `كاشير · ${currentShift?.status === 'OPEN' ? `شيفت #${currentShift.id}` : 'دون شيفت مفتوح'}`;
 
     return (
       <div className="main-layout__drawer-container">
@@ -263,11 +294,7 @@ export function MainLayout() {
         <div className="sidebar-profile-wrap">
           <Tooltip
             placement="left"
-            title={
-              drawerCollapsed
-                ? `${user?.name || 'المستخدم'} · ${currentShift?.status === 'OPEN' ? `شيفت #${currentShift.id}` : 'لا يوجد شيفت مفتوح'}`
-                : ''
-            }
+            title={drawerCollapsed ? `${user?.name || 'المستخدم'} · ${profileStatus}` : ''}
           >
             <ListItemButton
               className="profile-card"
@@ -276,10 +303,7 @@ export function MainLayout() {
               <Avatar className="profile-card__avatar">{user?.name?.slice(0, 1) || 'A'}</Avatar>
               <div className="profile-card__info">
                 <strong>{user?.name}</strong>
-                <span>
-                  {user?.role === 'Admin' ? 'مدير النظام' : 'كاشير'} ·{' '}
-                  {currentShift?.status === 'OPEN' ? `شيفت #${currentShift.id}` : 'دون شيفت مفتوح'}
-                </span>
+                <span>{profileStatus}</span>
               </div>
             </ListItemButton>
           </Tooltip>
@@ -287,37 +311,55 @@ export function MainLayout() {
         <Divider className="sidebar-divider" />
 
         <div className="sidebar-menu-wrapper">
-          {menu.map((group) => (
-            <List
-              className="sidebar-menu-list"
-              key={group.section}
-              subheader={
-                <ListSubheader component="div" className="sidebar-subheader" disableSticky>
-                  {group.section}
-                </ListSubheader>
-              }
-            >
-              {group.items.map((item) => {
-                const active = location.pathname === item.path;
-                return (
-                  <ListItem disablePadding className="sidebar-list-item" key={item.path}>
-                    <Tooltip placement="left" title={drawerCollapsed ? item.label : ''}>
-                      <ListItemButton
-                        className="sidebar-item-btn"
-                        selected={active}
-                        aria-current={active ? 'page' : undefined}
-                        ref={active ? activeItemRef : undefined}
-                        onClick={() => go(item.path)}
-                      >
-                        <ListItemIcon className="sidebar-item-icon">{item.icon}</ListItemIcon>
-                        <ListItemText primary={item.label} className="sidebar-item-text" />
-                      </ListItemButton>
-                    </Tooltip>
-                  </ListItem>
-                );
-              })}
-            </List>
-          ))}
+          {menu.map((group) => {
+            const groupExpanded = drawerCollapsed || openGroups[group.key] !== false;
+            return (
+              <List
+                className="sidebar-menu-list"
+                key={group.key}
+                subheader={
+                  <ListSubheader component="div" className="sidebar-subheader" disableSticky>
+                    <button
+                      type="button"
+                      className="sidebar-group-toggle"
+                      onClick={() =>
+                        setOpenGroups((current) => ({
+                          ...current,
+                          [group.key]: current[group.key] === false,
+                        }))
+                      }
+                      aria-expanded={groupExpanded}
+                    >
+                      <span>{group.section}</span>
+                      {groupExpanded ? <ExpandLessRounded /> : <ExpandMoreRounded />}
+                    </button>
+                  </ListSubheader>
+                }
+              >
+                <Collapse in={groupExpanded} timeout="auto" unmountOnExit>
+                  {group.items.map((item) => {
+                    const active = location.pathname === item.path;
+                    return (
+                      <ListItem disablePadding className="sidebar-list-item" key={item.path}>
+                        <Tooltip placement="left" title={drawerCollapsed ? item.label : ''}>
+                          <ListItemButton
+                            className="sidebar-item-btn"
+                            selected={active}
+                            aria-current={active ? 'page' : undefined}
+                            ref={active ? activeItemRef : undefined}
+                            onClick={() => go(item.path)}
+                          >
+                            <ListItemIcon className="sidebar-item-icon">{item.icon}</ListItemIcon>
+                            <ListItemText primary={item.label} className="sidebar-item-text" />
+                          </ListItemButton>
+                        </Tooltip>
+                      </ListItem>
+                    );
+                  })}
+                </Collapse>
+              </List>
+            );
+          })}
         </div>
 
         <div className="sidebar-toggle-container">
@@ -352,7 +394,7 @@ export function MainLayout() {
             <Typography component="span">{pageSubtitle}</Typography>
           </div>
           <div className="main-layout__actions">
-            {currentShift?.status === 'OPEN' && (
+            {!isAdmin && currentShift?.status === 'OPEN' && (
               <Chip
                 className="main-layout__shift-chip"
                 size="small"

@@ -163,6 +163,8 @@ const reportQueryBase = z.object({
   sku: optionalTrimmed(200),
   invoiceNumber: optionalTrimmed(200),
   receiptNumber: optionalTrimmed(200),
+  returnNumber: optionalTrimmed(200),
+  approvalCardId: optionalInteger(1),
   stockStatus: z.enum(['LOW_STOCK', 'OUT_OF_STOCK']).optional(),
   search: optionalTrimmed(200),
   availabilityPolicy: optionalTrimmed(80),
@@ -170,7 +172,16 @@ const reportQueryBase = z.object({
 export const reportQuery = dateRange(reportQueryBase);
 export const reportExportQuery = dateRange(
   reportQueryBase.extend({
-    type: z.enum(['sales', 'invoices', 'preorders', 'inventory', 'payments', 'shifts', 'cashiers']),
+    type: z.enum([
+      'sales',
+      'invoices',
+      'returns',
+      'preorders',
+      'inventory',
+      'payments',
+      'shifts',
+      'cashiers',
+    ]),
     format: z.enum(['csv', 'pdf']).optional(),
   })
 );

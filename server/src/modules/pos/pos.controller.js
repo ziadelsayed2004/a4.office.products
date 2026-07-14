@@ -1,5 +1,6 @@
 import * as posService from './pos.service.js';
 import { resolveScan } from './scanResolver.service.js';
+import { publishLiveEvent } from '../liveAdmin/liveEvents.js';
 
 export async function resolveScanController(req, res, next) {
   try {
@@ -38,6 +39,14 @@ export async function checkoutController(req, res, next) {
       payments: req.body.payments,
       idempotencyKey: req.get('Idempotency-Key'),
     });
+    if (!result.replayed) {
+      publishLiveEvent('sale.created', {
+        orderId: result.data.id,
+        shiftId: result.data.shift_id,
+        cashierId: req.user.id,
+        total: result.data.total,
+      });
+    }
     res.setHeader('Idempotency-Replayed', String(Boolean(result.replayed)));
     return res.status(result.statusCode).json({ status: 'success', data: result.data });
   } catch (error) {

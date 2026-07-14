@@ -83,6 +83,37 @@ export function AuthProvider({ children }) {
     };
   }, [clearSession]);
 
+  useEffect(() => {
+    if (!user) return undefined;
+    let active = true;
+    let sending = false;
+
+    const heartbeat = async () => {
+      if (!active || sending || document.visibilityState === 'hidden') return;
+      sending = true;
+      try {
+        await api.post('/api/auth/heartbeat', {});
+      } catch {
+        // Session expiry is handled centrally by the API client. A transient
+        // heartbeat failure must not interrupt the user's current work.
+      } finally {
+        sending = false;
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') heartbeat();
+    };
+    heartbeat();
+    const interval = globalThis.setInterval?.(heartbeat, 30_000);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      active = false;
+      globalThis.clearInterval?.(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [user]);
+
   const login = useCallback(
     async (username, password) => {
       const response = await api.post('/api/auth/login', { username, password });

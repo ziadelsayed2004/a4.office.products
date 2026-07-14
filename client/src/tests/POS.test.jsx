@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
   loadShift: vi.fn(),
+  printReceipt: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('../services/apiClient.js', () => ({
@@ -22,7 +23,7 @@ vi.mock('../app/AuthContext.jsx', () => ({
 }));
 
 vi.mock('../services/printService.js', () => ({
-  printReceiptInFrame: vi.fn(() => Promise.resolve()),
+  printReceiptInFrame: mocks.printReceipt,
 }));
 
 vi.mock('../hooks/useScannerCapture.js', () => ({ useScannerCapture: vi.fn() }));
@@ -71,16 +72,43 @@ describe('POS cashier-first workflows', () => {
       return Promise.reject(new Error(`Unexpected GET ${path}`));
     });
     mocks.post.mockImplementation((path, body) => {
-      if (path === '/api/pos/scan/resolve' && body.code === 'invoice_card')
+      if (path === '/api/pos/returns/prepare' && body.invoiceCode === 'invoice_card')
         return Promise.resolve({
           data: {
-            type: 'invoice',
-            action: 'INVOICE_VIEW',
-            data: {
+            order: {
               id: 9,
               invoiceNumber: 'INV-9',
-              items: [{ id: 4, quantity: 1, remaining_returnable_quantity: 1 }],
+              receiptNumber: 'REC-9',
             },
+            items: [
+              {
+                orderItemId: 4,
+                productId: 1,
+                productName: 'قلم أزرق',
+                sku: 'PEN-1',
+                barcode: 'PEN-1',
+                soldQuantity: 1,
+                remainingQuantity: 1,
+                unitPrice: 1000,
+              },
+            ],
+          },
+        });
+      if (path === '/api/pos/returns/items/resolve' && body.code === 'PEN-1')
+        return Promise.resolve({
+          data: {
+            orderId: 9,
+            requiresSelection: false,
+            matches: [
+              {
+                orderItemId: 4,
+                productId: 1,
+                productName: 'قلم أزرق',
+                sku: 'PEN-1',
+                remainingQuantity: 1,
+                unitPrice: 1000,
+              },
+            ],
           },
         });
       if (path === '/api/pos/returns/quote')
@@ -151,20 +179,24 @@ describe('POS cashier-first workflows', () => {
   it('prepares a return and executes it only after scanning a reusable approval card', async () => {
     renderPos();
     fireEvent.click(await screen.findByRole('tab', { name: 'مرتجع' }));
-    const scanner = await screen.findByLabelText(
-      'المسح الموحد: منتج أو حجز أو فاتورة أو بطاقة مرتجع'
-    );
-    fireEvent.change(scanner, { target: { value: 'invoice_card' } });
-    fireEvent.keyDown(scanner, { key: 'Enter' });
+    const invoiceScanner = await screen.findByLabelText(/QR أو رقم الفاتورة أو الإيصال/);
+    fireEvent.change(invoiceScanner, { target: { value: 'invoice_card' } });
+    fireEvent.keyDown(invoiceScanner, { key: 'Enter' });
+    const itemScanner = await screen.findByLabelText(/باركود أو SKU للمنتج المرتجع/);
+    fireEvent.change(itemScanner, { target: { value: 'PEN-1' } });
+    fireEvent.keyDown(itemScanner, { key: 'Enter' });
+    expect(await screen.findByLabelText('كمية مرتجع قلم أزرق')).toHaveValue('1');
+    fireEvent.click(screen.getByRole('button', { name: 'حساب ومراجعة مبلغ الرد' }));
     await waitFor(() =>
       expect(mocks.post).toHaveBeenCalledWith('/api/pos/returns/quote', expect.any(Object))
     );
 
-    fireEvent.change(scanner, { target: { value: 'approval_card' } });
-    fireEvent.keyDown(scanner, { key: 'Enter' });
+    const approvalScanner = await screen.findByLabelText(/بطاقة اعتماد الأدمن/);
+    fireEvent.change(approvalScanner, { target: { value: 'approval_card' } });
+    fireEvent.keyDown(approvalScanner, { key: 'Enter' });
 
-    expect(await screen.findByText(/اعتماد المرتجع/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'تأكيد استلام ورد المبلغ' }));
+    expect(await screen.findByText('تم الاعتماد')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'تأكيد استلام المنتجات ورد المبلغ' }));
 
     await waitFor(() =>
       expect(mocks.post).toHaveBeenCalledWith(
@@ -175,5 +207,10 @@ describe('POS cashier-first workflows', () => {
     );
     expect(await screen.findByText('تم تنفيذ المرتجع')).toBeInTheDocument();
     expect(screen.getByText('RTN-3')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(mocks.printReceipt).toHaveBeenCalledWith(
+        expect.objectContaining({ receiptId: 22, isReprint: false })
+      )
+    );
   });
 });

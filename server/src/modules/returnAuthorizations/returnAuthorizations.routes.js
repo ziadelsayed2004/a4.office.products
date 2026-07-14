@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import { authenticate, requireRole } from '../../middleware/auth.js';
+import { validate } from '../../middleware/validate.js';
+import { idParams, returnAuthorizationListQuery } from '../../validation/schemas.js';
+import * as controller from './returnAuthorizations.controller.js';
 
 function removed(_req, res) {
   res.status(410).json({
@@ -11,6 +14,8 @@ function removed(_req, res) {
 
 const adminRouter = Router();
 adminRouter.use(authenticate, requireRole(['Admin']));
+adminRouter.get('/', validate({ query: returnAuthorizationListQuery }), controller.listController);
+adminRouter.get('/:id', validate({ params: idParams }), controller.historicalDetailController);
 adminRouter.use(removed);
 
 const posRouter = Router();

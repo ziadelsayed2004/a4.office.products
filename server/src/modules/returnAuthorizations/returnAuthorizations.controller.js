@@ -41,6 +41,17 @@ export async function detailController(req, res, next) {
   }
 }
 
+export async function historicalDetailController(req, res, next) {
+  try {
+    const data = await service.getReturnAuthorization(req.params.id);
+    const historical = { ...data };
+    delete historical.qrToken;
+    return res.status(200).json({ status: 'success', data: historical });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 export async function revokeController(req, res, next) {
   try {
     const data = await service.revokeReturnAuthorization(req.params.id, {

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as reportsController from './reports.controller.js';
+import * as liveAdminController from '../liveAdmin/liveAdmin.controller.js';
 import { authenticate } from '../../middleware/auth.js';
 import { isAdmin } from '../../middleware/rbac.js';
 import { validate } from '../../middleware/validate.js';
@@ -9,6 +10,8 @@ const router = Router();
 
 // Protect all report routes with authentication & Admin-only RBAC
 router.get('/kpis', authenticate, isAdmin, reportsController.getAdminKPIsController);
+router.get('/live-overview', authenticate, isAdmin, liveAdminController.getLiveOverviewController);
+router.get('/live-events', authenticate, isAdmin, liveAdminController.liveEventsController);
 router.get(
   '/reports/sales',
   authenticate,
@@ -57,6 +60,13 @@ router.get(
   isAdmin,
   validate({ query: reportQuery }),
   reportsController.getCashiersReportController
+);
+router.get(
+  '/reports/returns',
+  authenticate,
+  isAdmin,
+  validate({ query: reportQuery }),
+  reportsController.getReturnsReportController
 );
 router.get(
   '/reports/export',

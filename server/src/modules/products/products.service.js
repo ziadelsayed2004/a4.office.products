@@ -13,6 +13,18 @@ export const PRODUCT_POLICIES = Object.freeze({
 });
 
 const POLICY_VALUES = Object.values(PRODUCT_POLICIES);
+const CODE128_VALUE = /^[\x20-\x7e]{1,80}$/;
+
+function requireCode128Barcode(value) {
+  if (!CODE128_VALUE.test(String(value || ''))) {
+    throw new AppError(
+      'Barcode must be 1-80 printable CODE128 characters. Use English letters, digits, or symbols.',
+      400,
+      'INVALID_CODE128_BARCODE'
+    );
+  }
+  return value;
+}
 
 function field(data, camel, snake = camel) {
   if (data[camel] !== undefined) return data[camel];
@@ -314,6 +326,7 @@ export async function createProduct(productData, adminUserId) {
   const barcode = cleanOptional(field(productData, 'barcode')) || sku;
   if (!name) throw new AppError('Product name is required.', 400, 'PRODUCT_NAME_REQUIRED');
   if (!sku) throw new AppError('SKU is required.', 400, 'PRODUCT_SKU_REQUIRED');
+  requireCode128Barcode(barcode);
   const policy = availabilityPolicyFrom(productData);
   const isActiveRaw = field(productData, 'isActive', 'is_active');
   if (typeof isActiveRaw !== 'boolean' && ![0, 1].includes(isActiveRaw)) {
@@ -503,6 +516,7 @@ export async function updateProduct(id, productData, adminUserId) {
       field(productData, 'barcode') === undefined
         ? old.barcode || old.sku
         : cleanOptional(field(productData, 'barcode')) || old.barcode || old.sku;
+    requireCode128Barcode(barcode);
     const barcodeConflict = await connection.get(
       'SELECT id FROM products WHERE barcode = ? AND id != ?;',
       [barcode, id]
@@ -611,6 +625,7 @@ export async function getOrCreateProductQrToken(productId, { quantity, label_siz
   return withTransaction(async (connection) => {
     const product = await getProductDetails(productId, connection);
     if (!product) throw new AppError('Product not found.', 404, 'PRODUCT_NOT_FOUND');
+    requireCode128Barcode(product.barcode || product.sku);
     const qty = requireInteger(Number(quantity || 1), 'quantity', { min: 1, max: 500 });
     const labelSizes = {
       small: 'small',

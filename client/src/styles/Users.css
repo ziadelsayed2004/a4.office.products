@@ -2,3 +2,17 @@
 .users-page .table-actions {
   flex-wrap: nowrap;
 }
+
+.users-connection,
+.users-activity {
+  align-items: flex-start;
+  gap: var(--space-1);
+  display: flex;
+  flex-direction: column;
+}
+
+.users-connection small,
+.users-activity small {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}

@@ -17,6 +17,7 @@ const routeLabels = {
   '/preorders': 'nav.preorders',
   '/customers': 'nav.customers',
   '/payments': 'nav.payments',
+  '/returns': 'nav.returns',
   '/shifts': 'nav.shifts',
   '/users': 'nav.users',
   '/reports': 'nav.reports',

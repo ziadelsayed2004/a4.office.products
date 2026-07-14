@@ -16,6 +16,22 @@ const router = Router();
 router.use(authenticate, isAdmin);
 
 router.get('/', usersController.getUsersListController);
+router.get(
+  '/:id/sessions',
+  validate({ params: idParams }),
+  usersController.getUserSessionsController
+);
+router.delete('/:id/sessions/:sessionId', usersController.revokeUserSessionsController);
+router.delete(
+  '/:id/sessions',
+  validate({ params: idParams }),
+  usersController.revokeUserSessionsController
+);
+router.post(
+  '/:id/revoke-sessions',
+  validate({ params: idParams }),
+  usersController.revokeUserSessionsController
+);
 router.post('/', validate({ body: userCreateBody }), usersController.createUserController);
 router.patch(
   '/:id',

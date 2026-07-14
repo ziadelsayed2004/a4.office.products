@@ -12,3 +12,48 @@
     min-width: 0;
   }
 }
+.audit-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.audit-detail-meta strong {
+  color: var(--color-text);
+}
+
+.audit-values-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.audit-values-grid section {
+  min-width: 0;
+}
+
+.audit-values-grid pre {
+  min-height: 160px;
+  max-height: 420px;
+  margin: 0;
+  padding: var(--space-4);
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: var(--color-surface-alt);
+  direction: ltr;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .audit-values-grid {
+    grid-template-columns: 1fr;
+  }
+}

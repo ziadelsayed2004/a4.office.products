@@ -1,10 +1,17 @@
 import * as shiftsService from './shifts.service.js';
+import { publishLiveEvent } from '../liveAdmin/liveEvents.js';
 
 export async function openShiftController(req, res, next) {
   try {
+    const data = await shiftsService.openShift(req.user.id, req.body.openingCash);
+    publishLiveEvent('shift.opened', {
+      shiftId: data.shift.id,
+      cashierId: req.user.id,
+      resumed: data.resumed,
+    });
     return res.status(200).json({
       status: 'success',
-      data: await shiftsService.openShift(req.user.id, req.body.openingCash),
+      data,
     });
   } catch (error) {
     return next(error);
@@ -33,9 +40,14 @@ export async function getCurrentShiftSummaryController(req, res, next) {
 
 export async function requestCloseShiftController(req, res, next) {
   try {
+    const data = await shiftsService.requestCloseShift(req.user.id, req.body);
+    publishLiveEvent('shift.close-requested', {
+      shiftId: data.shift.id,
+      cashierId: req.user.id,
+    });
     return res.status(200).json({
       status: 'success',
-      data: await shiftsService.requestCloseShift(req.user.id, req.body),
+      data,
     });
   } catch (error) {
     return next(error);
@@ -59,6 +71,7 @@ export async function approveShiftCloseController(req, res, next) {
       req.params.id,
       req.body.adminNotes || req.body.notes
     );
+    publishLiveEvent('shift.closed', { shiftId: data.shift.id, adminId: req.user.id });
     return res.status(200).json({ status: 'success', data });
   } catch (error) {
     return next(error);
@@ -69,6 +82,7 @@ export async function rejectShiftCloseController(req, res, next) {
   try {
     const reason = req.body.adminNotes || req.body.reason;
     const data = await shiftsService.rejectShiftClose(req.user.id, req.params.id, reason);
+    publishLiveEvent('shift.reopened', { shiftId: data.shift.id, adminId: req.user.id });
     return res.status(200).json({ status: 'success', data });
   } catch (error) {
     return next(error);
@@ -82,8 +96,28 @@ export async function registerCashMovementController(req, res, next) {
       req.body,
       req.get('Idempotency-Key')
     );
+    if (!result.replayed) {
+      publishLiveEvent('shift.cash-movement', {
+        shiftId: result.data.shiftId,
+        cashierId: req.user.id,
+        movementId: result.data.id,
+      });
+    }
     res.setHeader('Idempotency-Replayed', String(result.replayed));
     return res.status(result.statusCode).json({ status: 'success', data: result.data });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function emergencyCloseShiftController(req, res, next) {
+  try {
+    const data = await shiftsService.emergencyCloseShift(req.user.id, req.params.id, req.body);
+    publishLiveEvent('shift.emergency-closed', {
+      shiftId: data.shift.id,
+      adminId: req.user.id,
+    });
+    return res.status(200).json({ status: 'success', data });
   } catch (error) {
     return next(error);
   }

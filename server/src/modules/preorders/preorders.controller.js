@@ -1,4 +1,5 @@
 import * as preordersService from './preorders.service.js';
+import { publishLiveEvent } from '../liveAdmin/liveEvents.js';
 
 export async function createPreorderController(req, res, next) {
   try {
@@ -7,6 +8,12 @@ export async function createPreorderController(req, res, next) {
       req.user.id,
       req.get('Idempotency-Key')
     );
+    if (!result.replayed) {
+      publishLiveEvent('preorder.created', {
+        preorderId: result.data.id,
+        cashierId: req.user.id,
+      });
+    }
     res.set('Idempotency-Replayed', String(result.replayed));
     return res.status(result.statusCode).json({ status: 'success', data: result.data });
   } catch (error) {
@@ -30,6 +37,11 @@ export async function updatePreorderStatusController(req, res, next) {
       req.body.status,
       req.user.id
     );
+    publishLiveEvent('preorder.updated', {
+      preorderId: Number(req.params.id),
+      status: req.body.status,
+      adminId: req.user.id,
+    });
     return res.status(200).json({ status: 'success', data });
   } catch (error) {
     return next(error);
@@ -62,6 +74,13 @@ export async function pickupPreorderController(req, res, next) {
       req.user.id,
       req.get('Idempotency-Key')
     );
+    if (!result.replayed) {
+      publishLiveEvent('sale.created', {
+        orderId: result.data.order_id,
+        preorderId: result.data.preorder_id,
+        cashierId: req.user.id,
+      });
+    }
     res.set('Idempotency-Replayed', String(result.replayed));
     return res.status(result.statusCode).json({ status: 'success', data: result.data });
   } catch (error) {

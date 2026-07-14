@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Pagination, TextField } from '@mui/material';
-import { RefreshRounded } from '@mui/icons-material';
+import {
+  Alert,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Pagination,
+  TextField,
+  Tooltip,
+} from '@mui/material';
+import { RefreshRounded, VisibilityRounded } from '@mui/icons-material';
 import { api } from '../services/apiClient.js';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { DataTable } from '../components/DataTable.jsx';
@@ -14,6 +25,8 @@ const PAGE_SIZE = 50;
 const INITIAL_FILTERS = Object.freeze({
   actionType: '',
   entityType: '',
+  userId: '',
+  shiftId: '',
   startDate: '',
   endDate: '',
 });
@@ -36,6 +49,7 @@ export default function AuditLogs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const [selected, setSelected] = useState(null);
   const loadSequence = useRef(0);
 
   const load = async (nextFilters = filters, nextPage = page) => {
@@ -89,9 +103,25 @@ export default function AuditLogs() {
     { key: 'entity_type', label: 'الكيان' },
     { key: 'entity_id', label: 'رقم السجل' },
     {
+      key: 'shift_id',
+      label: 'الشيفت',
+      render: (row) => (row.shift_id ? `#${row.shift_id}` : '—'),
+    },
+    {
       key: 'notes',
       label: 'التفاصيل',
       render: (row) => <span className="a4-wrap-cell">{row.notes || '—'}</span>,
+    },
+    {
+      key: 'details',
+      label: 'قبل/بعد',
+      render: (row) => (
+        <Tooltip title="عرض تفاصيل التغيير">
+          <IconButton size="small" onClick={() => setSelected(row)} aria-label="عرض تفاصيل التغيير">
+            <VisibilityRounded fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      ),
     },
   ];
 
@@ -101,7 +131,7 @@ export default function AuditLogs() {
     <div className="a4-page">
       <PageHeader
         title="سجل العمليات"
-        description="سجل غير قابل للحذف لكل العمليات الحساسة المالية والإدارية."
+        description="سجل غير قابل للحذف مع فلترة المستخدم والشيفت وعرض القيم قبل كل تغيير وبعده."
         actions={
           <Button
             variant="outlined"
@@ -113,6 +143,22 @@ export default function AuditLogs() {
         }
       />
       <FilterPanel resultCount={total} onApply={applyFilters} onReset={resetFilters}>
+        <Field label="رقم المستخدم">
+          <TextField
+            type="number"
+            value={filters.userId}
+            onChange={(event) => setFilters((value) => ({ ...value, userId: event.target.value }))}
+            slotProps={{ htmlInput: { min: 1 } }}
+          />
+        </Field>
+        <Field label="رقم الشيفت">
+          <TextField
+            type="number"
+            value={filters.shiftId}
+            onChange={(event) => setFilters((value) => ({ ...value, shiftId: event.target.value }))}
+            slotProps={{ htmlInput: { min: 1 } }}
+          />
+        </Field>
         <Field label="نوع العملية">
           <TextField
             value={filters.actionType}
@@ -162,6 +208,37 @@ export default function AuditLogs() {
           </div>
         )}
       </section>
+      <Dialog open={Boolean(selected)} onClose={() => setSelected(null)} fullWidth maxWidth="md">
+        <DialogTitle>تفاصيل العملية #{selected?.id}</DialogTitle>
+        <DialogContent dividers>
+          {selected && (
+            <>
+              <div className="audit-detail-meta">
+                <strong>{selected.action_type}</strong>
+                <span>{dateTime(selected.created_at)}</span>
+                <span>
+                  {selected.user_name || selected.username || `مستخدم #${selected.user_id}`}
+                  {selected.shift_id ? ` · شيفت #${selected.shift_id}` : ''}
+                </span>
+              </div>
+              {selected.notes && <Alert severity="info">{selected.notes}</Alert>}
+              <div className="audit-values-grid">
+                <section>
+                  <h3>قبل التغيير</h3>
+                  <pre>{JSON.stringify(selected.before_values ?? null, null, 2)}</pre>
+                </section>
+                <section>
+                  <h3>بعد التغيير</h3>
+                  <pre>{JSON.stringify(selected.after_values ?? null, null, 2)}</pre>
+                </section>
+              </div>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSelected(null)}>إغلاق</Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }

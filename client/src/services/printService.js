@@ -7,6 +7,7 @@ export const PRINT_READY = 'A4_PRINT_READY';
 export const PRINT_COMPLETE = 'A4_PRINT_COMPLETE';
 export const PRINT_ERROR = 'A4_PRINT_ERROR';
 export const LABEL_PRINT_MESSAGE_SOURCE = 'a4-isolated-label-print';
+export const RETURN_CARD_PRINT_MESSAGE_SOURCE = 'a4-isolated-return-card-print';
 
 const READY_TIMEOUT_MS = 20_000;
 const AFTER_PRINT_TIMEOUT_MS = 120_000;
@@ -127,7 +128,7 @@ export async function printReceiptInFrame({
   }
   const normalizedCopies = positiveCopies(copies ?? safeSettings.receipt_copies);
   const requestResponse = await api.post(
-    `/api/pos/receipts/${encodeURIComponent(receiptId)}/print-request`,
+    `/api/receipts/${encodeURIComponent(receiptId)}/print-request`,
     {
       requestKey,
       copies: normalizedCopies,
@@ -167,7 +168,7 @@ export function printProductLabelsInFrame({ productId, barcode, quantity = 1, si
   return new Promise((resolve, reject) => {
     const iframe = document.createElement('iframe');
     iframe.className = 'a4-print-frame';
-    iframe.title = 'مستند طباعة ملصقات المنتج';
+    iframe.title = 'مستند طباعة ملصقات الباركود';
     iframe.setAttribute('aria-hidden', 'true');
     let readyTimer;
     let completeTimer;
@@ -225,4 +226,107 @@ export function printProductLabelsInFrame({ productId, barcode, quantity = 1, si
     iframe.src = productLabelUrl({ productId, barcode, quantity, size });
     document.body.appendChild(iframe);
   });
+}
+
+function returnApprovalCardPrintUrl({ cardId, mode, copies, requestKey }) {
+  const query = new URLSearchParams({
+    mode: mode === 'direct' ? 'direct' : 'a4',
+    copies: String(positiveCopies(copies)),
+    requestKey,
+  });
+  return `/return-approval-cards/${encodeURIComponent(cardId)}/print?${query}`;
+}
+
+function waitForReturnApprovalCardPrint({ cardId, url }) {
+  return new Promise((resolve, reject) => {
+    const iframe = document.createElement('iframe');
+    iframe.className = 'a4-print-frame';
+    iframe.title = 'مستند طباعة كارت اعتماد المرتجعات';
+    iframe.setAttribute('aria-hidden', 'true');
+    let readyTimer;
+    let completeTimer;
+    let printStarted = false;
+    let settled = false;
+
+    const cleanup = () => {
+      window.clearTimeout(readyTimer);
+      window.clearTimeout(completeTimer);
+      window.removeEventListener('message', onMessage);
+      iframe.remove();
+    };
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(value);
+    };
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error instanceof Error ? error : new Error(String(error)));
+    };
+    const onMessage = (event) => {
+      if (event.origin !== window.location.origin || event.source !== iframe.contentWindow) return;
+      if (event.data?.source !== RETURN_CARD_PRINT_MESSAGE_SOURCE) return;
+      if (String(event.data?.cardId) !== String(cardId)) return;
+      if (event.data.type === PRINT_ERROR)
+        return fail(new Error(event.data.message || 'تعذر تجهيز كارت الاعتماد للطباعة.'));
+      if (event.data.type === PRINT_COMPLETE) return finish({ printed: true });
+      if (event.data.type !== PRINT_READY || printStarted) return;
+      printStarted = true;
+      window.clearTimeout(readyTimer);
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        completeTimer = window.setTimeout(
+          () => finish({ printed: true, afterPrintTimedOut: true }),
+          AFTER_PRINT_TIMEOUT_MS
+        );
+      } catch (error) {
+        fail(error);
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    readyTimer = window.setTimeout(
+      () => fail(new Error('انتهت مهلة تجهيز كارت الاعتماد للطباعة.')),
+      READY_TIMEOUT_MS
+    );
+    iframe.src = url;
+    document.body.appendChild(iframe);
+  });
+}
+
+export async function printReturnApprovalCardInFrame({
+  cardId,
+  mode = 'a4',
+  copies = 1,
+  requestKey = createRequestKey(),
+} = {}) {
+  if (!cardId) throw new Error('رقم كارت الاعتماد مطلوب للطباعة.');
+  const normalizedMode = mode === 'direct' ? 'direct' : 'a4';
+  const normalizedCopies = positiveCopies(copies);
+  const requestResponse = await api.post(
+    `/api/admin/return-approval-cards/${encodeURIComponent(cardId)}/print-request`,
+    {
+      requestKey,
+      copies: normalizedCopies,
+      reason: normalizedMode === 'direct' ? 'Direct ID-1 card print' : 'A4 card sheet print',
+    }
+  );
+  const printResult = await waitForReturnApprovalCardPrint({
+    cardId,
+    url: returnApprovalCardPrintUrl({
+      cardId,
+      mode: normalizedMode,
+      copies: normalizedCopies,
+      requestKey,
+    }),
+  });
+  return {
+    ...printResult,
+    requestKey,
+    printRequest: requestResponse?.data || requestResponse || null,
+  };
 }

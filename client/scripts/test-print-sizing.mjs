@@ -19,6 +19,12 @@ import {
   FAIL_CLOSED_BROWSER_PRINT_SETTINGS,
   normalizeBrowserPrintSettings,
 } from '../src/utils/browserPrintSettings.js';
+import {
+  applyReturnApprovalCardPageSize,
+  buildReturnApprovalCardPageCss,
+  normalizeReturnApprovalCardPrintMode,
+  RETURN_APPROVAL_CARD_SIZE,
+} from '../src/utils/returnApprovalCardPrintSizing.js';
 
 assert.equal(normalizeReceiptPageWidth('58mm'), 58);
 assert.equal(normalizeReceiptPageWidth(80), 80);
@@ -174,4 +180,43 @@ appliedLabel.cleanup();
 assert.equal(labelStyleNode.removed, true);
 assert.equal(labelContainer.dataset.labelSize, undefined);
 
-console.log('Receipt and product-label print sizing tests passed.');
+assert.deepEqual(RETURN_APPROVAL_CARD_SIZE, { widthMm: 85.6, heightMm: 54 });
+assert.equal(normalizeReturnApprovalCardPrintMode('direct'), 'direct');
+assert.equal(normalizeReturnApprovalCardPrintMode('unknown'), 'a4');
+assert.match(buildReturnApprovalCardPageCss('direct'), /size:\s*85\.6mm 54mm/);
+assert.match(buildReturnApprovalCardPageCss('a4'), /size:\s*210mm 297mm/);
+
+const returnCardStyleNode = {
+  dataset: {},
+  textContent: '',
+  removed: false,
+  remove() {
+    this.removed = true;
+  },
+};
+const returnCardDocument = {
+  head: {
+    appended: null,
+    querySelector: () => null,
+    appendChild(node) {
+      this.appended = node;
+    },
+  },
+  createElement: () => returnCardStyleNode,
+};
+const returnCardContainer = {
+  ownerDocument: returnCardDocument,
+  dataset: {},
+  querySelectorAll: () => [{ dataset: { returnCardReady: 'true' } }],
+};
+const appliedReturnCard = applyReturnApprovalCardPageSize(returnCardContainer, 'direct');
+assert.equal(returnCardDocument.head.appended, returnCardStyleNode);
+assert.equal(returnCardContainer.dataset.printMode, 'direct');
+assert.equal(returnCardContainer.dataset.printWidthMm, '85.6');
+assert.equal(returnCardContainer.dataset.printHeightMm, '54');
+assert.match(returnCardStyleNode.textContent, /size:\s*85\.6mm 54mm/);
+appliedReturnCard.cleanup();
+assert.equal(returnCardStyleNode.removed, true);
+assert.equal(returnCardContainer.dataset.printMode, undefined);
+
+console.log('Receipt, product-label and approval-card print sizing tests passed.');

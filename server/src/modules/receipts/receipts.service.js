@@ -242,6 +242,9 @@ function normalizePrintInput(input = {}) {
 }
 
 export async function requestReceiptPrint(receiptIdOrNumber, input, actor) {
+  if (!actor || !['Admin', 'Cashier'].includes(actor.role)) {
+    throw new AppError('Receipt printing is forbidden.', 403, 'FORBIDDEN');
+  }
   const normalized = normalizePrintInput(input);
   return withTransaction(async (connection) => {
     const { receipt, exactReceiptNumber } = await findReceipt(receiptIdOrNumber, connection);
@@ -258,7 +261,9 @@ export async function requestReceiptPrint(receiptIdOrNumber, input, actor) {
         existing.receipt_id === receipt.id &&
         existing.copies === normalized.copies &&
         existing.is_reprint === (normalized.isReprint ? 1 : 0) &&
-        (existing.reason || null) === normalized.reason;
+        (existing.reason || null) === normalized.reason &&
+        existing.actor_role_snapshot === actor.role &&
+        existing.admin_override === (actor.role === 'Admin' ? 1 : 0);
       if (!sameInput) {
         throw new AppError(
           'requestKey was already used with different print input.',
@@ -270,34 +275,42 @@ export async function requestReceiptPrint(receiptIdOrNumber, input, actor) {
         request_id: existing.id,
         print_count: existing.print_count,
         copies: existing.copies,
+        admin_override: Boolean(existing.admin_override),
         replayed: true,
       };
     }
 
-    const shift = await connection.get(
-      "SELECT id FROM shifts WHERE user_id = ? AND status = 'OPEN' ORDER BY id DESC LIMIT 1;",
-      [actor.id]
-    );
-    if (!shift) {
-      throw new AppError(
-        'An OPEN shift owned by the acting user is required to print.',
-        409,
-        'OPEN_OWN_SHIFT_REQUIRED'
+    const adminOverride = actor.role === 'Admin';
+    let shift = null;
+    if (!adminOverride) {
+      shift = await connection.get(
+        "SELECT id FROM shifts WHERE user_id = ? AND status = 'OPEN' ORDER BY id DESC LIMIT 1;",
+        [actor.id]
       );
+      if (!shift) {
+        throw new AppError(
+          'An OPEN shift owned by the acting cashier is required to print.',
+          409,
+          'OPEN_OWN_SHIFT_REQUIRED'
+        );
+      }
     }
 
     const result = await connection.run(
       `INSERT INTO print_requests
-       (receipt_id, user_id, shift_id, request_key, is_reprint, reason, copies, requested_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`,
+       (receipt_id, user_id, shift_id, request_key, is_reprint, reason, copies, requested_at,
+        actor_role_snapshot, admin_override)
+       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?);`,
       [
         receipt.id,
         actor.id,
-        shift.id,
+        shift?.id || null,
         normalized.requestKey,
         normalized.isReprint ? 1 : 0,
         normalized.reason,
         normalized.copies,
+        actor.role,
+        adminOverride ? 1 : 0,
       ]
     );
     const printCount = receipt.print_count + (normalized.isReprint ? 1 : 0);
@@ -308,8 +321,12 @@ export async function requestReceiptPrint(receiptIdOrNumber, input, actor) {
 
     await writeAuditLog({
       userId: actor.id,
-      shiftId: shift.id,
-      actionType: normalized.isReprint ? 'RECEIPT_REPRINT_REQUEST' : 'RECEIPT_PRINT_REQUEST',
+      shiftId: shift?.id || null,
+      actionType: adminOverride
+        ? 'RECEIPT_ADMIN_PRINT_OVERRIDE'
+        : normalized.isReprint
+          ? 'RECEIPT_REPRINT_REQUEST'
+          : 'RECEIPT_PRINT_REQUEST',
       entityType: 'receipt',
       entityId: receipt.id,
       beforeValues: { print_count: receipt.print_count },
@@ -318,6 +335,8 @@ export async function requestReceiptPrint(receiptIdOrNumber, input, actor) {
         request_id: result.lastID,
         copies: normalized.copies,
         request_key: normalized.requestKey,
+        actor_role_snapshot: actor.role,
+        admin_override: adminOverride,
       },
       notes: `Browser print requested for receipt ${receipt.receipt_number}; physical output is not observable.`,
       connection,
@@ -327,6 +346,7 @@ export async function requestReceiptPrint(receiptIdOrNumber, input, actor) {
       request_id: result.lastID,
       print_count: printCount,
       copies: normalized.copies,
+      admin_override: adminOverride,
       replayed: false,
     };
   });

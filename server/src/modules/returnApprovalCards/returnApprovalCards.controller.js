@@ -14,6 +14,16 @@ export const detail = async (req, res, next) => {
     next(error);
   }
 };
+export const uses = async (req, res, next) => {
+  try {
+    res.json({
+      status: 'success',
+      data: await service.listCardUses(req.params.id, req.query),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 export const create = async (req, res, next) => {
   try {
     res.status(201).json({

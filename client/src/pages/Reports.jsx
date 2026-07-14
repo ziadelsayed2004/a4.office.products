@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, MenuItem, Tab, Tabs, TextField } from '@mui/material';
 import {
   AssessmentRounded,
+  AssignmentReturnRounded,
   BadgeRounded,
   DownloadRounded,
   PictureAsPdfRounded,
@@ -28,6 +29,7 @@ import '../styles/Reports.css';
 const reportTabs = [
   { id: 'sales', label: 'المبيعات', icon: <PointOfSaleRounded /> },
   { id: 'invoices', label: 'الفواتير', icon: <ReceiptLongRounded /> },
+  { id: 'returns', label: 'المرتجعات', icon: <AssignmentReturnRounded /> },
   { id: 'payments', label: 'المدفوعات', icon: <PaymentsRounded /> },
   { id: 'preorders', label: 'الحجوزات', icon: <BadgeRounded /> },
   { id: 'inventory', label: 'المخزون', icon: <Inventory2Rounded /> },
@@ -45,6 +47,8 @@ const initialFilters = {
   search: '',
   invoiceNumber: '',
   receiptNumber: '',
+  returnNumber: '',
+  approvalCardId: '',
   customer: '',
   stockStatus: '',
   paymentMethod: '',
@@ -151,6 +155,42 @@ export default function Reports() {
   };
 
   const columns = useMemo(() => {
+    if (tab === 'returns') {
+      return [
+        {
+          key: 'returnNumber',
+          label: 'رقم المرتجع',
+          render: (row) => <span className="a4-ltr">{row.returnNumber}</span>,
+        },
+        {
+          key: 'invoiceNumber',
+          label: 'رقم الفاتورة',
+          render: (row) => <span className="a4-ltr">{row.invoiceNumber}</span>,
+        },
+        {
+          key: 'receiptNumber',
+          label: 'إيصال المرتجع',
+          render: (row) => <span className="a4-ltr">{row.receiptNumber || '—'}</span>,
+        },
+        { key: 'cashierName', label: 'الكاشير' },
+        { key: 'shiftId', label: 'الشيفت', render: (row) => `#${row.shiftId}` },
+        {
+          key: 'totalRefunded',
+          label: 'المبلغ المسترد',
+          render: (row) => <strong>{money(row.totalRefunded)}</strong>,
+        },
+        {
+          key: 'approvalCardNumber',
+          label: 'كارت الاعتماد',
+          render: (row) =>
+            row.approvalCardNumber
+              ? `${row.approvalCardNumber} · v${row.approvalCardVersion}`
+              : 'تفويض تاريخي',
+        },
+        { key: 'reason', label: 'السبب' },
+        { key: 'createdAt', label: 'التاريخ', render: (row) => dateTime(row.createdAt) },
+      ];
+    }
     if (tab === 'invoices') {
       return [
         {
@@ -370,6 +410,14 @@ export default function Reports() {
         ['عدد الفواتير', number(summary.invoices_count), 'حسب الفلاتر'],
       ];
     }
+    if (tab === 'returns') {
+      return [
+        ['إجمالي المرتجعات', money(summary.total_refunded), 'مبالغ مستردة حسب الفلاتر'],
+        ['عدد العمليات', number(summary.returns_count), 'عملية مرتجع'],
+        ['الفواتير المتأثرة', number(summary.unique_invoices), 'فاتورة فريدة'],
+        ['كروت مستخدمة', number(summary.approval_cards_used), 'كارت اعتماد فريد'],
+      ];
+    }
     if (tab === 'payments') {
       return [
         ['وارد', money(summary.incoming), 'دفعات داخلة'],
@@ -487,6 +535,7 @@ export default function Reports() {
         )}
         {(tab === 'sales' ||
           tab === 'invoices' ||
+          tab === 'returns' ||
           tab === 'payments' ||
           tab === 'preorders' ||
           tab === 'shifts') && (
@@ -506,6 +555,46 @@ export default function Reports() {
               ))}
             </TextField>
           </Field>
+        )}
+        {tab === 'returns' && (
+          <>
+            <Field label="رقم المرتجع">
+              <TextField
+                value={filters.returnNumber}
+                onChange={(event) =>
+                  setFilters((state) => ({ ...state, returnNumber: event.target.value }))
+                }
+              />
+            </Field>
+            <Field label="رقم الفاتورة">
+              <TextField
+                value={filters.invoiceNumber}
+                onChange={(event) =>
+                  setFilters((state) => ({ ...state, invoiceNumber: event.target.value }))
+                }
+              />
+            </Field>
+            <Field label="رقم الشيفت">
+              <TextField
+                type="number"
+                value={filters.shiftId}
+                onChange={(event) =>
+                  setFilters((state) => ({ ...state, shiftId: event.target.value }))
+                }
+                slotProps={{ htmlInput: { min: 1 } }}
+              />
+            </Field>
+            <Field label="رقم كارت الاعتماد">
+              <TextField
+                type="number"
+                value={filters.approvalCardId}
+                onChange={(event) =>
+                  setFilters((state) => ({ ...state, approvalCardId: event.target.value }))
+                }
+                slotProps={{ htmlInput: { min: 1 } }}
+              />
+            </Field>
+          </>
         )}
         {tab === 'sales' && (
           <>
@@ -786,7 +875,11 @@ export default function Reports() {
             columns={columns}
             rows={data.rows}
             mobilePrimary={(row) =>
-              row.invoice_number || row.preorder_number || row.name || `شيفت #${row.id}`
+              row.returnNumber ||
+              row.invoice_number ||
+              row.preorder_number ||
+              row.name ||
+              `شيفت #${row.id}`
             }
           />
         )}

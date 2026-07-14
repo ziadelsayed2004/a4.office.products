@@ -9,6 +9,7 @@ Production operations are defined by `deploy.sh` and `DEPLOYMENT.md`: domain `a4
 - SQLite data, `.env`, logs, and backups are private to the application user. Nginx may read only `client/dist`.
 - Database reset and demo user seeding are forbidden in production.
 - Thermal receipts and labels use browser printing. Invoice/report PDFs use authenticated server-side Chromium.
+- PM2 runs one fork process. Authenticated Admin SSE uses the process-local event bus with 15-second polling fallback; move the bus to Redis/pub-sub before enabling multiple processes. Keep Nginx `proxy_buffering off` for the stream.
 
 ## Release gate
 

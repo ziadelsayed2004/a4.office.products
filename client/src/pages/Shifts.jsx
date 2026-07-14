@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Alert,
   Button,
@@ -11,7 +12,13 @@ import {
   TextField,
   Tooltip,
 } from '@mui/material';
-import { CheckRounded, CloseRounded, RefreshRounded, VisibilityRounded } from '@mui/icons-material';
+import {
+  CheckRounded,
+  CloseRounded,
+  LockRounded,
+  RefreshRounded,
+  VisibilityRounded,
+} from '@mui/icons-material';
 import { api } from '../services/apiClient.js';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { DataTable } from '../components/DataTable.jsx';
@@ -21,13 +28,22 @@ import { Field } from '../components/forms/Field.jsx';
 import { LoadingState } from '../components/LoadingState.jsx';
 import { AppSnackbar } from '../components/AppSnackbar.jsx';
 import { dateTime, money, number } from '../utils/formatters.js';
+import { parsePiasters, piastersToInput } from '../utils/money.js';
 import '../styles/Shifts.css';
 
 const INITIAL_FILTERS = Object.freeze({ status: '', cashierId: '' });
 
 export default function Shifts() {
+  const [searchParams] = useSearchParams();
+  const initialRequest = useRef({
+    filters: {
+      status: searchParams.get('status') || '',
+      cashierId: searchParams.get('cashierId') || '',
+    },
+    shiftId: searchParams.get('shiftId') || '',
+  });
   const [rows, setRows] = useState([]);
-  const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const [filters, setFilters] = useState(initialRequest.current.filters);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState(null);
@@ -35,6 +51,9 @@ export default function Shifts() {
   const [action, setAction] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [emergency, setEmergency] = useState(null);
+  const [emergencyActuals, setEmergencyActuals] = useState({});
+  const [emergencyReason, setEmergencyReason] = useState('');
   const [toast, setToast] = useState(null);
   const loadSequence = useRef(0);
 
@@ -56,11 +75,32 @@ export default function Shifts() {
     }
   };
   useEffect(() => {
-    load(INITIAL_FILTERS);
+    load(initialRequest.current.filters);
+    if (initialRequest.current.shiftId) {
+      api
+        .get(`/api/shifts/${initialRequest.current.shiftId}`)
+        .then((response) => setDetail(response.data))
+        .catch((loadError) => setToast({ severity: 'error', message: loadError.message }));
+    }
     return () => {
       loadSequence.current += 1;
     };
   }, []);
+
+  useEffect(() => {
+    if (!detail?.shift?.id) return undefined;
+    const detailId = detail.shift.id;
+    const timer = window.setInterval(async () => {
+      if (document.visibilityState === 'hidden') return;
+      try {
+        const response = await api.get(`/api/shifts/${detailId}`);
+        setDetail((current) => (current?.shift?.id === detailId ? response.data : current));
+      } catch {
+        // The last successful snapshot stays visible during a transient polling failure.
+      }
+    }, 15_000);
+    return () => window.clearInterval(timer);
+  }, [detail?.shift?.id]);
 
   const openDetail = async (row) => {
     setSaving(true);
@@ -77,6 +117,47 @@ export default function Shifts() {
     setSelected(row);
     setAction(nextAction);
     setNotes('');
+  };
+
+  const beginEmergencyClose = async (row) => {
+    setSaving(true);
+    try {
+      const shiftDetail = (await api.get(`/api/shifts/${row.id}`)).data;
+      const methods = shiftDetail.systemTotals?.methods || {};
+      setEmergency(shiftDetail);
+      setEmergencyActuals(
+        Object.fromEntries(
+          Object.entries(methods).map(([code, amount]) => [code, piastersToInput(amount)])
+        )
+      );
+      setEmergencyReason('');
+    } catch (loadError) {
+      setToast({ severity: 'error', message: loadError.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const emergencyClose = async () => {
+    setSaving(true);
+    try {
+      const methods = emergency?.systemTotals?.methods || {};
+      const actuals = Object.fromEntries(
+        Object.keys(methods).map((code) => [code, parsePiasters(emergencyActuals[code])])
+      );
+      await api.post(`/api/shifts/${emergency.shift.id}/admin-close`, {
+        actuals,
+        reason: emergencyReason.trim(),
+      });
+      setToast({ message: `تم الإغلاق الإداري للشيفت #${emergency.shift.id} وتسجيل السبب.` });
+      setEmergency(null);
+      setDetail(null);
+      await load(filters);
+    } catch (saveError) {
+      setToast({ severity: 'error', message: saveError.message });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const submit = async () => {
@@ -139,6 +220,13 @@ export default function Shifts() {
                 </IconButton>
               </Tooltip>
             </>
+          )}
+          {['OPEN', 'PENDING_ADMIN_REVIEW'].includes(row.status) && (
+            <Tooltip title="إغلاق إداري طارئ">
+              <IconButton color="warning" size="small" onClick={() => beginEmergencyClose(row)}>
+                <LockRounded fontSize="small" />
+              </IconButton>
+            </Tooltip>
           )}
         </div>
       ),
@@ -246,7 +334,68 @@ export default function Shifts() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(detail)} onClose={() => setDetail(null)} fullWidth maxWidth="md">
+      <Dialog
+        open={Boolean(emergency)}
+        onClose={() => !saving && setEmergency(null)}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>إغلاق إداري طارئ للشيفت #{emergency?.shift?.id}</DialogTitle>
+        <DialogContent dividers>
+          <Alert severity="warning" className="a4-grid--section-gap">
+            هذا الإجراء ينهي الشيفت فوراً. أدخل الإجماليات الفعلية لكل وسيلة دفع وسبباً واضحاً؛
+            سيُحفظ القرار والفروقات في سجل المراجعة والـAudit.
+          </Alert>
+          <div className="a4-grid a4-grid--two a4-grid--section-gap">
+            {Object.entries(emergency?.systemTotals?.methods || {}).map(([code, expected]) => (
+              <Field key={code} label={`${code} — المتوقع ${money(expected)}`} required>
+                <TextField
+                  type="number"
+                  value={emergencyActuals[code] || ''}
+                  onChange={(event) =>
+                    setEmergencyActuals((current) => ({
+                      ...current,
+                      [code]: event.target.value,
+                    }))
+                  }
+                  slotProps={{ htmlInput: { min: 0, step: '0.01' } }}
+                />
+              </Field>
+            ))}
+          </div>
+          <Field label="سبب الإغلاق الطارئ" required>
+            <TextField
+              multiline
+              minRows={4}
+              value={emergencyReason}
+              onChange={(event) => setEmergencyReason(event.target.value)}
+              slotProps={{ htmlInput: { maxLength: 500 } }}
+              helperText={`${emergencyReason.trim().length}/500`}
+            />
+          </Field>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEmergency(null)} disabled={saving}>
+            إلغاء
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={emergencyClose}
+            disabled={
+              saving ||
+              !emergencyReason.trim() ||
+              Object.keys(emergency?.systemTotals?.methods || {}).some(
+                (code) => emergencyActuals[code] === '' || emergencyActuals[code] === undefined
+              )
+            }
+          >
+            إغلاق الشيفت وتسجيل المراجعة
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(detail)} onClose={() => setDetail(null)} fullWidth maxWidth="lg">
         <DialogTitle>تفاصيل الشيفت #{detail?.shift?.id}</DialogTitle>
         <DialogContent dividers>
           {detail && (
@@ -261,6 +410,66 @@ export default function Shifts() {
                   </div>
                 ))}
               </div>
+              <h3>الفواتير</h3>
+              <DataTable
+                rows={detail.invoices || []}
+                mobilePrimary={(row) => row.invoice_number || `فاتورة #${row.id}`}
+                columns={[
+                  { key: 'invoice_number', label: 'رقم الفاتورة' },
+                  { key: 'receipt_number', label: 'رقم الإيصال' },
+                  { key: 'total', label: 'الإجمالي', render: (row) => money(row.total) },
+                  {
+                    key: 'total_refunded',
+                    label: 'المرتجع',
+                    render: (row) => money(row.total_refunded),
+                  },
+                  {
+                    key: 'created_at',
+                    label: 'الوقت',
+                    render: (row) => dateTime(row.created_at),
+                  },
+                  {
+                    key: 'status',
+                    label: 'الحالة',
+                    render: (row) => <StatusChip status={row.status} />,
+                  },
+                ]}
+              />
+              <h3>المرتجعات المنفذة داخل الشيفت</h3>
+              <DataTable
+                rows={detail.returns || []}
+                mobilePrimary={(row) => row.return_number || `مرتجع #${row.id}`}
+                columns={[
+                  { key: 'return_number', label: 'رقم المرتجع' },
+                  { key: 'invoice_number', label: 'الفاتورة' },
+                  {
+                    key: 'total_refunded',
+                    label: 'المبلغ',
+                    render: (row) => money(row.total_refunded),
+                  },
+                  { key: 'cashier_name', label: 'الكاشير' },
+                  {
+                    key: 'created_at',
+                    label: 'الوقت',
+                    render: (row) => dateTime(row.created_at),
+                  },
+                ]}
+              />
+              <h3>الحركات النقدية</h3>
+              <DataTable
+                rows={detail.cashMovements || []}
+                mobilePrimary={(row) => `${row.type} · ${money(row.amount)}`}
+                columns={[
+                  { key: 'type', label: 'الحركة' },
+                  { key: 'amount', label: 'المبلغ', render: (row) => money(row.amount) },
+                  { key: 'notes', label: 'السبب/الملاحظة' },
+                  {
+                    key: 'created_at',
+                    label: 'الوقت',
+                    render: (row) => dateTime(row.created_at),
+                  },
+                ]}
+              />
               <h3>مراجعات التقفيل</h3>
               {detail.closeRevisions.length ? (
                 detail.closeRevisions.map((revision) => (

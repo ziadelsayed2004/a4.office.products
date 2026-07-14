@@ -42,12 +42,23 @@ export async function getAdminInvoiceController(req, res, next) {
 
 async function sendInvoicePdf(req, res, next, options = {}) {
   try {
-    const { buffer, invoice } = await generateInvoicePdf(req.params.id, req.user, options);
+    const { buffer, invoice, outputAuthorization } = await generateInvoicePdf(
+      req.params.id,
+      req.user,
+      options
+    );
     await writeAuditLog({
       userId: req.user.id,
-      actionType: 'INVOICE_PDF_EXPORT',
+      shiftId: outputAuthorization.shiftId,
+      actionType: outputAuthorization.adminOverride
+        ? 'INVOICE_PDF_ADMIN_OVERRIDE'
+        : 'INVOICE_PDF_EXPORT',
       entityType: 'invoice',
       entityId: invoice.id,
+      afterValues: {
+        actorRoleSnapshot: outputAuthorization.actorRoleSnapshot,
+        adminOverride: outputAuthorization.adminOverride,
+      },
       notes: `Invoice PDF exported for ${invoice.invoice_number}.`,
     });
     const safeNumber = String(invoice.invoice_number || invoice.id).replace(/[^a-zA-Z0-9_-]/g, '_');

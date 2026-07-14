@@ -26,8 +26,7 @@ const ReceiptPrint = lazy(() => import('./pages/ReceiptPrint.jsx'));
 const ProductLabelPrint = lazy(() => import('./pages/ProductLabelPrint.jsx'));
 const AuditLogs = lazy(() => import('./pages/AuditLogs.jsx'));
 const PrinterSettings = lazy(() => import('./pages/PrinterSettings.jsx'));
-const ReturnAuthorizations = lazy(() => import('./pages/ReturnAuthorizations.jsx'));
-const ReturnAuthorizationPrint = lazy(() => import('./pages/ReturnAuthorizationPrint.jsx'));
+const Returns = lazy(() => import('./pages/Returns.jsx'));
 const ReturnApprovalCardPrint = lazy(() => import('./pages/ReturnApprovalCardPrint.jsx'));
 
 function Protected({ children }) {
@@ -95,16 +94,16 @@ export default function App() {
               <Route
                 path="/labels/print"
                 element={
-                  <Protected>
+                  <AdminOnly>
                     <ProductLabelPrint />
-                  </Protected>
+                  </AdminOnly>
                 }
               />
               <Route
                 path="/return-authorizations/:authorizationId/print"
                 element={
                   <AdminOnly>
-                    <ReturnAuthorizationPrint />
+                    <Navigate to="/returns?tab=history" replace />
                   </AdminOnly>
                 }
               />
@@ -202,7 +201,15 @@ export default function App() {
                   path="return-authorizations"
                   element={
                     <AdminOnly>
-                      <ReturnAuthorizations />
+                      <Navigate to="/returns?tab=cards" replace />
+                    </AdminOnly>
+                  }
+                />
+                <Route
+                  path="returns"
+                  element={
+                    <AdminOnly>
+                      <Returns />
                     </AdminOnly>
                   }
                 />
