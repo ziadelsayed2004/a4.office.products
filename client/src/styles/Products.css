@@ -53,6 +53,29 @@
   color: var(--color-text-muted);
 }
 
+.product-status-control {
+  min-height: 80px;
+  padding: var(--space-3) var(--space-4);
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-alt);
+  display: flex;
+}
+
+.product-status-control > span {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.product-status-control .MuiFormControlLabel-root {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
 .product-identity-preview__values span {
   margin-bottom: var(--space-1);
   font-size: 0.75rem;
@@ -89,5 +112,10 @@
   .product-identity-preview,
   .product-identity-preview__values {
     grid-template-columns: 1fr;
+  }
+
+  .product-status-control {
+    min-height: 64px;
+    padding: var(--space-3);
   }
 }

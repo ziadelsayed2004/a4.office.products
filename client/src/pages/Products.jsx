@@ -606,7 +606,7 @@ export default function Products() {
                       : 'اختر التصنيف لعرض SKU والباركود المتوقعين.'}
               </small>
             </div>
-            <Field className="full" label="الوصف">
+            <Field label="الوصف">
               <TextField
                 multiline
                 minRows={2}
@@ -616,18 +616,21 @@ export default function Products() {
                 }
               />
             </Field>
-            <Field className="full" label="حالة المنتج">
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={form.isActive}
-                    onChange={(event) =>
-                      setForm((value) => ({ ...value, isActive: event.target.checked }))
-                    }
-                  />
-                }
-                label="نشط"
-              />
+            <Field label="حالة المنتج">
+              <div className="product-status-control">
+                <span>إتاحة المنتج للبيع والظهور داخل النظام</span>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={form.isActive}
+                      onChange={(event) =>
+                        setForm((value) => ({ ...value, isActive: event.target.checked }))
+                      }
+                    />
+                  }
+                  label={form.isActive ? 'نشط' : 'غير نشط'}
+                />
+              </div>
             </Field>
           </FieldGrid>
         </FormSection>
