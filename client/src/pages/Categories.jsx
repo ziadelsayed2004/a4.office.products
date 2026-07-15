@@ -19,7 +19,7 @@ export default function Categories() {
   const [error, setError] = useState('');
   const [drawer, setDrawer] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: '', is_active: 1 });
+  const [form, setForm] = useState({ name: '', code: '', is_active: 1 });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -40,15 +40,20 @@ export default function Categories() {
   }, []);
   const open = (row = null) => {
     setEditing(row);
-    setForm(row ? { name: row.name, is_active: row.is_active } : { name: '', is_active: 1 });
+    setForm(
+      row
+        ? { name: row.name, code: row.code || '', is_active: row.is_active }
+        : { name: '', code: '', is_active: 1 }
+    );
     setDrawer(true);
   };
   const save = async () => {
     if (!form.name.trim()) return setToast({ severity: 'error', message: 'اسم التصنيف مطلوب.' });
     setSaving(true);
     try {
-      if (editing) await api.patch(`/api/admin/categories/${editing.id}`, form);
-      else await api.post('/api/admin/categories', form);
+      const payload = { name: form.name.trim(), is_active: form.is_active };
+      if (editing) await api.patch(`/api/admin/categories/${editing.id}`, payload);
+      else await api.post('/api/admin/categories', payload);
       setToast({ message: editing ? 'تم تحديث التصنيف.' : 'تم إنشاء التصنيف.' });
       setDrawer(false);
       await load();
@@ -81,6 +86,11 @@ export default function Categories() {
   };
   const columns = [
     { key: 'name', label: 'اسم التصنيف' },
+    {
+      key: 'code',
+      label: 'كود التصنيف',
+      render: (r) => <span className="a4-ltr-value">{r.code}</span>,
+    },
     {
       key: 'status',
       label: 'الحالة',
@@ -160,6 +170,15 @@ export default function Categories() {
         loading={saving}
       >
         <FieldGrid columns={1}>
+          <Field label="كود التصنيف">
+            <TextField
+              value={form.code}
+              disabled
+              placeholder="يتولد تلقائيًا بعد الحفظ"
+              helperText="كود ثابت لا يتغير بعد إنشاء التصنيف."
+              inputProps={{ dir: 'ltr' }}
+            />
+          </Field>
           <Field label="اسم التصنيف" required>
             <TextField
               value={form.name}

@@ -1,6 +1,6 @@
 # A4 Office Products POS
 
-Production target: `https://a4office.cloud`. See [DEPLOYMENT.md](DEPLOYMENT.md) for Ubuntu deployment, HTTPS, PM2, Chromium, backup, restore, and rollback procedures. Thermal/label output remains browser-based; authenticated invoice and report PDFs use system Chromium. `TEMPLETE-PROJECT` is reference material and is never installed or deployed with A4 Office.
+Production target: `https://a4office.cloud`. See [DEPLOYMENT.md](DEPLOYMENT.md) for Ubuntu deployment, HTTPS, PM2, Chromium, backup, restore, and rollback procedures. Thermal/label output remains browser-based; authenticated invoice and report PDFs use system Chromium.
 
 نظام نقاط بيع وإدارة مكتبة بواجهة عربية RTL، مبني على React/Vite وExpress وSQLite، ويعمل بتوقيت `Africa/Cairo` وعلى المنفذ `5000` للخلفية.
 
@@ -97,7 +97,7 @@ npm run db:verify
 git diff --check
 ```
 
-`npm run check` يشغل Prettier check، فحوص الواجهة والطباعة واختبارات React الفعلية، Oxlint/syntax واختبارات السيرفر، بناء production، وفحص إعداد النشر. مجلد `TEMPLETE-PROJECT` مرجع فقط ومُستبعد من format/lint/tests/build.
+`npm run check` يشغل Prettier check وOxlint وفحص syntax وبناء production وفحص إعدادات النشر.
 
 ## production
 

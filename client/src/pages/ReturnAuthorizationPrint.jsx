@@ -77,7 +77,7 @@ function applyReturnAuthorizationPrintPageSize(container, widthMm) {
   return {
     cleanup() {
       style.remove();
-    }
+    },
   };
 }
 
@@ -123,13 +123,12 @@ export default function ReturnAuthorizationPrint() {
     let active = true;
     let cleanup = () => undefined;
 
-    waitForAssets(containerRef.current)
-      .then(() => {
-        if (!active) return;
-        const res = applyReturnAuthorizationPrintPageSize(containerRef.current, printerWidth);
-        if (res) cleanup = res.cleanup;
-        requestAnimationFrame(() => globalThis.print?.());
-      });
+    waitForAssets(containerRef.current).then(() => {
+      if (!active) return;
+      const res = applyReturnAuthorizationPrintPageSize(containerRef.current, printerWidth);
+      if (res) cleanup = res.cleanup;
+      requestAnimationFrame(() => globalThis.print?.());
+    });
 
     return () => {
       active = false;

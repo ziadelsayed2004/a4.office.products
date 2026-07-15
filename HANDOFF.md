@@ -1,6 +1,6 @@
 # A4 Office POS — Handoff
 
-Production operations are defined by `deploy.sh` and `DEPLOYMENT.md`: domain `a4office.cloud`, isolated user `a4pos`, loopback Express, Nginx/Certbot TLS, PM2, verified SQLite backups, and system-Chromium PDF exports. Never deploy `TEMPLETE-PROJECT` as part of this application or copy its root-PM2/777-storage patterns.
+Production operations are defined by `deploy.sh` and `DEPLOYMENT.md`: domain `a4office.cloud`, isolated user `a4pos`, loopback Express, Nginx/Certbot TLS, PM2, verified SQLite backups, and system-Chromium PDF exports.
 
 ## Runtime contracts
 

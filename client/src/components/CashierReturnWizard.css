@@ -180,6 +180,35 @@
   display: block;
 }
 
+.cashier-return-wizard__number-preview {
+  padding: var(--space-3);
+  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: grid;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-alt);
+}
+
+.cashier-return-wizard__number-preview span,
+.cashier-return-wizard__number-preview strong {
+  display: block;
+}
+
+.cashier-return-wizard__number-preview span,
+.cashier-return-wizard__number-preview small {
+  color: var(--color-text-muted);
+}
+
+.cashier-return-wizard__number-preview span {
+  margin-bottom: var(--space-1);
+  font-size: 0.75rem;
+}
+
+.cashier-return-wizard__number-preview small {
+  grid-column: 1 / -1;
+}
+
 .cashier-return-wizard__review-head span {
   color: var(--color-text-muted);
 }
@@ -240,7 +269,7 @@
   display: block;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 720px) {
   .cashier-return-wizard__head > .MuiButton-root {
     justify-self: stretch;
     position: static;
@@ -269,6 +298,14 @@
   .cashier-return-wizard__approved {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .cashier-return-wizard__number-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .cashier-return-wizard__number-preview small {
+    grid-column: auto;
   }
 
   .cashier-return-wizard__approved div {

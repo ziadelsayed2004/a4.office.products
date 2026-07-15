@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Button,
@@ -148,6 +148,18 @@ export function CashierReturnWizard({ onComplete }) {
   const [approvalCardToken, setApprovalCardToken] = useState('');
   const [refundReferences, setRefundReferences] = useState({});
   const [requestKey, setRequestKey] = useState(() => createIdempotencyKey('return'));
+  const [numberPreview, setNumberPreview] = useState(null);
+
+  useEffect(() => {
+    if (!quote) {
+      setNumberPreview(null);
+      return;
+    }
+    api
+      .get('/api/number-previews?type=return')
+      .then((response) => setNumberPreview(response.data))
+      .catch(() => setNumberPreview(null));
+  }, [quote]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -441,7 +453,7 @@ export function CashierReturnWizard({ onComplete }) {
             المفتوحة.
           </Alert>
           <div className="cashier-return-wizard__scan-row">
-            <Field label="QR أو رقم الفاتورة أو الإيصال" required ltr>
+            <Field label="QR أو رقم الفاتورة أو الإيصال" required>
               <TextField
                 inputRef={activeInputRef}
                 value={invoiceCode}
@@ -489,7 +501,7 @@ export function CashierReturnWizard({ onComplete }) {
           {!quote && (
             <Paper variant="outlined" className="cashier-return-wizard__panel">
               <div className="cashier-return-wizard__scan-row">
-                <Field label="باركود أو SKU للمنتج المرتجع" required ltr>
+                <Field label="باركود أو SKU للمنتج المرتجع" required>
                   <TextField
                     inputRef={activeInputRef}
                     value={itemCode}
@@ -640,6 +652,19 @@ export function CashierReturnWizard({ onComplete }) {
                   تعديل البنود
                 </Button>
               </div>
+              {numberPreview && (
+                <div className="cashier-return-wizard__number-preview">
+                  <div>
+                    <span>رقم المرتجع المتوقع</span>
+                    <strong className="a4-ltr">{numberPreview.returnNumber}</strong>
+                  </div>
+                  <div>
+                    <span>رقم الإيصال المتوقع</span>
+                    <strong className="a4-ltr">{numberPreview.receiptNumber}</strong>
+                  </div>
+                  <small>معاينة متوقعة؛ تتأكد الأرقام عند تنفيذ المرتجع.</small>
+                </div>
+              )}
               <div className="cashier-return-wizard__review-items">
                 {(quoteData.items || selectedItems).map((item) => (
                   <div key={itemId(item)}>
@@ -675,7 +700,7 @@ export function CashierReturnWizard({ onComplete }) {
                         <span>{money(valueOf(allocation, 'amount') || 0)}</span>
                       </div>
                       {isExternalAllocation(allocation) ? (
-                        <Field label="مرجع الرد الخارجي" required ltr>
+                        <Field label="مرجع الرد الخارجي" required>
                           <TextField
                             value={refundReferences[key] || ''}
                             onChange={(event) => {
@@ -701,7 +726,7 @@ export function CashierReturnWizard({ onComplete }) {
                     بطاقة اعتماد الأدمن هي الخطوة الأخيرة، ولا تُحفظ قيمتها في الشاشة بعد التنفيذ.
                   </Alert>
                   <div className="cashier-return-wizard__scan-row">
-                    <Field label="بطاقة اعتماد الأدمن" required ltr>
+                    <Field label="بطاقة اعتماد الأدمن" required>
                       <TextField
                         inputRef={activeInputRef}
                         type="password"

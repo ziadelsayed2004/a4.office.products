@@ -3,7 +3,8 @@
 .form-grid--one {
   min-width: 0;
   display: grid;
-  gap: var(--space-5);
+  column-gap: var(--space-5);
+  row-gap: var(--space-7);
 }
 
 .form-grid {
@@ -22,10 +23,12 @@
   grid-column: 1 / -1;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 720px) {
   .form-grid,
-  .form-grid--three {
+  .form-grid--three,
+  .form-grid--one {
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-4);
+    column-gap: var(--space-4);
+    row-gap: var(--space-6);
   }
 }

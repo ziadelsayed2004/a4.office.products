@@ -69,7 +69,7 @@
   gap: var(--space-3);
 }
 
-@media (max-width: 800px) {
+@media (max-width: 900px) {
   .invoice-lookup-panel__form,
   .invoice-own-shift-panel,
   .invoice-own-shift-panel__form,
@@ -83,7 +83,7 @@
   }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 600px) {
   .invoice-lookup-panel__heading {
     display: grid;
   }

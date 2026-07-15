@@ -428,7 +428,7 @@ export default function Invoices() {
 
       {isAdmin ? (
         <FilterPanel resultCount={total} onApply={() => loadAdmin(1)} onReset={resetAdminFilters}>
-          <Field label="رقم الفاتورة" ltr>
+          <Field label="رقم الفاتورة">
             <TextField
               value={adminFilters.invoiceNumber}
               onChange={(event) =>
@@ -436,7 +436,7 @@ export default function Invoices() {
               }
             />
           </Field>
-          <Field label="رقم الإيصال" ltr>
+          <Field label="رقم الإيصال">
             <TextField
               value={adminFilters.receiptNumber}
               onChange={(event) =>
@@ -532,7 +532,7 @@ export default function Invoices() {
               }
             />
           </Field>
-          <Field label="SKU أو الباركود" ltr>
+          <Field label="SKU أو الباركود">
             <TextField
               value={adminFilters.sku}
               onChange={(event) =>
@@ -567,7 +567,7 @@ export default function Invoices() {
                   <MenuItem value="token">رمز QR الآمن</MenuItem>
                 </TextField>
               </Field>
-              <Field label="القيمة" ltr>
+              <Field label="القيمة">
                 <TextField
                   autoFocus
                   value={lookup.value}

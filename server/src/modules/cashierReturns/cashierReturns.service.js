@@ -2,7 +2,7 @@ import db from '../../db/index.js';
 import { writeAuditLog } from '../../utils/auditLogger.js';
 import {
   AppError,
-  nextDocumentNumber,
+  nextReturnNumbers,
   requireInteger,
   withIdempotency,
 } from '../../utils/financial.js';
@@ -346,7 +346,7 @@ export async function executeReturn({ input, actor, idempotencyKey }) {
         ownerAdminName: card.owner_admin_name,
         tokenVersion: card.token_version,
       };
-      const returnNumber = await nextDocumentNumber(connection, 'return');
+      const { returnNumber, receiptNumber } = await nextReturnNumbers(connection);
       const result = await connection.run(
         `INSERT INTO returns
          (order_id, shift_id, cashier_id, total_refunded, notes, return_reason,
@@ -470,6 +470,7 @@ export async function executeReturn({ input, actor, idempotencyKey }) {
         referenceType: 'order_return',
         referenceId: result.lastID,
         printedBy: actor.id,
+        receiptNumber,
         connection,
         snapshot: {
           version: 4,

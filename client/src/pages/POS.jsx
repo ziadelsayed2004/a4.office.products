@@ -66,6 +66,38 @@ function paymentMethodCode(method) {
   return String(method?.code || method?.method || method?.id || '');
 }
 
+function NumberPreviewSummary({ preview, amount, method }) {
+  if (!preview) return null;
+  const numbers = [
+    ['الفاتورة', preview.invoiceNumber],
+    ['الإيصال', preview.receiptNumber],
+    ['الحجز', preview.preorderNumber],
+  ].filter(([, value]) => value);
+  return (
+    <div className="number-preview-summary">
+      {numbers.map(([label, value]) => (
+        <div key={label}>
+          <span>{label} المتوقع</span>
+          <strong className="a4-ltr">{value}</strong>
+        </div>
+      ))}
+      {amount !== undefined && (
+        <div>
+          <span>الإجمالي</span>
+          <strong>{money(amount)}</strong>
+        </div>
+      )}
+      {method && (
+        <div>
+          <span>طريقة الدفع</span>
+          <strong>{method}</strong>
+        </div>
+      )}
+      <small>الأرقام معاينة متوقعة وتتأكد عند حفظ العملية.</small>
+    </div>
+  );
+}
+
 export default function POS() {
   const { user, currentShift, loadShift } = useAuth();
   const navigate = useNavigate();
@@ -106,11 +138,41 @@ export default function POS() {
   const [toast, setToast] = useState(null);
   const [requestKey, setRequestKey] = useState(() => createIdempotencyKey('sale'));
   const [pickupKey, setPickupKey] = useState(() => createIdempotencyKey('pickup'));
+  const [checkoutPreview, setCheckoutPreview] = useState(null);
+  const [pickupPreview, setPickupPreview] = useState(null);
 
   const activeMethods = useMemo(
     () => paymentMethods.filter((method) => method.is_active === 1),
     [paymentMethods]
   );
+  const selectedMethodName = useMemo(() => {
+    if (splitPayment) return 'دفع مقسم';
+    const selected = activeMethods.find((method) => paymentMethodCode(method) === quickMethodCode);
+    return selected?.name_ar || selected?.name || '';
+  }, [activeMethods, quickMethodCode, splitPayment]);
+
+  useEffect(() => {
+    if (!checkoutOpen || success || ![MODES.SALE, MODES.PREORDER].includes(mode)) {
+      setCheckoutPreview(null);
+      return;
+    }
+    const type = mode === MODES.PREORDER ? 'preorder' : 'sale';
+    api
+      .get(`/api/number-previews?type=${type}`)
+      .then((response) => setCheckoutPreview(response.data))
+      .catch(() => setCheckoutPreview(null));
+  }, [checkoutOpen, mode, success]);
+
+  useEffect(() => {
+    if (!pickupOpen) {
+      setPickupPreview(null);
+      return;
+    }
+    api
+      .get('/api/number-previews?type=sale')
+      .then((response) => setPickupPreview(response.data))
+      .catch(() => setPickupPreview(null));
+  }, [pickupOpen]);
   const visibleProducts = useMemo(
     () =>
       categoryId
@@ -871,7 +933,7 @@ export default function POS() {
                     }
                   />
                 </Field>
-                <Field label="رقم الهاتف" required ltr>
+                <Field label="رقم الهاتف" required>
                   <TextField
                     value={customer.customerPhone}
                     onChange={(event) =>
@@ -1010,9 +1072,11 @@ export default function POS() {
             </div>
           ) : (
             <div className="quick-payment">
-              <Alert severity="info">
-                اختر طريقة واحدة لتطبيق كامل المبلغ فورًا، أو افتح تقسيم الدفع عند الحاجة.
-              </Alert>
+              <NumberPreviewSummary
+                preview={checkoutPreview}
+                amount={mode === MODES.PREORDER ? selectedDeposit : due}
+                method={selectedMethodName}
+              />
               <div className="quick-payment__methods">
                 {activeMethods.map((method) => {
                   const code = paymentMethodCode(method);
@@ -1108,6 +1172,10 @@ export default function POS() {
       >
         <DialogTitle>مراجعة استلام الحجز {pickupData?.preorder?.preorder_number}</DialogTitle>
         <DialogContent dividers>
+          <NumberPreviewSummary
+            preview={pickupPreview}
+            amount={pickupData?.preorder?.remaining_amount}
+          />
           {pickupData && (
             <div className="pickup-dialog">
               <div className="a4-grid a4-grid--two">

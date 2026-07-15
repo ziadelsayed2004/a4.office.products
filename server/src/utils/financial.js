@@ -105,6 +105,57 @@ export async function nextDocumentNumber(connection, kind) {
   return `${definition.prefix}-${dateKey}-${String(row.last_value).padStart(definition.width, '0')}`;
 }
 
+export async function nextPersistentSequence(connection, type, scopeKey = 'GLOBAL') {
+  await connection.run(
+    `INSERT INTO number_sequences (sequence_type, scope_key, last_value)
+     VALUES (?, ?, 1)
+     ON CONFLICT(sequence_type, scope_key)
+     DO UPDATE SET last_value = last_value + 1, updated_at = CURRENT_TIMESTAMP;`,
+    [type, String(scopeKey)]
+  );
+  const row = await connection.get(
+    `SELECT last_value FROM number_sequences WHERE sequence_type = ? AND scope_key = ?;`,
+    [type, String(scopeKey)]
+  );
+  return Number(row.last_value);
+}
+
+export async function previewPersistentSequence(connection, type, scopeKey = 'GLOBAL') {
+  const row = await connection.get(
+    `SELECT last_value FROM number_sequences WHERE sequence_type = ? AND scope_key = ?;`,
+    [type, String(scopeKey)]
+  );
+  return Number(row?.last_value || 0) + 1;
+}
+
+export async function nextCategoryCode(connection) {
+  return `CAT${String(await nextPersistentSequence(connection, 'category')).padStart(3, '0')}`;
+}
+
+export async function nextProductIdentity(connection, category) {
+  const sequence = await nextPersistentSequence(connection, 'product', category.id);
+  const sku = `${category.code}-${String(sequence).padStart(6, '0')}`;
+  return { sku, barcode: sku };
+}
+
+export async function nextSaleNumbers(connection) {
+  const sequence = await nextPersistentSequence(connection, 'sale');
+  const suffix = String(sequence).padStart(8, '0');
+  return { sequence, invoiceNumber: `INV-${suffix}`, receiptNumber: `REC-${suffix}` };
+}
+
+export async function nextPreorderNumbers(connection) {
+  const sequence = await nextPersistentSequence(connection, 'preorder');
+  const suffix = String(sequence).padStart(8, '0');
+  return { sequence, preorderNumber: `PR-${suffix}`, receiptNumber: `REC-PR-${suffix}` };
+}
+
+export async function nextReturnNumbers(connection) {
+  const sequence = await nextPersistentSequence(connection, 'return');
+  const suffix = String(sequence).padStart(8, '0');
+  return { sequence, returnNumber: `RTN-${suffix}`, receiptNumber: `REC-RTN-${suffix}` };
+}
+
 export function generateSecureToken(type) {
   const prefixes = { product: 'prod_', preorder: 'pre_', invoice: 'inv_' };
   if (!prefixes[type])

@@ -39,7 +39,17 @@
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
+  --space-7: 28px;
   --space-8: 32px;
+
+  /* Canonical responsive geometry: 600 / 720 / 900 / 1180px. */
+  --page-gap: var(--space-5);
+  --page-gap-mobile: 14px;
+  --page-padding: var(--space-5);
+  --page-padding-mobile: 14px;
+  --content-padding-inline: var(--space-6);
+  --content-padding-block: var(--space-5);
+  --content-padding-mobile: var(--space-4);
 
   --sidebar-width: 270px;
   --sidebar-collapsed-width: 72px;
@@ -51,6 +61,9 @@
   --entity-drawer-width: 820px;
   --entity-drawer-wide-width: 920px;
   --confirm-dialog-max-width: 480px;
+  --content-dialog-max-width: 820px;
+  --table-state-min-height: 240px;
+  --touch-target-size: 44px;
 
   /* Transitional aliases keep existing A4 page styles source-compatible. */
   --a4-bg: var(--color-bg);

@@ -38,6 +38,7 @@ import returnApprovalCardRoutes from './modules/returnApprovalCards/returnApprov
 import cashierReturnRoutes, {
   adminReturnRoutes,
 } from './modules/cashierReturns/cashierReturns.routes.js';
+import numberPreviewRoutes from './modules/numberPreviews/numberPreviews.routes.js';
 
 const app = express();
 app.set('trust proxy', config.trustProxy);
@@ -57,6 +58,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/admin/products', productAdminRoutes);
 app.use('/api/admin/inventory', inventoryRoutes);
 app.use('/api/payment-methods', paymentsRoutes);
+app.use('/api/number-previews', numberPreviewRoutes);
 app.use('/api/customers', customersRoutes);
 app.use('/api/admin/customers', customersAdminRoutes);
 app.use('/api/pos', posRoutes);

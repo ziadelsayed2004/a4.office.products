@@ -11,6 +11,11 @@
   text-align: right;
 }
 
+.confirm-dialog--content.MuiDialog-paper {
+  width: max-content;
+  max-width: min(var(--content-dialog-max-width), calc(100vw - 32px));
+}
+
 .confirm-dialog__title.MuiDialogTitle-root {
   padding: var(--space-5) var(--space-5) var(--space-3);
   color: var(--color-text);
@@ -24,6 +29,10 @@
   font-size: 0.95rem;
   line-height: 1.6;
   overflow-wrap: anywhere;
+}
+
+.confirm-dialog--content .confirm-dialog__content.MuiDialogContent-root {
+  overflow-x: hidden;
 }
 
 .confirm-dialog__content .MuiTypography-root {
@@ -52,6 +61,11 @@
     width: calc(100% - 24px);
     max-height: calc(100% - 24px);
     margin: var(--space-3);
+  }
+
+  .confirm-dialog--content.MuiDialog-paper {
+    width: calc(100% - 24px);
+    max-width: calc(100% - 24px);
   }
 
   .confirm-dialog__title.MuiDialogTitle-root {

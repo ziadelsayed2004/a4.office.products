@@ -37,6 +37,16 @@ const dateRange = (schema) =>
     message: 'endDate must be on or after startDate.',
   });
 
+export const numberPreviewQuery = z
+  .object({
+    type: z.enum(['product', 'sale', 'preorder', 'return']),
+    categoryId: optionalInteger(1),
+  })
+  .refine((value) => value.type !== 'product' || value.categoryId, {
+    message: 'categoryId is required for product previews.',
+    path: ['categoryId'],
+  });
+
 export const idParams = z.object({ id: integer(1) });
 export const loginBody = z.object({ username: trimmed(100), password: z.string().min(1).max(200) });
 export const refreshBody = z.object({ refreshToken: z.string().min(20).max(500) });
@@ -270,8 +280,6 @@ const productFields = {
   low_stock_threshold: optionalInteger(0),
   purchaseCost: optionalInteger(0),
   purchase_cost: optionalInteger(0),
-  initialStock: optionalInteger(0),
-  initial_stock: optionalInteger(0),
   notes: optionalNullableTrimmed(2000),
   isBook: optionalBooleanFlag,
   is_book: optionalBooleanFlag,
@@ -287,7 +295,6 @@ export const productCreateBody = z
   .superRefine((value, context) => {
     for (const [valid, path, message] of [
       [value.name, ['name'], 'Product name is required.'],
-      [value.sku, ['sku'], 'SKU is required.'],
       [value.categoryId || value.category_id, ['categoryId'], 'Category is required.'],
       [
         value.isActive !== undefined || value.is_active !== undefined,

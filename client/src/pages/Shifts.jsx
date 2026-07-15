@@ -286,8 +286,8 @@ export default function Shifts() {
       <Dialog
         open={Boolean(selected)}
         onClose={() => !saving && setSelected(null)}
-        fullWidth
-        maxWidth="sm"
+        maxWidth={false}
+        slotProps={{ paper: { className: 'content-sized-dialog' } }}
       >
         <DialogTitle>
           {action === 'approve' ? 'اعتماد تقفيل الشيفت' : 'رفض التقفيل وإعادة الشيفت'} #
@@ -337,8 +337,8 @@ export default function Shifts() {
       <Dialog
         open={Boolean(emergency)}
         onClose={() => !saving && setEmergency(null)}
-        fullWidth
-        maxWidth="md"
+        maxWidth={false}
+        slotProps={{ paper: { className: 'content-sized-dialog' } }}
       >
         <DialogTitle>إغلاق إداري طارئ للشيفت #{emergency?.shift?.id}</DialogTitle>
         <DialogContent dividers>

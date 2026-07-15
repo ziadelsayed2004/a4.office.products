@@ -72,7 +72,7 @@
   text-align: right;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 899px) {
   .receipt-workspace {
     grid-template-columns: 1fr;
   }

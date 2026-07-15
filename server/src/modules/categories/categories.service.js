@@ -1,6 +1,7 @@
 import db, { withTransaction } from '../../db/index.js';
 import { writeAuditLog } from '../../utils/auditLogger.js';
 import { AppError } from '../../utils/errors.js';
+import { nextCategoryCode } from '../../utils/financial.js';
 
 function categoryName(value) {
   const name = String(value || '').trim();
@@ -11,7 +12,7 @@ function categoryName(value) {
 }
 
 export async function getAllCategories(activeOnly = false, connection = db) {
-  let query = `SELECT c.id, c.name, c.is_active, c.created_at, c.updated_at,
+  let query = `SELECT c.id, c.name, c.code, c.is_active, c.created_at, c.updated_at,
     (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count,
     (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = 1)
       AS active_product_count,
@@ -25,7 +26,7 @@ export async function getAllCategories(activeOnly = false, connection = db) {
 
 export async function getCategoryById(id, connection = db) {
   const category = await connection.get(
-    `SELECT c.id, c.name, c.is_active, c.created_at, c.updated_at,
+    `SELECT c.id, c.name, c.code, c.is_active, c.created_at, c.updated_at,
       (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count,
       (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = 1)
         AS active_product_count,
@@ -63,7 +64,11 @@ export async function createCategory(value, adminUserId) {
     if (existing) throw new AppError('Category name already exists.', 409, 'CATEGORY_CONFLICT');
     let result;
     try {
-      result = await connection.run('INSERT INTO categories (name) VALUES (?);', [name]);
+      const code = await nextCategoryCode(connection);
+      result = await connection.run('INSERT INTO categories (name, code) VALUES (?, ?);', [
+        name,
+        code,
+      ]);
     } catch (error) {
       if (error.code === 'SQLITE_CONSTRAINT') {
         throw new AppError('Category name already exists.', 409, 'CATEGORY_CONFLICT');
@@ -75,7 +80,7 @@ export async function createCategory(value, adminUserId) {
       actionType: 'CATEGORY_CREATE',
       entityType: 'categories',
       entityId: result.lastID,
-      afterValues: { name },
+      afterValues: { name, code: (await getCategoryById(result.lastID, connection)).code },
       notes: `Category created: ${name}`,
       connection,
     });

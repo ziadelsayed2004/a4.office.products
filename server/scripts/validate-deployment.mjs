@@ -9,6 +9,7 @@ const projectRoot = path.resolve(serverRoot, '..');
 
 const deploy = fs.readFileSync(path.join(projectRoot, 'deploy.sh'), 'utf8');
 const ecosystem = fs.readFileSync(path.join(projectRoot, 'ecosystem.config.js'), 'utf8');
+const rootManifest = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
 const jwtSelector = path.join(serverRoot, 'scripts', 'select-deployment-jwt.mjs');
 const supportedNodeRange = '^20.19.0 || >=22.12.0';
 
@@ -31,6 +32,9 @@ const developmentKeys = envKeys('.env.example');
 const productionKeys = envKeys('.env.production.example');
 assert.deepEqual(productionKeys, developmentKeys, 'Development and production env keys differ.');
 assert.equal(new Set(developmentKeys).size, developmentKeys.length, 'Duplicate env example key.');
+for (const key of productionKeys) {
+  assert.ok(deploy.includes(`${key}=`), `deploy.sh does not write production key: ${key}`);
+}
 assert.match(
   fs.readFileSync(path.join(projectRoot, '.env.production.example'), 'utf8'),
   /^JWT_SECRET=$/m,
@@ -60,6 +64,7 @@ for (const required of [
   'Node.js 20.19 or newer is required.',
   'npm run ci:all',
   'npm run check',
+  'npm run db:migrate',
   'NODE_ENV=production',
   'RETURN_QR_SECRET=$EXISTING_RETURN_QR_SECRET',
   'VITE_API_BASE_URL=',
@@ -94,6 +99,17 @@ for (const required of [
   '\"available\":true',
 ]) {
   assert.ok(deploy.includes(required), `Deployment script is missing: ${required}`);
+}
+
+for (const script of [
+  'production:check',
+  'production:start',
+  'production:restart',
+  'production:logs',
+  'db:migrate',
+  'db:backup',
+]) {
+  assert.ok(rootManifest.scripts?.[script], `Root production script is missing: ${script}`);
 }
 
 assert.match(ecosystem, /NODE_ENV:\s*'production'/);

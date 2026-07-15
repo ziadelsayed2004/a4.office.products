@@ -24,6 +24,7 @@ export function ConfirmDialog({
   const instanceId = useId().replace(/:/g, '');
   const titleId = `confirm-dialog-title-${instanceId}`;
   const descriptionId = `confirm-dialog-description-${instanceId}`;
+  const hasRichContent = typeof description !== 'string';
 
   return (
     <Dialog
@@ -35,7 +36,7 @@ export function ConfirmDialog({
       aria-describedby={description ? descriptionId : undefined}
       slotProps={{
         paper: {
-          className: 'confirm-dialog',
+          className: `confirm-dialog ${hasRichContent ? 'confirm-dialog--content' : ''}`.trim(),
           'aria-busy': loading || undefined,
         },
       }}

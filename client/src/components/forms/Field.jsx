@@ -16,20 +16,11 @@ function mergeInputLabelSlot(slot, forceShrink) {
   return { ...slot, shrink: true };
 }
 
-function mergeHtmlInputSlot(slot, { ltr, type }) {
+function mergeHtmlInputSlot(slot) {
   const applyDefaults = (resolvedSlot = {}) => {
-    const useLtr =
-      ltr ||
-      ALWAYS_SHRINK_TYPES.has(type) ||
-      type === 'number' ||
-      type === 'tel' ||
-      resolvedSlot.dir === 'ltr';
-    const ltrClassName = useLtr ? 'a4-ltr-value' : '';
-
     return {
       ...resolvedSlot,
-      dir: useLtr ? 'ltr' : 'rtl',
-      className: `${resolvedSlot.className || ''} ${ltrClassName}`.trim(),
+      dir: 'rtl',
     };
   };
 
@@ -55,13 +46,12 @@ export function Field({
   children,
   className = '',
   density = 'normal',
-  ltr = false,
 }) {
   const generatedId = useId().replace(/:/g, '');
   const normalizedDensity =
     density === 'comfortable' ? 'comfortable' : density === 'compact' ? 'compact' : 'normal';
   const densityClass = `field--${normalizedDensity}`;
-  const fieldClassName = `field ${densityClass} ${ltr ? 'field--ltr' : ''} ${className}`.trim();
+  const fieldClassName = `field ${densityClass} ${className}`.trim();
 
   if (isMuiTextField(children)) {
     const existingSlots = children.props.slotProps ?? {};
@@ -91,7 +81,7 @@ export function Field({
           slotProps: {
             ...existingSlots,
             inputLabel: mergeInputLabelSlot(existingInputLabel, forceShrink),
-            htmlInput: mergeHtmlInputSlot(existingHtmlInput, { ltr, type }),
+            htmlInput: mergeHtmlInputSlot(existingHtmlInput),
           },
         })}
       </div>

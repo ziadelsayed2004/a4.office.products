@@ -3,7 +3,7 @@ import { writeAuditLog } from '../../utils/auditLogger.js';
 import {
   AppError,
   aggregateItems,
-  nextDocumentNumber,
+  nextSaleNumbers,
   requireInteger,
   requirePiasters,
   saveSecureToken,
@@ -231,10 +231,7 @@ export async function checkoutOrder({
         throw new AppError('Discount cannot exceed subtotal.', 400, 'DISCOUNT_EXCEEDS_SUBTOTAL');
       const total = subtotal - parsedDiscount;
       const normalizedPayments = await validateSplitPayments(payments, total, connection);
-      const [invoiceNumber, receiptNumber] = await Promise.all([
-        nextDocumentNumber(connection, 'invoice'),
-        nextDocumentNumber(connection, 'receipt'),
-      ]);
+      const { invoiceNumber, receiptNumber } = await nextSaleNumbers(connection);
       const orderResult = await connection.run(
         `INSERT INTO orders
          (invoice_number, shift_id, cashier_id, customer_id, subtotal, discount, total,

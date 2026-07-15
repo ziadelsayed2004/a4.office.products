@@ -57,7 +57,7 @@ export default function Login() {
         )}
 
         <form className="login-form" onSubmit={submit} noValidate>
-          <Field label="اسم المستخدم" required density="comfortable" ltr>
+          <Field label="اسم المستخدم" required density="comfortable">
             <TextField
               value={form.username}
               onChange={(event) => setForm((value) => ({ ...value, username: event.target.value }))}
@@ -77,7 +77,7 @@ export default function Login() {
             />
           </Field>
 
-          <Field label="كلمة المرور" required density="comfortable" ltr>
+          <Field label="كلمة المرور" required density="comfortable">
             <TextField
               type={showPassword ? 'text' : 'password'}
               value={form.password}

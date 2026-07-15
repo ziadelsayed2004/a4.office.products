@@ -4,6 +4,7 @@ import {
   AppError,
   requireInteger,
   requirePiasters,
+  nextProductIdentity,
   saveSecureToken,
 } from '../../utils/financial.js';
 
@@ -322,11 +323,7 @@ async function unlinkInactivePrices(connection, productId, rawTierIds) {
 
 export async function createProduct(productData, adminUserId) {
   const name = String(field(productData, 'name') || '').trim();
-  const sku = String(field(productData, 'sku') || '').trim();
-  const barcode = cleanOptional(field(productData, 'barcode')) || sku;
   if (!name) throw new AppError('Product name is required.', 400, 'PRODUCT_NAME_REQUIRED');
-  if (!sku) throw new AppError('SKU is required.', 400, 'PRODUCT_SKU_REQUIRED');
-  requireCode128Barcode(barcode);
   const policy = availabilityPolicyFrom(productData);
   const isActiveRaw = field(productData, 'isActive', 'is_active');
   if (typeof isActiveRaw !== 'boolean' && ![0, 1].includes(isActiveRaw)) {
@@ -337,8 +334,6 @@ export async function createProduct(productData, adminUserId) {
     'lowStockThreshold',
     { min: 0 }
   );
-  const initialStockRaw = field(productData, 'initialStock', 'initial_stock');
-  const initialStock = requireInteger(Number(initialStockRaw ?? 0), 'initialStock', { min: 0 });
   const purchaseCost = requirePiasters(
     field(productData, 'purchaseCost', 'purchase_cost') ?? 0,
     'purchaseCost'
@@ -368,15 +363,14 @@ export async function createProduct(productData, adminUserId) {
       connection,
       field(productData, 'categoryId', 'category_id')
     );
+    const category = await connection.get('SELECT id, code FROM categories WHERE id = ?;', [
+      categoryId,
+    ]);
+    const { sku, barcode } = await nextProductIdentity(connection, category);
+    requireCode128Barcode(barcode);
     const prices = await normalizePrices(connection, field(productData, 'prices'), {
       required: true,
     });
-    if (await connection.get('SELECT id FROM products WHERE sku = ?;', [sku])) {
-      throw new AppError('SKU is already used by another product.', 409, 'SKU_CONFLICT');
-    }
-    if (await connection.get('SELECT id FROM products WHERE barcode = ?;', [barcode])) {
-      throw new AppError('Barcode is already used by another product.', 409, 'BARCODE_CONFLICT');
-    }
     const result = await connection.run(
       `INSERT INTO products
        (name, sku, barcode, category_id, description, is_active, can_be_sold, can_be_preordered,
@@ -403,20 +397,6 @@ export async function createProduct(productData, adminUserId) {
     const productId = result.lastID;
     await persistPrices(connection, productId, prices);
     await upsertBookDetails(connection, productId, book);
-    if (initialStock > 0) {
-      await connection.run(
-        `INSERT INTO inventory_ledger
-         (product_id, transaction_type, quantity_changed, before_quantity, after_quantity, user_id, notes)
-         VALUES (?, 'STOCK_IN', ?, 0, ?, ?, ?);`,
-        [
-          productId,
-          initialStock,
-          initialStock,
-          adminUserId,
-          'Initial stock entered during product creation',
-        ]
-      );
-    }
     const token = await saveSecureToken(connection, 'product', productId);
     await connection.run(
       "INSERT OR IGNORE INTO qr_tokens (token, type, reference_id) VALUES (?, 'product', ?);",
@@ -427,7 +407,7 @@ export async function createProduct(productData, adminUserId) {
       actionType: 'PRODUCT_CREATE',
       entityType: 'products',
       entityId: productId,
-      afterValues: { name, sku, availabilityPolicy: policy, initialStock },
+      afterValues: { name, sku, availabilityPolicy: policy },
       connection,
     });
     return getProductDetails(productId, connection);
@@ -455,21 +435,31 @@ export async function updateProduct(id, productData, adminUserId) {
       field(productData, 'name') === undefined
         ? old.name
         : String(field(productData, 'name')).trim();
-    const sku =
-      field(productData, 'sku') === undefined ? old.sku : String(field(productData, 'sku')).trim();
-    if (!name || !sku)
-      throw new AppError('Product name and SKU are required.', 400, 'PRODUCT_FIELDS_REQUIRED');
-    const conflict = await connection.get('SELECT id FROM products WHERE sku = ? AND id != ?;', [
-      sku,
-      id,
-    ]);
-    if (conflict)
-      throw new AppError('SKU is already used by another product.', 409, 'SKU_CONFLICT');
+    if (!name) throw new AppError('Product name is required.', 400, 'PRODUCT_NAME_REQUIRED');
+    const requestedSku = field(productData, 'sku');
+    const requestedBarcode = field(productData, 'barcode');
+    if (requestedSku !== undefined && String(requestedSku).trim() !== old.sku) {
+      throw new AppError('SKU is generated and cannot be changed.', 409, 'PRODUCT_SKU_IMMUTABLE');
+    }
+    if (requestedBarcode !== undefined && String(requestedBarcode || '').trim() !== old.barcode) {
+      throw new AppError(
+        'Barcode is generated and cannot be changed.',
+        409,
+        'PRODUCT_BARCODE_IMMUTABLE'
+      );
+    }
 
     const categoryId =
       field(productData, 'categoryId', 'category_id') === undefined
         ? old.category_id
         : await validateCategory(connection, field(productData, 'categoryId', 'category_id'));
+    if (Number(categoryId) !== Number(old.category_id)) {
+      throw new AppError(
+        'A product cannot be moved to another category after its identity is generated.',
+        409,
+        'PRODUCT_CATEGORY_IMMUTABLE'
+      );
+    }
     const lowStock =
       field(productData, 'lowStockThreshold', 'low_stock_threshold') === undefined
         ? old.low_stock_threshold
@@ -512,18 +502,8 @@ export async function updateProduct(id, productData, adminUserId) {
     const prices = await normalizePrices(connection, field(productData, 'prices'), {
       required: false,
     });
-    const barcode =
-      field(productData, 'barcode') === undefined
-        ? old.barcode || old.sku
-        : cleanOptional(field(productData, 'barcode')) || old.barcode || old.sku;
-    requireCode128Barcode(barcode);
-    const barcodeConflict = await connection.get(
-      'SELECT id FROM products WHERE barcode = ? AND id != ?;',
-      [barcode, id]
-    );
-    if (barcodeConflict) {
-      throw new AppError('Barcode is already used by another product.', 409, 'BARCODE_CONFLICT');
-    }
+    const sku = old.sku;
+    const barcode = old.barcode;
 
     await connection.run(
       `UPDATE products SET name = ?, sku = ?, barcode = ?, category_id = ?, description = ?,

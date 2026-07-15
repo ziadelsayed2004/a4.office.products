@@ -145,6 +145,7 @@ trap - EXIT
 sudo -u "$APP_USER" -H bash -lc "cd '$APP_DIR' && npm run ci:all"
 sudo -u "$APP_USER" -H bash -lc "cd '$APP_DIR' && npm run check"
 sudo -u "$APP_USER" -H bash -lc "cd '$APP_DIR' && npm run build"
+sudo -u "$APP_USER" -H bash -lc "cd '$APP_DIR' && npm run db:migrate"
 
 read -r -p 'Create the first production Admin now? [y/N]: ' CREATE_ADMIN
 if [[ "$CREATE_ADMIN" =~ ^[Yy]$ ]]; then

@@ -173,7 +173,7 @@ export default function Customers() {
               onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))}
             />
           </Field>
-          <Field label="رقم الهاتف" required ltr>
+          <Field label="رقم الهاتف" required>
             <TextField
               value={form.phone}
               onChange={(e) => setForm((v) => ({ ...v, phone: e.target.value }))}

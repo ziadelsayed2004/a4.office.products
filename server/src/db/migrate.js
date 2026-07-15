@@ -10,6 +10,8 @@ import * as returnAuthorizations from './migrations/002_return_authorizations.js
 import * as approvalCardsBarcodes from './migrations/003_approval_cards_barcodes.js';
 import * as directReturnsAdminPrinting from './migrations/004_direct_returns_admin_printing.js';
 import * as liveAdminActivity from './migrations/005_live_admin_activity.js';
+import * as retireBankTransfer from './migrations/006_retire_bank_transfer.js';
+import * as automaticIdentifiers from './migrations/007_automatic_identifiers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +21,8 @@ const migrations = [
   approvalCardsBarcodes,
   directReturnsAdminPrinting,
   liveAdminActivity,
+  retireBankTransfer,
+  automaticIdentifiers,
 ];
 
 async function tableExists(name) {
@@ -100,6 +104,8 @@ async function validateTargetSchema() {
     'return_authorization_print_requests',
     'return_approval_cards',
     'return_approval_card_print_requests',
+    'number_sequences',
+    'identifier_migration_map',
   ];
   for (const table of requiredTables) {
     if (!(await tableExists(table)))
@@ -108,6 +114,10 @@ async function validateTargetSchema() {
   const productColumns = await db.all('PRAGMA table_info(products);');
   if (!productColumns.some((column) => column.name === 'availability_policy')) {
     throw new Error('Post-migration validation failed: canonical product policy is missing.');
+  }
+  const categoryColumns = await db.all('PRAGMA table_info(categories);');
+  if (!categoryColumns.some((column) => column.name === 'code')) {
+    throw new Error('Post-migration validation failed: categories.code is missing.');
   }
   const sessionColumns = await db.all('PRAGMA table_info(sessions);');
   if (!sessionColumns.some((column) => column.name === 'last_seen_at')) {
@@ -167,8 +177,13 @@ async function seedDefaults({ freshDatabase }) {
   await withTransaction(async (connection) => {
     if (freshDatabase) {
       await connection.exec(`
-      INSERT OR IGNORE INTO categories (name, is_active) VALUES
-        ('كتب خارجية', 1), ('أدوات مكتبية', 1), ('أجهزة وآلات حاسبة', 1);
+      INSERT OR IGNORE INTO categories (name, code, is_active) VALUES
+        ('كتب خارجية', 'CAT001', 1), ('أدوات مكتبية', 'CAT002', 1),
+        ('أجهزة وآلات حاسبة', 'CAT003', 1);
+      INSERT INTO number_sequences (sequence_type, scope_key, last_value)
+        VALUES ('category', 'GLOBAL', 3)
+        ON CONFLICT(sequence_type, scope_key)
+        DO UPDATE SET last_value = MAX(last_value, excluded.last_value);
       INSERT OR IGNORE INTO price_tiers (name, description, is_active) VALUES
         ('سعر التجزئة الافتراضي', 'السعر الافتراضي لبيع التجزئة للجمهور', 1),
         ('سعر الجملة للشركات', 'سعر خاص للشركات والمؤسسات', 1),
@@ -177,7 +192,7 @@ async function seedDefaults({ freshDatabase }) {
     }
     await connection.exec(`
       INSERT OR IGNORE INTO business_settings (key, value) VALUES
-        ('active_payment_methods', '["Cash","Card","InstaPay","Wallet","Transfer"]');
+        ('active_payment_methods', '["Cash","Card","InstaPay","Wallet"]');
       INSERT OR IGNORE INTO printer_settings (key, value) VALUES
         ('print_mode', 'browser'),
         ('receipt_printer_width', '80mm'),

@@ -5,6 +5,7 @@ import { writeAuditLog } from '../../utils/auditLogger.js';
 import {
   AppError,
   nextDocumentNumber,
+  nextReturnNumbers,
   requireInteger,
   withIdempotency,
 } from '../../utils/financial.js';
@@ -978,7 +979,7 @@ export async function executeReturnAuthorization({
         throw new AppError('Return authorization state changed.', 409, 'RETURN_STATE_CONFLICT');
       }
 
-      const returnNumber = await nextDocumentNumber(connection, 'return');
+      const { returnNumber, receiptNumber } = await nextReturnNumbers(connection);
       const result = await connection.run(
         `INSERT INTO returns
          (order_id, shift_id, cashier_id, total_refunded, notes, payment_method_snapshot,
@@ -1095,6 +1096,7 @@ export async function executeReturnAuthorization({
         referenceType: 'order_return',
         referenceId: result.lastID,
         printedBy: cashierId,
+        receiptNumber,
         connection,
         snapshot: {
           version: 3,

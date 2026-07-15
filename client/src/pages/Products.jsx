@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import JsBarcode from 'jsbarcode';
 import {
   Alert,
   Button,
@@ -37,7 +38,6 @@ import '../styles/Products.css';
 
 const STOCK_ONLY = 'STOCK_ONLY';
 const PREORDER_WHEN_OUT = 'STOCK_WITH_PREORDER_WHEN_OUT_OF_STOCK';
-const CODE128_VALUE = /^[\x20-\x7e]{1,80}$/;
 const INITIAL_FILTERS = Object.freeze({
   q: '',
   categoryId: '',
@@ -55,7 +55,6 @@ function newForm(categoryId = '') {
     description: '',
     isActive: true,
     availabilityPolicy: STOCK_ONLY,
-    initialStock: '0',
     lowStockThreshold: '5',
     purchaseCost: '0.00',
     defaultPreorderDepositPct: '50',
@@ -74,6 +73,22 @@ function newForm(categoryId = '') {
     prices: {},
     unlinkPriceTierIds: [],
   };
+}
+
+function BarcodePreview({ value }) {
+  const barcodeRef = useRef(null);
+  useEffect(() => {
+    if (!barcodeRef.current || !value) return;
+    JsBarcode(barcodeRef.current, value, {
+      format: 'CODE128',
+      displayValue: false,
+      height: 42,
+      margin: 0,
+      background: 'transparent',
+      lineColor: 'currentColor',
+    });
+  }, [value]);
+  return value ? <svg ref={barcodeRef} aria-label={`Barcode ${value}`} /> : null;
 }
 
 function policyLabel(policy) {
@@ -97,7 +112,10 @@ export default function Products() {
   const [labelDefaults, setLabelDefaults] = useState({ quantity: 1, label_size: 'medium' });
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [identityPreview, setIdentityPreview] = useState(null);
+  const [identityPreviewLoading, setIdentityPreviewLoading] = useState(false);
   const loadSequence = useRef(0);
+  const previewSequence = useRef(0);
 
   const loadRefs = async () => {
     const [categoryResponse, tierResponse, settingsResponse] = await Promise.all([
@@ -158,6 +176,30 @@ export default function Products() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!drawer || editing || !form.categoryId) {
+      setIdentityPreview(null);
+      setIdentityPreviewLoading(false);
+      return;
+    }
+    const requestId = ++previewSequence.current;
+    setIdentityPreviewLoading(true);
+    api
+      .get(`/api/number-previews?type=product&categoryId=${form.categoryId}`)
+      .then((response) => {
+        if (requestId !== previewSequence.current) return;
+        const preview = response.data;
+        setIdentityPreview(preview);
+        setForm((value) => ({ ...value, sku: preview.sku, barcode: preview.barcode }));
+      })
+      .catch(() => {
+        if (requestId === previewSequence.current) setIdentityPreview(null);
+      })
+      .finally(() => {
+        if (requestId === previewSequence.current) setIdentityPreviewLoading(false);
+      });
+  }, [drawer, editing, form.categoryId]);
+
   const openNew = () => {
     setEditing(null);
     setForm(newForm(categories[0]?.id || ''));
@@ -181,7 +223,6 @@ export default function Products() {
         description: product.description || '',
         isActive: Boolean(product.is_active),
         availabilityPolicy: product.availabilityPolicy || STOCK_ONLY,
-        initialStock: String(product.stockOnHand || 0),
         lowStockThreshold: String(product.low_stock_threshold ?? 5),
         purchaseCost: piastersToInput(product.purchase_cost),
         defaultPreorderDepositPct: String(product.defaultPreorderDepositPct ?? 50),
@@ -211,13 +252,10 @@ export default function Products() {
 
   const buildPayload = () => ({
     name: form.name.trim(),
-    sku: form.sku.trim(),
-    barcode: form.barcode.trim() || null,
     categoryId: Number(form.categoryId),
     description: form.description.trim() || null,
     isActive: Boolean(form.isActive),
     availabilityPolicy: form.availabilityPolicy,
-    ...(editing ? {} : { initialStock: Number(form.initialStock) }),
     lowStockThreshold: Number(form.lowStockThreshold),
     purchaseCost: parsePiasters(form.purchaseCost),
     ...(form.availabilityPolicy === PREORDER_WHEN_OUT
@@ -252,28 +290,12 @@ export default function Products() {
 
   const save = async () => {
     const activeTiers = tiers.filter((tier) => tier.is_active === 1);
-    if (!form.name.trim() || !form.sku.trim() || !form.categoryId || !form.availabilityPolicy) {
-      setToast({ severity: 'error', message: 'الاسم وSKU والتصنيف وسياسة التوفر حقول مطلوبة.' });
-      return;
-    }
-    if (!editing && (!/^\d+$/.test(form.initialStock) || Number(form.initialStock) < 0)) {
-      setToast({
-        severity: 'error',
-        message: 'الرصيد الافتتاحي يجب أن يكون عدداً صحيحاً غير سالب.',
-      });
+    if (!form.name.trim() || !form.categoryId || !form.availabilityPolicy) {
+      setToast({ severity: 'error', message: 'الاسم والتصنيف وسياسة التوفر حقول مطلوبة.' });
       return;
     }
     if (activeTiers.some((tier) => !String(form.prices[tier.id] ?? '').trim())) {
       setToast({ severity: 'error', message: 'أدخل سعراً لكل فئة سعر نشطة.' });
-      return;
-    }
-    const barcodeValue = form.barcode.trim() || form.sku.trim();
-    if (!CODE128_VALUE.test(barcodeValue)) {
-      setToast({
-        severity: 'error',
-        message:
-          'قيمة الباركود (أو SKU عند تركها فارغة) يجب أن تكون من 1 إلى 80 حرفاً إنجليزياً أو رقماً أو رمزاً قابلاً لطباعة CODE128.',
-      });
       return;
     }
     setSaving(true);
@@ -544,27 +566,11 @@ export default function Products() {
                 onChange={(event) => setForm((value) => ({ ...value, name: event.target.value }))}
               />
             </Field>
-            <Field label="رمز SKU" required ltr>
-              <TextField
-                value={form.sku}
-                onChange={(event) => setForm((value) => ({ ...value, sku: event.target.value }))}
-              />
-            </Field>
-            <Field label="الباركود" ltr>
-              <TextField
-                value={form.barcode}
-                placeholder="يُستخدم SKU تلقائياً عند تركه فارغاً"
-                helperText="CODE128: أحرف إنجليزية وأرقام ورموز، بحد أقصى 80 حرفاً."
-                onChange={(event) =>
-                  setForm((value) => ({ ...value, barcode: event.target.value }))
-                }
-                slotProps={{ htmlInput: { maxLength: 80 } }}
-              />
-            </Field>
             <Field label="التصنيف" required>
               <TextField
                 select
                 value={form.categoryId}
+                disabled={Boolean(editing)}
                 onChange={(event) =>
                   setForm((value) => ({ ...value, categoryId: event.target.value }))
                 }
@@ -576,6 +582,30 @@ export default function Products() {
                 ))}
               </TextField>
             </Field>
+            <div className="product-identity-preview full" aria-live="polite">
+              <div className="product-identity-preview__values">
+                <div>
+                  <span>رمز SKU</span>
+                  <strong className="a4-ltr">{form.sku || '—'}</strong>
+                </div>
+                <div>
+                  <span>الباركود</span>
+                  <strong className="a4-ltr">{form.barcode || '—'}</strong>
+                </div>
+              </div>
+              <div className="product-identity-preview__barcode">
+                <BarcodePreview value={form.barcode} />
+              </div>
+              <small>
+                {editing
+                  ? 'أكواد ثابتة لا يمكن تغييرها.'
+                  : identityPreviewLoading
+                    ? 'جاري حساب الأكواد المتوقعة…'
+                    : identityPreview
+                      ? 'معاينة متوقعة؛ يتأكد الرقم النهائي عند حفظ المنتج.'
+                      : 'اختر التصنيف لعرض SKU والباركود المتوقعين.'}
+              </small>
+            </div>
             <Field className="full" label="الوصف">
               <TextField
                 multiline
@@ -616,18 +646,6 @@ export default function Products() {
                 <MenuItem value={PREORDER_WHEN_OUT}>{policyLabel(PREORDER_WHEN_OUT)}</MenuItem>
               </TextField>
             </Field>
-            {!editing && (
-              <Field label="الرصيد الافتتاحي" required>
-                <TextField
-                  type="number"
-                  value={form.initialStock}
-                  onChange={(event) =>
-                    setForm((value) => ({ ...value, initialStock: event.target.value }))
-                  }
-                  slotProps={{ htmlInput: { min: 0, step: 1 } }}
-                />
-              </Field>
-            )}
             {editing && (
               <Field label="المخزون الفعلي الحالي">
                 <TextField value={number(editing.stockOnHand)} disabled />

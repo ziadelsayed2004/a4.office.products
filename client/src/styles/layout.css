@@ -8,14 +8,14 @@
 
 .a4-page {
   display: grid;
-  gap: 20px;
+  gap: var(--page-gap);
   direction: rtl;
   text-align: right;
 }
 
 .a4-page-section {
   min-width: 0;
-  padding: var(--space-5);
+  padding: var(--page-padding);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xs);
   background: var(--color-surface);
@@ -121,10 +121,10 @@
 
 @media (max-width: 720px) {
   .a4-page {
-    gap: 14px;
+    gap: var(--page-gap-mobile);
   }
   .a4-page-section {
-    padding: 14px;
+    padding: var(--page-padding-mobile);
   }
 
   .a4-grid--metrics,
@@ -141,8 +141,8 @@
   }
 
   .a4-sticky-actions {
-    margin-inline: -14px;
-    margin-bottom: -14px;
-    padding-inline: 14px;
+    margin-inline: calc(var(--page-padding-mobile) * -1);
+    margin-bottom: calc(var(--page-padding-mobile) * -1);
+    padding-inline: var(--page-padding-mobile);
   }
 }

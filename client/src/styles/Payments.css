@@ -1,16 +1,164 @@
-.metric-card__copy--fill {
-  flex: 1;
-  cursor: pointer;
-  -webkit-user-select: none;
-  user-select: none;
+.payments-panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
-.metric-card__copy--fill + .MuiCheckbox-root {
-  margin-inline-start: auto;
+.payments-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.payment-method-card {
+  min-width: 0;
+  min-height: 230px;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.payment-method-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.payment-method-card.is-active {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--border-color));
+}
+
+.payment-method-card.is-inactive {
+  background: color-mix(in srgb, var(--color-surface-alt) 55%, var(--color-surface));
+}
+
+.payment-method-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.payment-method-card__icon {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 24%, transparent);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.payment-method-card__icon svg {
+  font-size: 1.55rem;
+}
+
+.payment-method-card__copy {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.payment-method-card__copy strong {
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.payment-method-card__copy span {
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px var(--space-2);
+  overflow-wrap: anywhere;
+  border: 1px solid var(--border-color);
+  border-radius: 100px;
+  color: var(--color-text-muted);
+  background: var(--color-surface-alt);
+  font-size: 0.72rem;
+}
+
+.payment-method-card__details {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+
+.payment-method-card__details span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.payment-method-card__details b {
+  color: var(--color-text);
+}
+
+.payment-method-card__footer {
+  margin-top: auto;
+  padding-top: var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-top: 1px solid var(--border-color);
+}
+
+.payment-method-card__toggle {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.payment-method-card__toggle .MuiFormControlLabel-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.payment-method-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+@media (max-width: 1180px) {
+  .payments-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .payments-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 600px) {
-  .metric-card__copy--fill {
-    min-width: 0;
+  .payment-method-card {
+    min-height: 0;
+    padding: var(--space-4);
+  }
+
+  .payment-method-card__footer {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .payment-method-card {
+    transition: none;
   }
 }

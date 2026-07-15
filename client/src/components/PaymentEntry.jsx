@@ -73,7 +73,7 @@ export function PaymentEntry({ methods, due, value, onChange }) {
             <section className="payment-entry__method" key={code}>
               <strong>{method.name_ar || method.name || code}</strong>
               <FieldGrid>
-                <Field label="المبلغ المطبق" ltr>
+                <Field label="المبلغ المطبق">
                   <TextField
                     value={row.amount || ''}
                     onChange={(event) => set(code, 'amount', event.target.value)}
@@ -82,7 +82,7 @@ export function PaymentEntry({ methods, due, value, onChange }) {
                   />
                 </Field>
                 {Boolean(method.accepts_cash_received) && (
-                  <Field label="النقد المستلم" ltr>
+                  <Field label="النقد المستلم">
                     <TextField
                       value={row.cashReceived || ''}
                       onChange={(event) => set(code, 'cashReceived', event.target.value)}
@@ -92,7 +92,7 @@ export function PaymentEntry({ methods, due, value, onChange }) {
                   </Field>
                 )}
                 {!method.accepts_cash_received && (
-                  <Field label="رقم المرجع" ltr>
+                  <Field label="رقم المرجع">
                     <TextField
                       value={row.referenceNumber || ''}
                       onChange={(event) => set(code, 'referenceNumber', event.target.value)}

@@ -2,7 +2,8 @@ import db, { withTransaction } from '../../db/index.js';
 import { writeAuditLog } from '../../utils/auditLogger.js';
 import { AppError, requireInteger, requirePiasters } from '../../utils/financial.js';
 
-const SYSTEM_PAYMENT_CODES = new Set(['Cash', 'Card', 'InstaPay', 'Wallet', 'Transfer']);
+const SYSTEM_PAYMENT_CODES = new Set(['Cash', 'Card', 'InstaPay', 'Wallet']);
+const RETIRED_PAYMENT_CODES = new Set(['Transfer']);
 
 function decoratePaymentMethod(method) {
   const {
@@ -43,9 +44,11 @@ export async function getPaymentMethods({ activeOnly = false } = {}, connection 
     (SELECT COUNT(*) FROM return_authorization_allocations raa
       WHERE raa.payment_method_id = pm.id) AS return_allocation_count
     FROM payment_methods pm`;
-  if (activeOnly) sql += ' WHERE pm.is_active = 1';
+  const filters = [`pm.code NOT IN (${[...RETIRED_PAYMENT_CODES].map(() => '?').join(', ')})`];
+  if (activeOnly) filters.push('pm.is_active = 1');
+  sql += ` WHERE ${filters.join(' AND ')}`;
   sql += ' ORDER BY pm.sort_order, pm.id;';
-  return (await connection.all(sql)).map(decoratePaymentMethod);
+  return (await connection.all(sql, [...RETIRED_PAYMENT_CODES])).map(decoratePaymentMethod);
 }
 
 export async function updatePaymentMethods(activeIds, adminUserId) {
@@ -135,6 +138,9 @@ export async function updatePaymentMethod(id, data, adminUserId) {
   return withTransaction(async (connection) => {
     const old = await connection.get('SELECT * FROM payment_methods WHERE id = ?;', [methodId]);
     if (!old) throw new AppError('Payment method not found.', 404, 'PAYMENT_METHOD_NOT_FOUND');
+    if (RETIRED_PAYMENT_CODES.has(old.code)) {
+      throw new AppError('Payment method has been retired.', 404, 'PAYMENT_METHOD_NOT_FOUND');
+    }
     const name =
       data.name_ar === undefined && data.nameAr === undefined
         ? old.name_ar

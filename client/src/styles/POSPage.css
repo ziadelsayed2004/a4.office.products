@@ -323,6 +323,38 @@
   grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
   display: grid;
 }
+.number-preview-summary {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  display: grid;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+}
+.number-preview-summary > div {
+  min-width: 0;
+}
+.number-preview-summary span,
+.number-preview-summary strong {
+  display: block;
+}
+.number-preview-summary span,
+.number-preview-summary small {
+  color: var(--color-text-muted);
+}
+.number-preview-summary span {
+  margin-bottom: var(--space-1);
+  font-size: 0.72rem;
+}
+.number-preview-summary strong {
+  overflow-wrap: anywhere;
+}
+.number-preview-summary small {
+  grid-column: 1 / -1;
+  line-height: 1.5;
+}
 .quick-payment__methods .MuiButton-root {
   min-height: 48px;
 }
@@ -397,7 +429,7 @@
   margin-block: var(--space-4);
   border-color: var(--border-color);
 }
-@media (max-width: 1200px) {
+@media (max-width: 1180px) {
   .pos-page {
     --cart-width: 340px;
   }
@@ -405,7 +437,7 @@
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   }
 }
-@media (max-width: 980px) {
+@media (max-width: 900px) {
   .pos-page {
     padding-bottom: 78px;
   }

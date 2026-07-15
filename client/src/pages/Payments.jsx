@@ -160,62 +160,79 @@ export default function Payments() {
         }
       />
       {error && <Alert severity="error">{error}</Alert>}
-      <section className="a4-page-section">
+      <section className="a4-page-section payments-panel">
         {loading ? (
           <LoadingState />
         ) : (
-          <div className="a4-grid a4-grid--three">
-            {rows.map((row, index) => (
-              <div className="metric-card" key={row.id}>
-                <div className="metric-card__icon">
-                  <PaymentsRounded />
+          <div className="payments-grid">
+            {rows.map((row) => (
+              <article
+                className={`payment-method-card ${row.is_active ? 'is-active' : 'is-inactive'}`}
+                key={row.id}
+              >
+                <div className="payment-method-card__header">
+                  <div className="payment-method-card__icon">
+                    <PaymentsRounded />
+                  </div>
+                  <div className="payment-method-card__copy">
+                    <strong>{row.name_ar}</strong>
+                    <span>{row.code}</span>
+                  </div>
                 </div>
-                <div className="metric-card__copy metric-card__copy--fill">
-                  <strong>{row.name_ar}</strong>
-                  <span className="metric-card__hint">
-                    {row.code} · {row.accepts_cash_received ? 'يحسب النقد والباقي' : 'مرجع اختياري'}
-                  </span>
-                  <span className="metric-card__hint">
-                    {row.is_system ? 'طريقة أساسية' : 'طريقة مخصصة'} · استخدامات{' '}
-                    {row.dependency_counts?.payments ?? row.payment_count ?? 0}
-                  </span>
-                </div>
-                <Checkbox
-                  checked={Boolean(row.is_active)}
-                  onChange={(event) =>
-                    setRows((list) =>
-                      list.map((item, itemIndex) =>
-                        itemIndex === index
-                          ? { ...item, is_active: event.target.checked ? 1 : 0 }
-                          : item
-                      )
-                    )
-                  }
-                />
-                <Tooltip title="تعديل">
-                  <IconButton size="small" onClick={() => edit(row)}>
-                    <EditRounded fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip
-                  title={
-                    row.can_delete === false
-                      ? 'يلزم أن تكون مخصصة ومعطلة وغير مستخدمة'
-                      : 'حذف نهائي'
-                  }
-                >
+                <div className="payment-method-card__details">
+                  <span>{row.accepts_cash_received ? 'يحسب النقد والباقي' : 'مرجع اختياري'}</span>
+                  <span>{row.is_system ? 'طريقة أساسية' : 'طريقة مخصصة'}</span>
                   <span>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      disabled={row.can_delete === false}
-                      onClick={() => setDeleteTarget(row)}
-                    >
-                      <DeleteRounded fontSize="small" />
-                    </IconButton>
+                    عدد الاستخدامات:{' '}
+                    <b>{row.dependency_counts?.payments ?? row.payment_count ?? 0}</b>
                   </span>
-                </Tooltip>
-              </div>
+                </div>
+                <div className="payment-method-card__footer">
+                  <FormControlLabel
+                    className="payment-method-card__toggle"
+                    control={
+                      <Checkbox
+                        checked={Boolean(row.is_active)}
+                        onChange={(event) =>
+                          setRows((list) =>
+                            list.map((item) =>
+                              item.id === row.id
+                                ? { ...item, is_active: event.target.checked ? 1 : 0 }
+                                : item
+                            )
+                          )
+                        }
+                      />
+                    }
+                    label={row.is_active ? 'نشطة' : 'معطلة'}
+                  />
+                  <div className="payment-method-card__actions">
+                    <Tooltip title="تعديل">
+                      <IconButton size="small" onClick={() => edit(row)}>
+                        <EditRounded fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip
+                      title={
+                        row.can_delete === false
+                          ? 'يلزم أن تكون مخصصة ومعطلة وغير مستخدمة'
+                          : 'حذف نهائي'
+                      }
+                    >
+                      <span>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          disabled={row.can_delete === false}
+                          onClick={() => setDeleteTarget(row)}
+                        >
+                          <DeleteRounded fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </div>
+                </div>
+              </article>
             ))}
           </div>
         )}
@@ -229,7 +246,7 @@ export default function Payments() {
         loading={saving}
       >
         <FieldGrid>
-          <Field label="الكود" required ltr>
+          <Field label="الكود" required>
             <TextField
               value={form.code}
               disabled={Boolean(editing)}

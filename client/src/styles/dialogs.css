@@ -42,11 +42,25 @@
   border-radius: 0;
 }
 
+.content-sized-dialog.MuiDialog-paper {
+  width: max-content;
+  max-width: min(var(--content-dialog-max-width), calc(100vw - 32px));
+}
+
+.content-sized-dialog .MuiDialogContent-root {
+  overflow-x: hidden;
+}
+
 @media (max-width: 600px) {
   .MuiDialog-paper:not(.MuiDialog-paperFullScreen) {
     width: calc(100% - 24px);
     max-height: calc(100% - 24px);
     margin: 12px;
+  }
+
+  .content-sized-dialog.MuiDialog-paper {
+    width: calc(100% - 24px);
+    max-width: calc(100% - 24px);
   }
 
   .MuiDialogActions-root {

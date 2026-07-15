@@ -33,6 +33,16 @@
   text-align: right;
 }
 
+.form-section__body
+  > :is(.form-grid, .form-grid--three, .form-grid--one)
+  + :is(.form-grid, .form-grid--three, .form-grid--one) {
+  margin-top: var(--space-7);
+}
+
+.form-section__body > .MuiAlert-root {
+  margin-top: var(--space-6);
+}
+
 @media (max-width: 720px) {
   .form-section {
     margin-bottom: var(--space-4);
@@ -41,5 +51,11 @@
 
   .form-section__head {
     margin-bottom: var(--space-4);
+  }
+
+  .form-section__body
+    > :is(.form-grid, .form-grid--three, .form-grid--one)
+    + :is(.form-grid, .form-grid--three, .form-grid--one) {
+    margin-top: var(--space-6);
   }
 }

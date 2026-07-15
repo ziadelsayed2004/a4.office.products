@@ -1,41 +1,60 @@
-# A4 Office VPS Deployment
+# نشر A4 Office على Hostinger VPS
 
-This project targets Ubuntu 22.04/24.04 at `https://a4office.cloud`. It stays operationally separate from `TEMPLETE-PROJECT`, with its own Nginx site, PM2 process, service account, database, backups, and certificate.
+المسار المعتمد للإنتاج هو Ubuntu 22.04 أو 24.04 خلف Nginx وHTTPS، مع تشغيل API بعملية PM2 واحدة وقاعدة SQLite محلية. لا يستخدم الإعداد كلمات مرور افتراضية أو صلاحيات `777`.
 
-## Prerequisites and first deployment
+## أول نشر
 
-- Point the `a4office.cloud` A record to the VPS public IPv4 address.
-- Place the checkout outside `/root`, preferably at `/opt/a4-office`.
-- Keep a provider snapshot before the first production migration.
+1. وجّه سجل `A` للدومين إلى عنوان IPv4 الخاص بالـ VPS.
+2. ضع المشروع خارج `/root`، والمسار المقترح هو `/opt/a4-office`.
+3. احتفظ بـ snapshot من Hostinger قبل أول نشر أو migration إنتاجي.
+4. شغّل:
 
 ```bash
 cd /opt/a4-office
 chmod +x deploy.sh
-sudo ./deploy.sh
+sudo DOMAIN_NAME=a4office.cloud ./deploy.sh
 ```
 
-The script defaults to `a4office.cloud`. For intentional staging only, use `sudo DOMAIN_NAME=staging.a4office.cloud ./deploy.sh`.
+السكربت يثبت Node.js وChromium وخطوط العربية وNginx وCertbot وSQLite وPM2، ثم ينشئ مستخدم `a4pos` المعزول، ويولّد الأسرار، ويشغّل التثبيت النظيف والفحوصات والبناء والـ migrations، ويجهز HTTPS والنسخ الاحتياطي اليومي ويتأكد من `/api/health`.
 
-It installs Node 20, Chromium, Noto Arabic fonts, Nginx, Certbot, SQLite, PM2 and UFW; creates the isolated `a4pos` account; generates independent secrets; runs clean installs, tests and builds; configures HTTPS; starts PM2; and schedules daily backups. Create the first administrator through the deploy prompt. No production credentials are committed or seeded.
+لا ترفع ملف `.env` الحقيقي إلى Git. استخدم `.env.production.example` كمرجع فقط؛ `deploy.sh` ينشئ ملف الإنتاج بصلاحية `0600` ويحافظ على الأسرار القوية الموجودة عند التحديث.
 
-## Updates and diagnostics
+## تحديث نسخة الإنتاج
 
-Pull or upload the release and run `sudo ./deploy.sh` again. Valid production secrets are retained. An integrity-checked `pre_deploy` database backup is created before installs and migrations. Production reset and demo seeding remain disabled.
+خذ snapshot عند التحديثات الكبيرة، ثم اسحب أو ارفع الإصدار الجديد وأعد تشغيل نفس السكربت:
+
+```bash
+cd /opt/a4-office
+git pull --ff-only origin main
+sudo DOMAIN_NAME=a4office.cloud ./deploy.sh
+```
+
+قبل أي migration ينشئ السكربت نسخة SQLite ويتحقق من سلامتها. بعد ذلك يشغّل `npm ci` لكل الحزم، مجموعة الفحوصات الكاملة، build، migrations، ثم يعيد تشغيل Nginx وPM2 ويتحقق من الصحة محليًا وعبر HTTPS.
+
+## الإدارة والتشخيص
 
 ```bash
 curl -fsS https://a4office.cloud/api/health
 sudo -u a4pos -H env PM2_HOME=/var/lib/a4pos/.pm2 pm2 status
 sudo -u a4pos -H env PM2_HOME=/var/lib/a4pos/.pm2 pm2 logs a4-pos-server
 sudo nginx -t
+sudo journalctl -u nginx --since "30 minutes ago"
 sudo certbot renew --dry-run
 systemctl status certbot.timer
 ```
 
-The health response exposes SQLite, migration and Chromium readiness without paths or secrets. Port 5000 binds to loopback and must not be opened externally.
+يجب أن يظل المنفذ `5000` مربوطًا بـ `127.0.0.1` فقط. لا تفتحه في UFW؛ الوصول العام يكون من خلال Nginx وHTTPS فقط.
 
-## Backups, restore, and rollback
+## النسخ الاحتياطي والاستعادة
 
-Daily verified backups are stored in `/opt/a4-office/backups` with a default retention of 10. Restore only after checking integrity:
+تُحفظ النسخ المتحققة في `/opt/a4-office/backups` مع retention افتراضي 10 نسخ. لإنشاء نسخة يدوية:
+
+```bash
+cd /opt/a4-office
+sudo -u a4pos npm run db:backup
+```
+
+لاستعادة نسخة، أوقف التطبيق أولًا وافحص الملف ثم احتفظ بنسخة من الحالة الحالية:
 
 ```bash
 sudo -u a4pos -H env PM2_HOME=/var/lib/a4pos/.pm2 pm2 stop a4-pos-server
@@ -47,16 +66,15 @@ sudo -u a4pos -H env PM2_HOME=/var/lib/a4pos/.pm2 pm2 restart a4-pos-server
 curl -fsS https://a4office.cloud/api/health
 ```
 
-For release rollback, restore the prior checkout and its matching pre-deployment database backup when the failed release applied migrations. Never run `db:reset` in production.
+لا تشغّل `db:reset` في الإنتاج تحت أي ظرف.
 
-## Live updates and process topology
+## Rollback
 
-The supported production topology is one PM2 fork process. Admin live updates use an authenticated SSE invalidation stream backed by an in-memory event bus; Nginx therefore keeps `proxy_buffering off`. The client reloads authoritative HTTP data after an event, falls back to polling every 15 seconds after a stream failure, pauses while hidden, and resynchronizes when visible. User presence is reported by a visible-app heartbeat every 30 seconds and is considered offline after 90 seconds.
+إذا فشل إصدار قبل migrations، أعد checkout للإصدار السابق ثم شغّل `deploy.sh`. إذا طُبقت migrations، استخدم checkout السابق مع نسخة `pre_deploy` المطابقة له، ثم تحقق من health endpoint وتدفقات تسجيل الدخول والبيع والطباعة.
 
-Do not increase the PM2 instance count with the in-memory event bus: events emitted in one process would not reach streams attached to another process. Before horizontal or cluster scaling, replace the event transport with Redis/pub-sub (or an equivalent shared broker) while retaining the same SSE contract and polling fallback.
+## قيود التشغيل والطباعة
 
-## Printing
-
-Thermal receipts, Admin-only CODE128 product labels, and reusable ID-1 (`85.6×54mm`) return-approval cards use browser printing. Invoice and report PDFs use `/usr/bin/chromium` with local Arabic fonts. PDF data comes only from authorized server records; values are escaped, jobs and record counts are bounded, and results are streamed without persistent temporary files. Cashier receipt/PDF output requires that Cashier's own `OPEN` shift; Admin output is an audited no-shift override.
-
-If PDF readiness is false, check Chromium executable permissions for `a4pos`, Noto fonts, available memory, and PM2 error logs.
+- التشغيل المعتمد هو PM2 fork بعملية واحدة لأن live updates تستخدم SSE مع event bus داخل الذاكرة. قبل التوسع الأفقي يجب نقل الأحداث إلى Redis أو broker مشترك.
+- Nginx يقرأ `client/dist` فقط، ولا يجب أن يستطيع قراءة `.env` أو قاعدة البيانات أو النسخ الاحتياطية.
+- PDF يحتاج `/usr/bin/chromium` وخطوط Noto العربية. إذا كانت جاهزية PDF غير متاحة، راجع صلاحيات Chromium والذاكرة وسجلات PM2.
+- الإيصالات والملصقات وكروت المرتجعات تستخدم طباعة المتصفح ومقاسات ديناميكية لا يجب تحويلها إلى CSS ثابت.

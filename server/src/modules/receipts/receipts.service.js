@@ -171,6 +171,7 @@ export async function createReceipt({
   printedBy,
   snapshot,
   qrToken = null,
+  receiptNumber: suppliedReceiptNumber = null,
   connection = null,
 }) {
   if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
@@ -186,7 +187,7 @@ export async function createReceipt({
   }
 
   const insert = async (tx) => {
-    const receiptNumber = await nextDocumentNumber(tx, 'receipt');
+    const receiptNumber = suppliedReceiptNumber || (await nextDocumentNumber(tx, 'receipt'));
     const persistedSnapshot = {
       version: snapshot.version || 1,
       ...snapshot,

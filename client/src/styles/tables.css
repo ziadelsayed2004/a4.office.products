@@ -65,7 +65,7 @@
 }
 
 .table-state-placeholder {
-  min-height: 240px;
+  min-height: var(--table-state-min-height);
   display: grid;
   place-items: center;
   padding: 28px;
@@ -98,7 +98,7 @@
   font-size: 0.78rem;
 }
 
-@media (max-width: 520px) {
+@media (max-width: 600px) {
   .data-pagination {
     display: grid;
     justify-items: center;

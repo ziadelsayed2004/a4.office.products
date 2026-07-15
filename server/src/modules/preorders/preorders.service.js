@@ -4,7 +4,8 @@ import {
   AppError,
   aggregateItems,
   generateSecureToken,
-  nextDocumentNumber,
+  nextPreorderNumbers,
+  nextSaleNumbers,
   requireInteger,
   requirePiasters,
   saveSecureToken,
@@ -228,10 +229,7 @@ export async function createPreorder(preorderData, cashierId, idempotencyKey) {
         depositPaid,
         connection
       );
-      const [preorderNumber, receiptNumber] = await Promise.all([
-        nextDocumentNumber(connection, 'preorder'),
-        nextDocumentNumber(connection, 'receipt'),
-      ]);
+      const { preorderNumber, receiptNumber } = await nextPreorderNumbers(connection);
       const pickupToken = generateSecureToken('preorder');
       const result = await connection.run(
         `INSERT INTO preorders
@@ -542,10 +540,7 @@ export async function pickupPreorder(preorderId, pickupData, cashierId, idempote
         preorder.remaining_amount,
         connection
       );
-      const [invoiceNumber, receiptNumber] = await Promise.all([
-        nextDocumentNumber(connection, 'invoice'),
-        nextDocumentNumber(connection, 'receipt'),
-      ]);
+      const { invoiceNumber, receiptNumber } = await nextSaleNumbers(connection);
       const orderResult = await connection.run(
         `INSERT INTO orders
          (invoice_number, shift_id, cashier_id, customer_id, subtotal, discount, total,

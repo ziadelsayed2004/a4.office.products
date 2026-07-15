@@ -15,13 +15,13 @@ html {
 body,
 #root {
   width: 100%;
-  min-width: 320px;
+  min-width: 0;
   min-height: 100vh;
   margin: 0;
 }
 
 body {
-  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--app-font-family);
@@ -53,6 +53,17 @@ a {
 img,
 svg {
   max-width: 100%;
+}
+
+main,
+section,
+article,
+aside,
+header,
+footer,
+nav,
+form {
+  min-width: 0;
 }
 
 img {

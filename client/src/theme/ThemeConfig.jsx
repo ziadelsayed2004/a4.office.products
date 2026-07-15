@@ -159,8 +159,8 @@ function buildTheme(mode, colors) {
             textAlign: 'right',
             color: colors.text,
             '&[dir="ltr"], &.ltr-value, &.a4-ltr-value': {
-              direction: 'ltr',
-              textAlign: 'left',
+              direction: 'rtl',
+              textAlign: 'right',
               unicodeBidi: 'plaintext',
             },
           },

@@ -52,7 +52,7 @@
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 720px) {
   .audit-values-grid {
     grid-template-columns: 1fr;
   }
