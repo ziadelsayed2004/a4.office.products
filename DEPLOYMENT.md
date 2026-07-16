@@ -21,13 +21,23 @@ sudo DOMAIN_NAME=a4office.cloud ./deploy.sh
 
 ## تحديث نسخة الإنتاج
 
-خذ snapshot عند التحديثات الكبيرة، ثم اسحب أو ارفع الإصدار الجديد وأعد تشغيل نفس السكربت:
+خذ snapshot عند التحديثات الكبيرة، ثم نفّذ نفس التسلسل المستخدم في تيمبليت
+`hamza.printing.press`. المسار المعتمد لهذا المشروع هو `/opt/a4-office` وليس
+`~/hamza-press`:
 
 ```bash
 cd /opt/a4-office
-git pull --ff-only origin main
+git reset --hard
+git pull origin main
+chmod +x deploy.sh
+sed -i -e 's/\r$//' deploy.sh
 sudo DOMAIN_NAME=a4office.cloud ./deploy.sh
 ```
+
+`git reset --hard` يحذف أي تعديلات محلية على ملفات Git في نسخة السيرفر، لذلك استخدم
+هذه الأوامر على نسخة الإنتاج فقط بعد رفع التعديلات المطلوبة إلى فرع `main`. لا يحذف
+السكربت قاعدة SQLite أو ملف `.env`، ويأخذ نسخة احتياطية متحققة من قاعدة البيانات قبل
+تشغيل migrations.
 
 قبل أي migration ينشئ السكربت نسخة SQLite ويتحقق من سلامتها. بعد ذلك يشغّل `npm ci` لكل الحزم، مجموعة الفحوصات الكاملة، build، migrations، ثم يعيد تشغيل Nginx وPM2 ويتحقق من الصحة محليًا وعبر HTTPS.
 
