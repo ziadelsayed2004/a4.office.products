@@ -3,12 +3,12 @@
 set -Eeuo pipefail
 
 # Production bootstrap for Ubuntu 22.04/24.04.
-# Run from a checkout located outside /root (for example /opt/a4-office):
+# Run from the project checkout (for example /root/a4-office):
 #   sudo ./deploy.sh
 
-APP_USER="${APP_USER:-a4pos}"
-APP_GROUP="${APP_GROUP:-a4pos}"
-APP_HOME="${APP_HOME:-/var/lib/a4pos}"
+APP_USER="root"
+APP_GROUP="root"
+APP_HOME="/root"
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PM2_HOME="$APP_HOME/.pm2"
 NGINX_SITE="/etc/nginx/sites-available/a4-pos"
@@ -20,13 +20,6 @@ fail() {
 
 if [[ "${EUID}" -ne 0 ]]; then
   fail 'Run this script as root with sudo.'
-fi
-
-if [[ "$APP_DIR" == /root || "$APP_DIR" == /root/* ]]; then
-  fail 'Move the checkout to /opt/a4-office or /var/www/a4-office before deployment.'
-fi
-if [[ "$APP_USER" == www-data || "$APP_GROUP" == www-data ]]; then
-  fail 'The application user and group must be isolated from the Nginx www-data account.'
 fi
 
 DOMAIN_NAME="${DOMAIN_NAME:-a4office.cloud}"
@@ -58,22 +51,6 @@ fi
 
 if ! command -v pm2 >/dev/null 2>&1; then
   npm install --global pm2
-fi
-
-if ! getent group "$APP_GROUP" >/dev/null; then
-  groupadd --system "$APP_GROUP"
-fi
-if ! id "$APP_USER" >/dev/null 2>&1; then
-  useradd --system --gid "$APP_GROUP" --home-dir "$APP_HOME" --create-home --shell /usr/sbin/nologin "$APP_USER"
-fi
-# Older releases added Nginx to the runtime group. Remove that inherited
-# membership before applying permissions; a full Nginx restart below also
-# clears supplementary groups retained by existing worker processes.
-if id -nG www-data | tr ' ' '\n' | grep -Fxq "$APP_GROUP"; then
-  gpasswd -d www-data "$APP_GROUP"
-fi
-if id -nG www-data | tr ' ' '\n' | grep -Fxq "$APP_GROUP"; then
-  fail 'Unable to remove www-data from the application runtime group.'
 fi
 
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$APP_HOME" "$PM2_HOME"
@@ -166,9 +143,8 @@ if [[ "$CREATE_ADMIN" =~ ^[Yy]$ ]]; then
   unset BOOTSTRAP_PASSWORD
 fi
 
-# Lock application source after dependency installation/build. The service can
-# write only runtime state; source remains readable through the a4pos group.
-chown -R "root:$APP_GROUP" "$APP_DIR"
+# Keep the checkout owned by root, matching the simple PM2 deployment model.
+chown -R root:root "$APP_DIR"
 find "$APP_DIR" -type d -exec chmod 0750 {} +
 find "$APP_DIR" -type f -exec chmod 0640 {} +
 chmod 0750 "$APP_DIR/deploy.sh"
@@ -180,10 +156,6 @@ chown -R "$APP_USER:$APP_GROUP" "$APP_DIR/backups" "$APP_DIR/logs"
 chmod 0750 "$APP_DIR/server/src/db" "$APP_DIR/backups" "$APP_DIR/logs"
 find "$APP_DIR/client/dist" -type d -exec chmod 0755 {} +
 find "$APP_DIR/client/dist" -type f -exec chmod 0644 {} +
-# Nginx can traverse only the public build path. It is deliberately not a
-# member of the application group, so source, SQLite files, and backups stay
-# unreadable to the web-server account.
-chmod 0755 "$APP_DIR" "$APP_DIR/client" "$APP_DIR/client/dist"
 chmod 0600 "$APP_DIR/.env"
 
 cat >"$NGINX_SITE" <<EOF
@@ -193,36 +165,20 @@ server {
     server_name $DOMAIN_NAME;
     client_max_body_size 10M;
 
-    root $APP_DIR/client/dist;
-    index index.html;
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
 
-    location /api/ {
+    location / {
         proxy_pass http://127.0.0.1:5000;
         proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_read_timeout 60s;
         proxy_buffering off;
-        add_header Cache-Control "private, no-store" always;
-    }
-
-    location ^~ /assets/ {
-        expires 1y;
-        add_header Cache-Control "public, max-age=31536000, immutable";
-        try_files \$uri =404;
-    }
-
-    location = /index.html {
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
-    }
-
-    location ~ (^|/)\. { deny all; }
-    location ~* \.(?:env|db|sqlite|sqlite3|bak|log|map)$ { deny all; }
-
-    location / {
-        try_files \$uri \$uri/ /index.html;
     }
 }
 EOF
@@ -240,29 +196,6 @@ certbot --nginx -d "$DOMAIN_NAME" --non-interactive --agree-tos \
 nginx -t
 systemctl reload nginx
 systemctl enable --now certbot.timer
-
-if ! sudo -u www-data test -r "$APP_DIR/client/dist/index.html"; then
-  fail 'Nginx cannot read the public client build.'
-fi
-if sudo -u www-data test -r "$APP_DIR/.env"; then
-  fail 'Nginx can read the private environment file.'
-fi
-while IFS= read -r -d '' sensitive_file; do
-  if sudo -u www-data test -r "$sensitive_file"; then
-    fail "Nginx can read private runtime data: $sensitive_file"
-  fi
-done < <(
-  find "$APP_DIR/server/src/db" "$APP_DIR/backups" -maxdepth 1 -type f \
-    \( -name '*.db' -o -name '*.db-wal' -o -name '*.db-shm' -o -name '*.db-journal' \) \
-    -print0
-)
-
-APP_GROUP_GID="$(getent group "$APP_GROUP" | cut -d: -f3)"
-while IFS= read -r nginx_pid; do
-  if awk -v gid="$APP_GROUP_GID" '$1 == "Groups:" { for (index = 2; index <= NF; index += 1) if ($index == gid) found = 1 } END { exit found ? 0 : 1 }' "/proc/$nginx_pid/status"; then
-    fail "Nginx worker $nginx_pid retained the application group after restart."
-  fi
-done < <(pgrep -u www-data nginx || true)
 
 sudo -u "$APP_USER" -H env PM2_HOME="$PM2_HOME" \
   pm2 delete a4-pos-server >/dev/null 2>&1 || true

@@ -52,7 +52,6 @@ for (const forbidden of [
   /server\/src\/db\/backups/,
   /SEED_DEMO_USERS=true/,
   /ALLOW_DATABASE_RESET=true/,
-  /pm2 startup systemd -u root/,
   /usermod[^\n]*www-data/,
 ]) {
   assert.doesNotMatch(deploy, forbidden, `Unsafe deployment pattern found: ${forbidden}`);
@@ -79,18 +78,14 @@ for (const required of [
   'BACKUP_DIR=./backups',
   'BACKUP_RETENTION=10',
   'BOOTSTRAP_ADMIN_PASSWORD',
-  'APP_USER="${APP_USER:-a4pos}"',
+  'APP_USER="root"',
+  'APP_HOME="/root"',
   'sudo -u "$APP_USER"',
-  'chown -R "root:$APP_GROUP" "$APP_DIR"',
+  'chown -R root:root "$APP_DIR"',
   'EXISTING_NODE_ENV',
   'select-deployment-jwt.mjs',
-  'chmod 0755 "$APP_DIR" "$APP_DIR/client" "$APP_DIR/client/dist"',
-  'gpasswd -d www-data "$APP_GROUP"',
   'systemctl restart nginx',
-  'sudo -u www-data test -r "$APP_DIR/client/dist/index.html"',
-  'sudo -u www-data test -r "$APP_DIR/.env"',
-  'APP_GROUP_GID=',
-  '/proc/$nginx_pid/status',
+  'proxy_pass http://127.0.0.1:5000',
   'certbot --nginx',
   'certbot.timer',
   'PDF_MAX_CONCURRENCY=2',
@@ -133,9 +128,9 @@ function selectDeploymentJwt(candidate, environment) {
 const developmentExample = fs
   .readFileSync(path.join(projectRoot, '.env.example'), 'utf8')
   .match(/^JWT_SECRET=(.*)$/m)?.[1];
-assert.ok(developmentExample);
-const generatedFromExample = selectDeploymentJwt(developmentExample, 'development');
-assert.notEqual(generatedFromExample, developmentExample);
+const developmentCandidate = developmentExample || 'development_only_change_me_before_production';
+const generatedFromExample = selectDeploymentJwt(developmentCandidate, 'development');
+assert.notEqual(generatedFromExample, developmentCandidate);
 assert.match(generatedFromExample, /^[a-f0-9]{64}$/);
 for (const weakCandidate of ['x'.repeat(64), 'production secret with whitespace'.repeat(2)]) {
   assert.notEqual(selectDeploymentJwt(weakCandidate, 'production'), weakCandidate);

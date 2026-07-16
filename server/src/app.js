@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'node:path';
 import cors from 'cors';
 import config from './config/index.js';
 import {
@@ -39,6 +40,7 @@ import cashierReturnRoutes, {
   adminReturnRoutes,
 } from './modules/cashierReturns/cashierReturns.routes.js';
 import numberPreviewRoutes from './modules/numberPreviews/numberPreviews.routes.js';
+import { PROJECT_ROOT } from './config/env.js';
 
 const app = express();
 app.set('trust proxy', config.trustProxy);
@@ -115,6 +117,19 @@ app.get('/api/health', async (req, res) => {
     });
   }
 });
+
+// In production Express serves the compiled React application. This keeps the
+// deployment portable when the checkout lives under /root and Nginx proxies
+// the whole site to the Node.js process.
+if (config.isProduction) {
+  const clientDist = path.join(PROJECT_ROOT, 'client', 'dist');
+  app.use(express.static(clientDist, { index: false, maxAge: '1y', immutable: true }));
+  app.get(/^(?!\/api(?:\/|$)).*/, (req, res, next) => {
+    res.sendFile(path.join(clientDist, 'index.html'), (error) => {
+      if (error) next(error);
+    });
+  });
+}
 
 app.use(notFoundHandler);
 app.use(errorHandler);

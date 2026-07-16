@@ -5,28 +5,27 @@
 ## أول نشر
 
 1. وجّه سجل `A` للدومين إلى عنوان IPv4 الخاص بالـ VPS.
-2. ضع المشروع خارج `/root`، والمسار المقترح هو `/opt/a4-office`.
+2. انسخ المشروع إلى `/root/a4-office` مثل تيمبليت حمزة؛ Express يقدّم الواجهة وNginx يمرر له الطلبات.
 3. احتفظ بـ snapshot من Hostinger قبل أول نشر أو migration إنتاجي.
 4. شغّل:
 
 ```bash
-cd /opt/a4-office
+cd /root/a4-office
 chmod +x deploy.sh
 sudo DOMAIN_NAME=a4office.cloud ./deploy.sh
 ```
 
-السكربت يثبت Node.js وChromium وخطوط العربية وNginx وCertbot وSQLite وPM2، ثم ينشئ مستخدم `a4pos` المعزول، ويولّد الأسرار، ويشغّل التثبيت النظيف والفحوصات والبناء والـ migrations، ويجهز HTTPS والنسخ الاحتياطي اليومي ويتأكد من `/api/health`.
+السكربت يثبت Node.js وChromium وخطوط العربية وNginx وCertbot وSQLite وPM2، ثم يشغّل التطبيق عبر PM2 تحت `root` مثل تيمبليت حمزة، ويولّد الأسرار، ويشغّل التثبيت والفحوصات والبناء والـ migrations، ويجهز HTTPS والنسخ الاحتياطي اليومي ويتأكد من `/api/health`.
 
 لا ترفع ملف `.env` الحقيقي إلى Git. استخدم `.env.production.example` كمرجع فقط؛ `deploy.sh` ينشئ ملف الإنتاج بصلاحية `0600` ويحافظ على الأسرار القوية الموجودة عند التحديث.
 
 ## تحديث نسخة الإنتاج
 
 خذ snapshot عند التحديثات الكبيرة، ثم نفّذ نفس التسلسل المستخدم في تيمبليت
-`hamza.printing.press`. المسار المعتمد لهذا المشروع هو `/opt/a4-office` وليس
-`~/hamza-press`:
+`hamza.printing.press`. المسار المعتمد لهذا المشروع هو `/root/a4-office`:
 
 ```bash
-cd /opt/a4-office
+cd /root/a4-office
 git reset --hard
 git pull origin main
 chmod +x deploy.sh
@@ -45,8 +44,8 @@ sudo DOMAIN_NAME=a4office.cloud ./deploy.sh
 
 ```bash
 curl -fsS https://a4office.cloud/api/health
-sudo -u a4pos -H env PM2_HOME=/var/lib/a4pos/.pm2 pm2 status
-sudo -u a4pos -H env PM2_HOME=/var/lib/a4pos/.pm2 pm2 logs a4-pos-server
+pm2 status
+pm2 logs a4-pos-server
 sudo nginx -t
 sudo journalctl -u nginx --since "30 minutes ago"
 sudo certbot renew --dry-run
@@ -57,22 +56,21 @@ systemctl status certbot.timer
 
 ## النسخ الاحتياطي والاستعادة
 
-تُحفظ النسخ المتحققة في `/opt/a4-office/backups` مع retention افتراضي 10 نسخ. لإنشاء نسخة يدوية:
+تُحفظ النسخ المتحققة في `/root/a4-office/backups` مع retention افتراضي 10 نسخ. لإنشاء نسخة يدوية:
 
 ```bash
-cd /opt/a4-office
-sudo -u a4pos npm run db:backup
+cd /root/a4-office
+npm run db:backup
 ```
 
 لاستعادة نسخة، أوقف التطبيق أولًا وافحص الملف ثم احتفظ بنسخة من الحالة الحالية:
 
 ```bash
-sudo -u a4pos -H env PM2_HOME=/var/lib/a4pos/.pm2 pm2 stop a4-pos-server
-sudo -u a4pos sqlite3 /opt/a4-office/backups/SELECTED.db 'PRAGMA integrity_check;'
-sudo cp /opt/a4-office/server/src/db/a4_pos.db /opt/a4-office/backups/a4_pos.before_restore.db
-sudo cp /opt/a4-office/backups/SELECTED.db /opt/a4-office/server/src/db/a4_pos.db
-sudo chown a4pos:a4pos /opt/a4-office/server/src/db/a4_pos.db
-sudo -u a4pos -H env PM2_HOME=/var/lib/a4pos/.pm2 pm2 restart a4-pos-server
+pm2 stop a4-pos-server
+sqlite3 /root/a4-office/backups/SELECTED.db 'PRAGMA integrity_check;'
+cp /root/a4-office/server/src/db/a4_pos.db /root/a4-office/backups/a4_pos.before_restore.db
+cp /root/a4-office/backups/SELECTED.db /root/a4-office/server/src/db/a4_pos.db
+pm2 restart a4-pos-server
 curl -fsS https://a4office.cloud/api/health
 ```
 
