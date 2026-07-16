@@ -348,10 +348,7 @@ export async function createProduct(productData, adminUserId) {
           'defaultPreorderDepositPct',
           { min: 0, max: 100 }
         );
-  const pickupMethod =
-    policy === PRODUCT_POLICIES.STOCK_ONLY
-      ? 'walk_in'
-      : String(field(productData, 'defaultPickupMethod', 'default_pickup_method') || 'walk_in');
+  const pickupMethod = 'walk_in';
   const instructions =
     policy === PRODUCT_POLICIES.STOCK_ONLY
       ? null
@@ -483,13 +480,7 @@ export async function updateProduct(id, productData, adminUserId) {
             'defaultPreorderDepositPct',
             { min: 0, max: 100 }
           );
-    const pickupMethod =
-      policy === PRODUCT_POLICIES.STOCK_ONLY
-        ? 'walk_in'
-        : String(
-            field(productData, 'defaultPickupMethod', 'default_pickup_method') ??
-              old.default_pickup_method
-          );
+    const pickupMethod = 'walk_in';
     const instructions =
       policy === PRODUCT_POLICIES.STOCK_ONLY
         ? null

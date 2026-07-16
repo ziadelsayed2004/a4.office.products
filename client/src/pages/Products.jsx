@@ -261,7 +261,7 @@ export default function Products() {
     ...(form.availabilityPolicy === PREORDER_WHEN_OUT
       ? {
           defaultPreorderDepositPct: Number(form.defaultPreorderDepositPct),
-          defaultPickupMethod: form.defaultPickupMethod,
+          defaultPickupMethod: 'walk_in',
           preorderInstructions: form.preorderInstructions.trim() || null,
         }
       : {}),
@@ -582,7 +582,10 @@ export default function Products() {
                 ))}
               </TextField>
             </Field>
-            <div className="product-identity-preview full" aria-live="polite">
+            <div
+              className="product-identity-preview form-grid__span-full"
+              aria-live="polite"
+            >
               <div className="product-identity-preview__values">
                 <div>
                   <span>رمز SKU</span>
@@ -616,7 +619,7 @@ export default function Products() {
                 }
               />
             </Field>
-            <Field label="حالة المنتج">
+            <Field>
               <div className="product-status-control">
                 <span>إتاحة المنتج للبيع والظهور داخل النظام</span>
                 <FormControlLabel
@@ -637,7 +640,7 @@ export default function Products() {
 
         <FormSection title="سياسة التوفر">
           <FieldGrid>
-            <Field className="full" label="سياسة البيع والحجز" required>
+            <Field className="form-grid__span-full" label="سياسة البيع والحجز" required>
               <TextField
                 select
                 value={form.availabilityPolicy}
@@ -649,58 +652,50 @@ export default function Products() {
                 <MenuItem value={PREORDER_WHEN_OUT}>{policyLabel(PREORDER_WHEN_OUT)}</MenuItem>
               </TextField>
             </Field>
-            {editing && (
-              <Field label="المخزون الفعلي الحالي">
-                <TextField value={number(editing.stockOnHand)} disabled />
-              </Field>
-            )}
-            <Field label="حد تنبيه المخزون" required>
-              <TextField
-                type="number"
-                value={form.lowStockThreshold}
-                onChange={(event) =>
-                  setForm((value) => ({ ...value, lowStockThreshold: event.target.value }))
-                }
-                slotProps={{ htmlInput: { min: 0, step: 1 } }}
-              />
-            </Field>
-            <Field label="تكلفة الشراء">
-              <TextField
-                value={form.purchaseCost}
-                onChange={(event) =>
-                  setForm((value) => ({ ...value, purchaseCost: event.target.value }))
-                }
-              />
-            </Field>
-          </FieldGrid>
-          {form.availabilityPolicy === PREORDER_WHEN_OUT && (
-            <FieldGrid>
-              <Field label="نسبة العربون الافتراضية" required>
+            <div className="product-availability-fields form-grid__span-full">
+              {editing && (
+                <Field label="المخزون الفعلي الحالي">
+                  <TextField value={number(editing.stockOnHand)} disabled />
+                </Field>
+              )}
+              <Field label="حد تنبيه المخزون" required>
                 <TextField
                   type="number"
-                  value={form.defaultPreorderDepositPct}
+                  value={form.lowStockThreshold}
                   onChange={(event) =>
-                    setForm((value) => ({
-                      ...value,
-                      defaultPreorderDepositPct: event.target.value,
-                    }))
+                    setForm((value) => ({ ...value, lowStockThreshold: event.target.value }))
                   }
-                  slotProps={{ htmlInput: { min: 0, max: 100, step: 1 } }}
+                  slotProps={{ htmlInput: { min: 0, step: 1 } }}
                 />
               </Field>
-              <Field label="طريقة الاستلام الافتراضية" required>
+              <Field label="تكلفة الشراء">
                 <TextField
-                  select
-                  value={form.defaultPickupMethod}
+                  value={form.purchaseCost}
                   onChange={(event) =>
-                    setForm((value) => ({ ...value, defaultPickupMethod: event.target.value }))
+                    setForm((value) => ({ ...value, purchaseCost: event.target.value }))
                   }
-                >
-                  <MenuItem value="walk_in">استلام من المكتبة</MenuItem>
-                  <MenuItem value="delivery">توصيل</MenuItem>
-                </TextField>
+                />
               </Field>
-              <Field className="full" label="تعليمات الحجز">
+              {form.availabilityPolicy === PREORDER_WHEN_OUT && (
+                <Field label="نسبة العربون الافتراضية" required>
+                  <TextField
+                    type="number"
+                    value={form.defaultPreorderDepositPct}
+                    onChange={(event) =>
+                      setForm((value) => ({
+                        ...value,
+                        defaultPreorderDepositPct: event.target.value,
+                      }))
+                    }
+                    slotProps={{ htmlInput: { min: 0, max: 100, step: 1 } }}
+                  />
+                </Field>
+              )}
+            </div>
+          </FieldGrid>
+          {form.availabilityPolicy === PREORDER_WHEN_OUT && (
+            <FieldGrid columns={1}>
+              <Field className="form-grid__span-full" label="تعليمات الحجز">
                 <TextField
                   multiline
                   minRows={2}

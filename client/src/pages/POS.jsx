@@ -584,6 +584,7 @@ export default function POS() {
               '/api/pos/preorders',
               {
                 ...customer,
+                pickupMethod: 'walk_in',
                 items: itemPayload,
                 discount,
                 depositPaid: selectedDeposit,
@@ -940,18 +941,6 @@ export default function POS() {
                       setCustomer((value) => ({ ...value, customerPhone: event.target.value }))
                     }
                   />
-                </Field>
-                <Field label="طريقة الاستلام">
-                  <TextField
-                    select
-                    value={customer.pickupMethod}
-                    onChange={(event) =>
-                      setCustomer((value) => ({ ...value, pickupMethod: event.target.value }))
-                    }
-                  >
-                    <MenuItem value="walk_in">من المكتبة</MenuItem>
-                    <MenuItem value="delivery">توصيل</MenuItem>
-                  </TextField>
                 </Field>
               </div>
             )}

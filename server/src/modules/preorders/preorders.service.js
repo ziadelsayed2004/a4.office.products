@@ -137,7 +137,7 @@ export async function createPreorder(preorderData, cashierId, idempotencyKey) {
     items,
     discount,
     depositPaid,
-    pickupMethod: preorderData.pickupMethod || 'walk_in',
+    pickupMethod: 'walk_in',
     expectedPickupDate: preorderData.expectedPickupDate || null,
     notes: preorderData.notes || null,
     payments: preorderData.payments,
