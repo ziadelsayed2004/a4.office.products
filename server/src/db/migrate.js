@@ -153,7 +153,7 @@ async function validateTargetSchema() {
   }
 }
 
-async function seedDefaults({ freshDatabase }) {
+async function seedDefaults() {
   const usersCount = await db.get('SELECT COUNT(*) AS count FROM users;');
   if (usersCount.count === 0 && config.demoUsers.enabled) {
     const adminHash = await bcrypt.hash('admin123', 10);
@@ -175,21 +175,6 @@ async function seedDefaults({ freshDatabase }) {
   }
 
   await withTransaction(async (connection) => {
-    if (freshDatabase) {
-      await connection.exec(`
-      INSERT OR IGNORE INTO categories (name, code, is_active) VALUES
-        ('كتب خارجية', 'CAT001', 1), ('أدوات مكتبية', 'CAT002', 1),
-        ('أجهزة وآلات حاسبة', 'CAT003', 1);
-      INSERT INTO number_sequences (sequence_type, scope_key, last_value)
-        VALUES ('category', 'GLOBAL', 3)
-        ON CONFLICT(sequence_type, scope_key)
-        DO UPDATE SET last_value = MAX(last_value, excluded.last_value);
-      INSERT OR IGNORE INTO price_tiers (name, description, is_active) VALUES
-        ('سعر التجزئة الافتراضي', 'السعر الافتراضي لبيع التجزئة للجمهور', 1),
-        ('سعر الجملة للشركات', 'سعر خاص للشركات والمؤسسات', 1),
-        ('خصم الطلاب والمعلمين', 'خصم مخصص للطلاب وهيئة التدريس', 1);
-      `);
-    }
     await connection.exec(`
       INSERT OR IGNORE INTO business_settings (key, value) VALUES
         ('active_payment_methods', '["Cash","Card","InstaPay","Wallet"]');
@@ -269,7 +254,7 @@ export async function runMigrations() {
     console.log(`Applied migration ${migration.version}: ${migration.name}`);
   }
 
-  await seedDefaults({ freshDatabase: !initialized });
+  await seedDefaults();
   await validateTargetSchema();
   console.log('Database schema and migrations validated successfully.');
   console.log('----------------------------------------');

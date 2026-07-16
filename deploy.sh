@@ -124,8 +124,10 @@ sudo -u "$APP_USER" -H bash -lc "cd '$APP_DIR' && npm run check"
 sudo -u "$APP_USER" -H bash -lc "cd '$APP_DIR' && npm run build"
 sudo -u "$APP_USER" -H bash -lc "cd '$APP_DIR' && npm run db:migrate"
 
-read -r -p 'Create the first production Admin now? [y/N]: ' CREATE_ADMIN
-if [[ "$CREATE_ADMIN" =~ ^[Yy]$ ]]; then
+ADMIN_COUNT="$(sqlite3 "$APP_DIR/server/src/db/a4_pos.db" \
+  "SELECT COUNT(*) FROM users WHERE role = 'Admin';")"
+if [[ "$ADMIN_COUNT" == "0" ]]; then
+  printf '\nNo Admin account exists. Create the initial production Admin.\n'
   read -r -p 'Admin username [admin]: ' BOOTSTRAP_USERNAME
   BOOTSTRAP_USERNAME="${BOOTSTRAP_USERNAME:-admin}"
   read -r -p 'Admin display name [System Administrator]: ' BOOTSTRAP_NAME
