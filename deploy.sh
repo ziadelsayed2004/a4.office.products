@@ -59,7 +59,19 @@ install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 \
 chown -R "$APP_USER:$APP_GROUP" "$APP_DIR"
 chmod 0750 "$APP_DIR"
 
-if [[ -s "$APP_DIR/server/src/db/a4_pos.db" ]]; then
+RESET_DATABASE="${RESET_DATABASE:-false}"
+if [[ "$RESET_DATABASE" != "true" && "$RESET_DATABASE" != "false" ]]; then
+  fail 'RESET_DATABASE must be true or false.'
+fi
+
+if [[ "$RESET_DATABASE" == "true" ]]; then
+  printf 'RESET_DATABASE=true: removing the production SQLite database and sequence state.\n'
+  rm -f -- \
+    "$APP_DIR/server/src/db/a4_pos.db" \
+    "$APP_DIR/server/src/db/a4_pos.db-wal" \
+    "$APP_DIR/server/src/db/a4_pos.db-shm" \
+    "$APP_DIR/server/src/db/a4_pos.db-journal"
+elif [[ -s "$APP_DIR/server/src/db/a4_pos.db" ]]; then
   PRE_DEPLOY_BACKUP="$APP_DIR/backups/a4_pos.pre_deploy.$(date -u +%Y%m%dT%H%M%SZ).db"
   sudo -u "$APP_USER" sqlite3 "$APP_DIR/server/src/db/a4_pos.db" ".backup '$PRE_DEPLOY_BACKUP'"
   sudo -u "$APP_USER" sqlite3 "$PRE_DEPLOY_BACKUP" 'PRAGMA integrity_check;' | grep -Fxq ok \

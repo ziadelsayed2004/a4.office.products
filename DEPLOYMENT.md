@@ -76,6 +76,16 @@ curl -fsS https://a4office.cloud/api/health
 
 لا تشغّل `db:reset` في الإنتاج تحت أي ظرف.
 
+لتصفير قاعدة الإنتاج عمدًا وبدء الترقيم من `CAT001` شغّل مرة واحدة فقط:
+
+```bash
+cd /root/a4-office
+RESET_DATABASE=true DOMAIN_NAME=a4office.cloud ./deploy.sh
+```
+
+لا تضف `RESET_DATABASE=true` إلى أوامر التحديث المعتادة؛ غيابه يعني الحفاظ على قاعدة
+الإنتاج وأخذ نسخة احتياطية قبل migrations.
+
 ## Rollback
 
 إذا فشل إصدار قبل migrations، أعد checkout للإصدار السابق ثم شغّل `deploy.sh`. إذا طُبقت migrations، استخدم checkout السابق مع نسخة `pre_deploy` المطابقة له، ثم تحقق من health endpoint وتدفقات تسجيل الدخول والبيع والطباعة.

@@ -74,6 +74,8 @@ for (const required of [
   'CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium',
   "fail 'Chromium was installed but /usr/bin/chromium is unavailable.'",
   'ALLOW_DATABASE_RESET=false',
+  'RESET_DATABASE="${RESET_DATABASE:-false}"',
+  'RESET_DATABASE=true: removing the production SQLite database and sequence state.',
   'SEED_DEMO_USERS=false',
   'BACKUP_DIR=./backups',
   'BACKUP_RETENTION=10',
