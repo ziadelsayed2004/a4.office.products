@@ -162,7 +162,15 @@ export async function getProductDetails(id, connection = db) {
   ]);
   return decorateAvailability({
     ...product,
-    book_details: bookDetails || null,
+    book_details: bookDetails
+      ? {
+          product_id: bookDetails.product_id,
+          school_grade: bookDetails.school_grade,
+          subject: bookDetails.subject,
+          author: bookDetails.teacher,
+          term: bookDetails.term,
+        }
+      : null,
     prices: prices.map((price) => ({ ...price, price: price.price ?? null })),
   });
 }
@@ -225,12 +233,6 @@ function normalizeBookDetails(data) {
   if (value.term && !['first', 'second'].includes(value.term)) {
     throw new AppError('Book term must be first or second.', 400, 'INVALID_BOOK_TERM');
   }
-  if (
-    value.educational_classification &&
-    !['external_book', 'school_book', 'booklet', 'notes'].includes(value.educational_classification)
-  ) {
-    throw new AppError('Invalid educational classification.', 400, 'INVALID_BOOK_CLASSIFICATION');
-  }
   return { isBook: true, details: value };
 }
 
@@ -252,16 +254,14 @@ async function upsertBookDetails(connection, productId, normalized, explicit = t
        educational_classification = excluded.educational_classification;`,
     [
       productId,
-      cleanOptional(value.book_type),
+      null,
       cleanOptional(value.school_grade),
       cleanOptional(value.subject),
-      cleanOptional(value.teacher),
-      cleanOptional(value.publisher),
-      value.release_year
-        ? requireInteger(Number(value.release_year), 'releaseYear', { min: 1 })
-        : null,
+      cleanOptional(value.author ?? value.teacher),
+      null,
+      null,
       cleanOptional(value.term),
-      cleanOptional(value.educational_classification),
+      null,
     ]
   );
 }

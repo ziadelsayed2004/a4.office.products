@@ -244,17 +244,12 @@ const priceRow = z
   );
 const bookDetails = z
   .object({
-    book_type: optionalNullableTrimmed(100),
     school_grade: optionalNullableTrimmed(100),
     subject: optionalNullableTrimmed(150),
+    author: optionalNullableTrimmed(150),
+    // Accepted temporarily so older clients can still update existing books.
     teacher: optionalNullableTrimmed(150),
-    publisher: optionalNullableTrimmed(150),
-    release_year: optionalInteger(1, 9999),
     term: z.enum(['first', 'second']).nullable().optional(),
-    educational_classification: z
-      .enum(['external_book', 'school_book', 'booklet', 'notes'])
-      .nullable()
-      .optional(),
   })
   .passthrough();
 const productFields = {

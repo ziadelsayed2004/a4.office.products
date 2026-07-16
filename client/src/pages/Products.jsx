@@ -62,14 +62,10 @@ function newForm(categoryId = '') {
     preorderInstructions: '',
     notes: '',
     isBook: false,
-    bookType: '',
     schoolGrade: '',
     subject: '',
-    teacher: '',
-    publisher: '',
-    releaseYear: '',
+    author: '',
     term: 'first',
-    educationalClassification: 'external_book',
     prices: {},
     unlinkPriceTierIds: [],
   };
@@ -230,15 +226,10 @@ export default function Products() {
         preorderInstructions: product.preorderInstructions || '',
         notes: product.notes || '',
         isBook: Boolean(product.book_details),
-        bookType: product.book_details?.book_type || '',
         schoolGrade: product.book_details?.school_grade || '',
         subject: product.book_details?.subject || '',
-        teacher: product.book_details?.teacher || '',
-        publisher: product.book_details?.publisher || '',
-        releaseYear: product.book_details?.release_year || '',
+        author: product.book_details?.author || product.book_details?.teacher || '',
         term: product.book_details?.term || 'first',
-        educationalClassification:
-          product.book_details?.educational_classification || 'external_book',
         prices,
         unlinkPriceTierIds: [],
       });
@@ -269,14 +260,10 @@ export default function Products() {
     isBook: form.isBook,
     bookDetails: form.isBook
       ? {
-          book_type: form.bookType || null,
           school_grade: form.schoolGrade || null,
           subject: form.subject || null,
-          teacher: form.teacher || null,
-          publisher: form.publisher || null,
-          release_year: form.releaseYear ? Number(form.releaseYear) : null,
+          author: form.author || null,
           term: form.term,
-          educational_classification: form.educationalClassification,
         }
       : null,
     prices: tiers
@@ -778,14 +765,6 @@ export default function Products() {
           />
           {form.isBook && (
             <FieldGrid>
-              <Field label="نوع الكتاب">
-                <TextField
-                  value={form.bookType}
-                  onChange={(event) =>
-                    setForm((value) => ({ ...value, bookType: event.target.value }))
-                  }
-                />
-              </Field>
               <Field label="الصف الدراسي">
                 <TextField
                   value={form.schoolGrade}
@@ -802,28 +781,11 @@ export default function Products() {
                   }
                 />
               </Field>
-              <Field label="المدرس">
+              <Field label="المؤلف">
                 <TextField
-                  value={form.teacher}
+                  value={form.author}
                   onChange={(event) =>
-                    setForm((value) => ({ ...value, teacher: event.target.value }))
-                  }
-                />
-              </Field>
-              <Field label="دار النشر">
-                <TextField
-                  value={form.publisher}
-                  onChange={(event) =>
-                    setForm((value) => ({ ...value, publisher: event.target.value }))
-                  }
-                />
-              </Field>
-              <Field label="سنة الإصدار">
-                <TextField
-                  type="number"
-                  value={form.releaseYear}
-                  onChange={(event) =>
-                    setForm((value) => ({ ...value, releaseYear: event.target.value }))
+                    setForm((value) => ({ ...value, author: event.target.value }))
                   }
                 />
               </Field>
@@ -835,23 +797,6 @@ export default function Products() {
                 >
                   <MenuItem value="first">الأول</MenuItem>
                   <MenuItem value="second">الثاني</MenuItem>
-                </TextField>
-              </Field>
-              <Field label="التصنيف التعليمي">
-                <TextField
-                  select
-                  value={form.educationalClassification}
-                  onChange={(event) =>
-                    setForm((value) => ({
-                      ...value,
-                      educationalClassification: event.target.value,
-                    }))
-                  }
-                >
-                  <MenuItem value="external_book">كتاب خارجي</MenuItem>
-                  <MenuItem value="school_book">كتاب مدرسي</MenuItem>
-                  <MenuItem value="booklet">مذكرة</MenuItem>
-                  <MenuItem value="notes">ملازم</MenuItem>
                 </TextField>
               </Field>
             </FieldGrid>
