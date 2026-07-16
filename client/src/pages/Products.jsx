@@ -569,10 +569,7 @@ export default function Products() {
                 ))}
               </TextField>
             </Field>
-            <div
-              className="product-identity-preview form-grid__span-full"
-              aria-live="polite"
-            >
+            <div className="product-identity-preview form-grid__span-full" aria-live="polite">
               <div className="product-identity-preview__values">
                 <div>
                   <span>رمز SKU</span>
