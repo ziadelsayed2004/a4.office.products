@@ -49,6 +49,7 @@
 
 .field__external-label {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--space-1);
   margin-bottom: var(--space-2);
