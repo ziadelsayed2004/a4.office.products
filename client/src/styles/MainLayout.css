@@ -398,6 +398,7 @@
   padding-left: var(--space-5);
   border-left: 2px solid var(--border-color);
   color: var(--color-text-muted) !important;
+  direction: ltr !important;
 }
 
 .footer-developer-link {
