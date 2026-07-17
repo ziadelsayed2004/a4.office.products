@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <clipPath id="rounded-icon">
+      <rect width="64" height="64" rx="14" />
+    </clipPath>
+    <clipPath id="logo-mark-only">
+      <rect x="0" y="0" width="64" height="46" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#rounded-icon)">
+    <rect width="64" height="64" fill="#ffffff" />
+    <image
+      href="/a4-logo.png"
+      x="2"
+      y="8"
+      width="60"
+      height="43.07"
+      preserveAspectRatio="xMidYMid meet"
+      clip-path="url(#logo-mark-only)"
+    />
+  </g>
+</svg>
