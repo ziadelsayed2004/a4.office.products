@@ -55,11 +55,11 @@ function resolvePayload(response) {
   return { type, data, raw: value };
 }
 
-function firstPrice(product) {
-  return (
-    (product.prices || []).find((price) => price.price !== null && price.price !== undefined) ||
-    null
-  );
+function basePrice(product) {
+  const price = product.base_sale_price ?? product.baseSalePrice;
+  return price === null || price === undefined
+    ? null
+    : { price_tier_id: null, tier_name: 'السعر الأساسي', price };
 }
 
 function paymentMethodCode(method) {
@@ -345,7 +345,7 @@ export default function POS() {
       });
       return;
     }
-    const price = firstPrice(product);
+    const price = basePrice(product);
     if (!price) {
       setToast({ severity: 'error', message: 'لا يوجد سعر نشط لهذا المنتج.' });
       return;
@@ -362,6 +362,7 @@ export default function POS() {
             quantity: 1,
             stockOnHand: product.stockOnHand,
             prices: product.prices,
+            baseSalePrice: price.price,
             priceTierId: price.price_tier_id,
             unitPrice: price.price,
             defaultPreorderDepositPct: product.defaultPreorderDepositPct,
@@ -409,8 +410,11 @@ export default function POS() {
     setCart((current) =>
       current.map((item, itemIndex) => {
         if (itemIndex !== index) return item;
+        if (tierId === 'base') {
+          return { ...item, priceTierId: null, unitPrice: item.baseSalePrice };
+        }
         const price = item.prices.find((row) => String(row.price_tier_id) === String(tierId));
-        return { ...item, priceTierId: price.price_tier_id, unitPrice: price.price };
+        return price ? { ...item, priceTierId: price.price_tier_id, unitPrice: price.price } : item;
       })
     );
   };
@@ -811,7 +815,7 @@ export default function POS() {
             <div className="pos-product-grid">
               {visibleProducts.length ? (
                 visibleProducts.map((product) => {
-                  const price = firstPrice(product);
+                  const price = basePrice(product);
                   const eligible =
                     mode === MODES.SALE ? product.canSellNow : product.canPreorderNow;
                   return (
@@ -874,9 +878,12 @@ export default function POS() {
                         <TextField
                           select
                           size="small"
-                          value={item.priceTierId}
+                          value={item.priceTierId ?? 'base'}
                           onChange={(event) => changeTier(index, event.target.value)}
                         >
+                          <MenuItem value="base">
+                            السعر الأساسي — {money(item.baseSalePrice)}
+                          </MenuItem>
                           {item.prices.map((price) => (
                             <MenuItem key={price.price_tier_id} value={price.price_tier_id}>
                               {price.tier_name} — {money(price.price)}

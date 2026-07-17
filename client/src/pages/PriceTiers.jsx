@@ -132,7 +132,7 @@ export default function PriceTiers() {
     <div className="a4-page">
       <PageHeader
         title="فئات الأسعار"
-        description="أضف فئات مثل القطاعي والجملة والمدرسين ثم اربط سعر كل فئة بالمنتج."
+        description="أضف فئات أسعار مخصصة مثل الجملة والمدرسين والعملاء المميزين. سعر التجزئة الأساسي يُحدد داخل المنتج ولا يحتاج إلى فئة."
         actions={
           <>
             <Button variant="outlined" startIcon={<RefreshRounded />} onClick={load}>

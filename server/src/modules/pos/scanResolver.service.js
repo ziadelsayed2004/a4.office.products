@@ -9,7 +9,7 @@ async function resolveProduct(productId, connection) {
     `SELECT p.id, p.name, p.sku, p.barcode, p.category_id, c.name AS category_name,
             p.is_active, p.can_be_sold, p.availability_policy,
             p.default_preorder_deposit_pct, p.default_pickup_method,
-            p.preorder_instructions,
+            p.preorder_instructions, p.base_sale_price,
             COALESCE((
               SELECT il.after_quantity FROM inventory_ledger il
                WHERE il.product_id = p.id ORDER BY il.id DESC LIMIT 1
@@ -57,6 +57,8 @@ async function resolveProduct(productId, connection) {
       defaultPreorderDepositPct: product.default_preorder_deposit_pct,
       defaultPickupMethod: product.default_pickup_method,
       preorderInstructions: product.preorder_instructions,
+      baseSalePrice: product.base_sale_price,
+      base_sale_price: product.base_sale_price,
       prices,
     },
   };

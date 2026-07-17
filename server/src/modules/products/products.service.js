@@ -154,8 +154,8 @@ export async function getProductDetails(id, connection = db) {
     connection.get('SELECT * FROM product_book_details WHERE product_id = ?;', [id]),
     connection.all(
       `SELECT pt.id AS price_tier_id, pt.name AS price_tier_name, pt.is_active, pp.price
-       FROM price_tiers pt LEFT JOIN product_prices pp
-         ON pp.price_tier_id = pt.id AND pp.product_id = ?
+       FROM product_prices pp JOIN price_tiers pt ON pt.id = pp.price_tier_id
+       WHERE pp.product_id = ?
        ORDER BY pt.id;`,
       [id]
     ),
@@ -183,7 +183,7 @@ async function validateCategory(connection, categoryId) {
   return id;
 }
 
-async function normalizePrices(connection, rawPrices, { required }) {
+async function normalizePrices(connection, rawPrices, { required = false } = {}) {
   if (!Array.isArray(rawPrices)) {
     if (required)
       throw new AppError(
@@ -193,9 +193,6 @@ async function normalizePrices(connection, rawPrices, { required }) {
       );
     return null;
   }
-  const activeTiers = await connection.all(
-    'SELECT id, name FROM price_tiers WHERE is_active = 1 ORDER BY id;'
-  );
   const byTier = new Map();
   for (const row of rawPrices) {
     const tierId = requireInteger(
@@ -206,14 +203,6 @@ async function normalizePrices(connection, rawPrices, { required }) {
     if (byTier.has(tierId))
       throw new AppError('A price tier cannot appear more than once.', 400, 'DUPLICATE_PRICE_TIER');
     byTier.set(tierId, requirePiasters(field(row, 'price', 'price'), 'price'));
-  }
-  const missing = activeTiers.filter((tier) => !byTier.has(tier.id));
-  if (missing.length) {
-    throw new AppError(
-      `Missing prices for active tiers: ${missing.map((tier) => tier.name).join(', ')}`,
-      400,
-      'ACTIVE_TIER_PRICE_REQUIRED'
-    );
   }
   const knownIds = new Set(
     (await connection.all('SELECT id FROM price_tiers;')).map((tier) => tier.id)
@@ -279,7 +268,7 @@ async function persistPrices(connection, productId, prices) {
   }
 }
 
-async function unlinkInactivePrices(connection, productId, rawTierIds) {
+async function unlinkPrices(connection, productId, rawTierIds) {
   if (rawTierIds === undefined) return [];
   const tierIds = rawTierIds.map((value) =>
     requireInteger(Number(value), 'priceTierId', { min: 1 })
@@ -304,16 +293,6 @@ async function unlinkInactivePrices(connection, productId, rawTierIds) {
       missing_ids: tierIds.filter((id) => !known.has(id)),
     });
   }
-  const active = tiers.filter((tier) => Number(tier.is_active) === 1);
-  if (active.length > 0) {
-    throw new AppError(
-      'Active price tiers must keep a product price. Disable the tier before unlinking it.',
-      409,
-      'ACTIVE_PRICE_TIER_UNLINK_FORBIDDEN',
-      { active_tiers: active.map(({ id, name }) => ({ id, name })) }
-    );
-  }
-
   await connection.run(
     `DELETE FROM product_prices WHERE product_id = ? AND price_tier_id IN (${placeholders});`,
     [productId, ...tierIds]
@@ -337,6 +316,10 @@ export async function createProduct(productData, adminUserId) {
   const purchaseCost = requirePiasters(
     field(productData, 'purchaseCost', 'purchase_cost') ?? 0,
     'purchaseCost'
+  );
+  const baseSalePrice = requirePiasters(
+    field(productData, 'baseSalePrice', 'base_sale_price'),
+    'baseSalePrice'
   );
   const depositPct =
     policy === PRODUCT_POLICIES.STOCK_ONLY
@@ -365,15 +348,13 @@ export async function createProduct(productData, adminUserId) {
     ]);
     const { sku, barcode } = await nextProductIdentity(connection, category);
     requireCode128Barcode(barcode);
-    const prices = await normalizePrices(connection, field(productData, 'prices'), {
-      required: true,
-    });
+    const prices = await normalizePrices(connection, field(productData, 'prices') ?? []);
     const result = await connection.run(
       `INSERT INTO products
        (name, sku, barcode, category_id, description, is_active, can_be_sold, can_be_preordered,
         availability_policy, default_preorder_deposit_pct, default_pickup_method,
-        preorder_instructions, low_stock_threshold, purchase_cost, notes)
-       VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        preorder_instructions, low_stock_threshold, purchase_cost, base_sale_price, notes)
+       VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       [
         name,
         sku,
@@ -388,6 +369,7 @@ export async function createProduct(productData, adminUserId) {
         instructions,
         lowStock,
         purchaseCost,
+        baseSalePrice,
         cleanOptional(field(productData, 'notes')),
       ]
     );
@@ -469,6 +451,10 @@ export async function updateProduct(id, productData, adminUserId) {
       field(productData, 'purchaseCost', 'purchase_cost') === undefined
         ? old.purchase_cost
         : requirePiasters(field(productData, 'purchaseCost', 'purchase_cost'), 'purchaseCost');
+    const baseSalePrice =
+      field(productData, 'baseSalePrice', 'base_sale_price') === undefined
+        ? old.base_sale_price
+        : requirePiasters(field(productData, 'baseSalePrice', 'base_sale_price'), 'baseSalePrice');
     const depositPct =
       policy === PRODUCT_POLICIES.STOCK_ONLY
         ? 0
@@ -500,7 +486,7 @@ export async function updateProduct(id, productData, adminUserId) {
       `UPDATE products SET name = ?, sku = ?, barcode = ?, category_id = ?, description = ?,
        is_active = ?, can_be_sold = 1, can_be_preordered = ?, availability_policy = ?,
        default_preorder_deposit_pct = ?, default_pickup_method = ?, preorder_instructions = ?,
-       low_stock_threshold = ?, purchase_cost = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`,
+       low_stock_threshold = ?, purchase_cost = ?, base_sale_price = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`,
       [
         name,
         sku,
@@ -517,6 +503,7 @@ export async function updateProduct(id, productData, adminUserId) {
         instructions,
         lowStock,
         purchaseCost,
+        baseSalePrice,
         field(productData, 'notes') === undefined
           ? old.notes
           : cleanOptional(field(productData, 'notes')),
@@ -524,7 +511,7 @@ export async function updateProduct(id, productData, adminUserId) {
       ]
     );
     await persistPrices(connection, id, prices);
-    const unlinkedPriceTierIds = await unlinkInactivePrices(
+    const unlinkedPriceTierIds = await unlinkPrices(
       connection,
       id,
       field(productData, 'unlinkPriceTierIds', 'unlink_price_tier_ids')

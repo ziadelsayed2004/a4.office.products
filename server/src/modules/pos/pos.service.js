@@ -203,14 +203,17 @@ export async function checkoutOrder({
             'INSUFFICIENT_STOCK'
           );
         }
-        const tier = await connection.get(
-          `SELECT pp.price, pt.name FROM product_prices pp JOIN price_tiers pt ON pt.id = pp.price_tier_id
-            WHERE pp.product_id = ? AND pp.price_tier_id = ? AND pt.is_active = 1;`,
-          [item.product_id, item.price_tier_id]
-        );
+        const tier =
+          item.price_tier_id === null
+            ? { price: product.base_sale_price, name: 'السعر الأساسي' }
+            : await connection.get(
+                `SELECT pp.price, pt.name FROM product_prices pp JOIN price_tiers pt ON pt.id = pp.price_tier_id
+                  WHERE pp.product_id = ? AND pp.price_tier_id = ? AND pt.is_active = 1;`,
+                [item.product_id, item.price_tier_id]
+              );
         if (!tier)
           throw new AppError(
-            `Active tier price is missing for ${product.name}.`,
+            `Active custom price is missing for ${product.name}.`,
             409,
             'PRICE_NOT_FOUND'
           );

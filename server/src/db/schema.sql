@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS products (
     default_pickup_method TEXT NOT NULL DEFAULT 'walk_in',
     low_stock_threshold INTEGER NOT NULL DEFAULT 5,
     purchase_cost INTEGER NOT NULL DEFAULT 0, -- Stored as integer minor units (piastres)
+    base_sale_price INTEGER NOT NULL DEFAULT 0 CHECK(base_sale_price >= 0), -- Default retail price in piastres
     notes TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP

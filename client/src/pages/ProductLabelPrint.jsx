@@ -96,9 +96,7 @@ export default function ProductLabelPrint() {
     };
   }, [product, size, barcode]);
 
-  const price =
-    product?.prices?.find((row) => row.is_active === 1 && row.price !== null) ||
-    product?.prices?.find((row) => row.price !== null);
+  const price = product?.base_sale_price;
   return (
     <main className={`product-label-print product-label-print--${size}`} ref={containerRef}>
       {!product && !error && <LoadingState label="جاري تجهيز الملصقات..." />}
@@ -113,7 +111,7 @@ export default function ProductLabelPrint() {
             <h1>{product.name}</h1>
             <div className="product-label__body">
               <div>
-                <b>{price ? money(price.price) : ''}</b>
+                <b>{price !== null && price !== undefined ? money(price) : ''}</b>
                 <span className="a4-ltr">{barcode}</span>
               </div>
               <Barcode value={barcode} size={size} />

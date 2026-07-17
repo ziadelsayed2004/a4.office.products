@@ -32,7 +32,11 @@ export function aggregateItems(items) {
   for (const raw of items) {
     const productId = requireInteger(Number(raw?.product_id), 'product_id', { min: 1 });
     const quantity = requireInteger(Number(raw?.quantity), 'quantity', { min: 1 });
-    const priceTierId = requireInteger(Number(raw?.price_tier_id), 'price_tier_id', { min: 1 });
+    const rawPriceTierId = raw?.price_tier_id ?? raw?.priceTierId;
+    const priceTierId =
+      rawPriceTierId === null || rawPriceTierId === undefined || rawPriceTierId === ''
+        ? null
+        : requireInteger(Number(rawPriceTierId), 'price_tier_id', { min: 1 });
     const existing = aggregated.get(productId);
     if (existing && existing.price_tier_id !== priceTierId) {
       throw new AppError(

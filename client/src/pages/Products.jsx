@@ -57,6 +57,7 @@ function newForm(categoryId = '') {
     availabilityPolicy: STOCK_ONLY,
     lowStockThreshold: '5',
     purchaseCost: '0.00',
+    baseSalePrice: '',
     defaultPreorderDepositPct: '50',
     defaultPickupMethod: 'walk_in',
     preorderInstructions: '',
@@ -221,6 +222,7 @@ export default function Products() {
         availabilityPolicy: product.availabilityPolicy || STOCK_ONLY,
         lowStockThreshold: String(product.low_stock_threshold ?? 5),
         purchaseCost: piastersToInput(product.purchase_cost),
+        baseSalePrice: piastersToInput(product.base_sale_price),
         defaultPreorderDepositPct: String(product.defaultPreorderDepositPct ?? 50),
         defaultPickupMethod: product.defaultPickupMethod || 'walk_in',
         preorderInstructions: product.preorderInstructions || '',
@@ -249,6 +251,7 @@ export default function Products() {
     availabilityPolicy: form.availabilityPolicy,
     lowStockThreshold: Number(form.lowStockThreshold),
     purchaseCost: parsePiasters(form.purchaseCost),
+    baseSalePrice: parsePiasters(form.baseSalePrice),
     ...(form.availabilityPolicy === PREORDER_WHEN_OUT
       ? {
           defaultPreorderDepositPct: Number(form.defaultPreorderDepositPct),
@@ -268,21 +271,31 @@ export default function Products() {
       : null,
     prices: tiers
       .filter((tier) => tier.is_active === 1)
+      .filter((tier) => String(form.prices[tier.id] ?? '').trim())
       .map((tier) => ({
         priceTierId: tier.id,
         price: parsePiasters(form.prices[tier.id]),
       })),
-    unlinkPriceTierIds: form.unlinkPriceTierIds,
+    unlinkPriceTierIds: [
+      ...new Set([
+        ...form.unlinkPriceTierIds,
+        ...(editing?.prices || [])
+          .filter(
+            (price) =>
+              price.price !== null && !String(form.prices[price.price_tier_id] ?? '').trim()
+          )
+          .map((price) => price.price_tier_id),
+      ]),
+    ],
   });
 
   const save = async () => {
-    const activeTiers = tiers.filter((tier) => tier.is_active === 1);
     if (!form.name.trim() || !form.categoryId || !form.availabilityPolicy) {
       setToast({ severity: 'error', message: 'الاسم والتصنيف وسياسة التوفر حقول مطلوبة.' });
       return;
     }
-    if (activeTiers.some((tier) => !String(form.prices[tier.id] ?? '').trim())) {
-      setToast({ severity: 'error', message: 'أدخل سعراً لكل فئة سعر نشطة.' });
+    if (!String(form.baseSalePrice).trim()) {
+      setToast({ severity: 'error', message: 'أدخل سعر البيع الأساسي.' });
       return;
     }
     setSaving(true);
@@ -385,6 +398,11 @@ export default function Products() {
         key: 'eligibility',
         label: 'المتاح الآن',
         render: (row) => (row.canSellNow ? 'بيع' : row.canPreorderNow ? 'حجز مسبق' : 'غير متاح'),
+      },
+      {
+        key: 'base_sale_price',
+        label: 'سعر البيع الأساسي',
+        render: (row) => money(row.base_sale_price),
       },
       { key: 'purchase_cost', label: 'تكلفة الشراء', render: (row) => money(row.purchase_cost) },
       {
@@ -698,12 +716,28 @@ export default function Products() {
             )}
         </FormSection>
 
-        <FormSection title="فئات الأسعار" description="كل فئة سعر نشطة مطلوبة.">
+        <FormSection
+          title="التسعير"
+          description="سعر البيع الأساسي هو سعر التجزئة الافتراضي، وفئات الأسعار اختيارية للحالات الخاصة."
+        >
+          <FieldGrid>
+            <Field label="سعر البيع الأساسي (تجزئة/قطاعي)" required>
+              <TextField
+                value={form.baseSalePrice}
+                onChange={(event) =>
+                  setForm((value) => ({ ...value, baseSalePrice: event.target.value }))
+                }
+              />
+            </Field>
+          </FieldGrid>
+          {tiers.some((tier) => tier.is_active === 1) && (
+            <Alert severity="info">اترك سعر الفئة فارغًا إذا لم يكن للمنتج سعر مخصص فيها.</Alert>
+          )}
           <FieldGrid>
             {tiers
               .filter((tier) => tier.is_active === 1)
               .map((tier) => (
-                <Field key={tier.id} label={tier.name} required>
+                <Field key={tier.id} label={tier.name}>
                   <TextField
                     value={form.prices[tier.id] ?? ''}
                     onChange={(event) =>

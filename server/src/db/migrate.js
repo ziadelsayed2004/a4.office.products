@@ -12,6 +12,7 @@ import * as directReturnsAdminPrinting from './migrations/004_direct_returns_adm
 import * as liveAdminActivity from './migrations/005_live_admin_activity.js';
 import * as retireBankTransfer from './migrations/006_retire_bank_transfer.js';
 import * as automaticIdentifiers from './migrations/007_automatic_identifiers.js';
+import * as baseSalePrice from './migrations/008_base_sale_price.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +24,7 @@ const migrations = [
   liveAdminActivity,
   retireBankTransfer,
   automaticIdentifiers,
+  baseSalePrice,
 ];
 
 async function tableExists(name) {
@@ -114,6 +116,9 @@ async function validateTargetSchema() {
   const productColumns = await db.all('PRAGMA table_info(products);');
   if (!productColumns.some((column) => column.name === 'availability_policy')) {
     throw new Error('Post-migration validation failed: canonical product policy is missing.');
+  }
+  if (!productColumns.some((column) => column.name === 'base_sale_price')) {
+    throw new Error('Post-migration validation failed: products.base_sale_price is missing.');
   }
   const categoryColumns = await db.all('PRAGMA table_info(categories);');
   if (!categoryColumns.some((column) => column.name === 'code')) {

@@ -221,10 +221,7 @@ const saleItem = z
     priceTierId: optionalInteger(1),
   })
   .passthrough()
-  .refine(
-    (value) => (value.product_id || value.productId) && (value.price_tier_id || value.priceTierId),
-    'Product and price tier identifiers are required.'
-  );
+  .refine((value) => value.product_id || value.productId, 'Product identifier is required.');
 export const productQuery = z.object({
   q: optionalTrimmed(200),
   categoryId: optionalInteger(1),
@@ -275,6 +272,8 @@ const productFields = {
   low_stock_threshold: optionalInteger(0),
   purchaseCost: optionalInteger(0),
   purchase_cost: optionalInteger(0),
+  baseSalePrice: optionalInteger(0),
+  base_sale_price: optionalInteger(0),
   notes: optionalNullableTrimmed(2000),
   isBook: optionalBooleanFlag,
   is_book: optionalBooleanFlag,
@@ -306,7 +305,11 @@ export const productCreateBody = z
         ['availabilityPolicy'],
         'Availability policy is required.',
       ],
-      [Array.isArray(value.prices), ['prices'], 'Prices are required.'],
+      [
+        value.baseSalePrice !== undefined || value.base_sale_price !== undefined,
+        ['baseSalePrice'],
+        'Base sale price is required.',
+      ],
     ]) {
       if (!valid) context.addIssue({ code: 'custom', path, message });
     }
