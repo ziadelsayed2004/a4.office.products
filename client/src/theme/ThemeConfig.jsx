@@ -200,7 +200,7 @@ function buildTheme(mode, colors) {
             fontWeight: 500,
             transition:
               'color 160ms ease, transform 180ms cubic-bezier(0.4, 0, 0.2, 1), max-width 180ms ease',
-            '&.Mui-focused': { color: colors.primary, fontWeight: 600 },
+            '&.Mui-focused': { color: colors.primary },
             '&.Mui-error': { color: colors.danger },
           },
           asterisk: { color: colors.danger, marginInlineStart: 3 },

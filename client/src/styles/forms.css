@@ -81,7 +81,6 @@
 
 .MuiInputLabel-root.Mui-focused {
   color: var(--color-primary);
-  font-weight: 600;
 }
 
 .MuiInputLabel-root.Mui-error,
