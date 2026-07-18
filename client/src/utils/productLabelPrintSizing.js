@@ -5,9 +5,9 @@ export const PRODUCT_LABEL_SIZES = Object.freeze({
 });
 
 export const PRODUCT_LABEL_LAYOUT_BUDGETS = Object.freeze({
-  small: Object.freeze({ paddingMm: 1.2, gapMm: 0.6, headerMm: 2.2, titleMm: 5.2 }),
-  medium: Object.freeze({ paddingMm: 1.2, gapMm: 0.6, headerMm: 2.2, titleMm: 5.2 }),
-  large: Object.freeze({ paddingMm: 3, gapMm: 1, headerMm: 3, titleMm: 8 }),
+  small: Object.freeze({ paddingMm: 1.2, gapMm: 0.5, metaMm: 4.2, codeMm: 2.3 }),
+  medium: Object.freeze({ paddingMm: 1.2, gapMm: 0.5, metaMm: 4.2, codeMm: 2.3 }),
+  large: Object.freeze({ paddingMm: 3, gapMm: 1, metaMm: 8, codeMm: 4 }),
 });
 
 const CSS_PIXELS_PER_MM = 96 / 25.4;
@@ -31,11 +31,7 @@ export function productLabelVerticalBudget(value) {
   const dimensions = PRODUCT_LABEL_SIZES[size];
   const layout = PRODUCT_LABEL_LAYOUT_BUDGETS[size];
   const bodyHeightMm =
-    dimensions.heightMm -
-    layout.paddingMm * 2 -
-    layout.gapMm * 2 -
-    layout.headerMm -
-    layout.titleMm;
+    dimensions.heightMm - layout.paddingMm * 2 - layout.gapMm * 2 - layout.metaMm - layout.codeMm;
   const barcodeHeightMm = dimensions.barcodeHeight / CSS_PIXELS_PER_MM;
 
   return {
@@ -84,9 +80,9 @@ export function buildProductLabelPageCss(value) {
     width: ${widthMm}mm !important;
     min-width: ${widthMm}mm !important;
     max-width: ${widthMm}mm !important;
-    height: ${heightMm}mm !important;
-    min-height: ${heightMm}mm !important;
-    max-height: ${heightMm}mm !important;
+    height: calc(${heightMm}mm - 0.2mm) !important;
+    min-height: calc(${heightMm}mm - 0.2mm) !important;
+    max-height: calc(${heightMm}mm - 0.2mm) !important;
   }
 }
 `;

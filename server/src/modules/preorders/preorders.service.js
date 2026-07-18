@@ -13,6 +13,8 @@ import {
 } from '../../utils/financial.js';
 import { insertPayments, validateSplitPayments } from '../payments/payments.service.js';
 import { PRODUCT_POLICIES } from '../products/products.service.js';
+import { resolveCustomerForPreorder } from '../customers/customers.service.js';
+import { normalizeCustomerPhone } from '../../utils/customerPhone.js';
 
 const OPEN_STATUSES = ['DEPOSIT_PAID_WAITING_STOCK', 'READY_FOR_PICKUP'];
 const TRANSITIONS = {
@@ -35,36 +37,6 @@ async function requireOwnOpenShift(connection, userId) {
       'OPEN_SHIFT_REQUIRED'
     );
   return shift;
-}
-
-async function findOrCreateCustomer(connection, name, phone, creator) {
-  const cleanName = String(name || '').trim();
-  const cleanPhone = String(phone || '').trim();
-  if (!cleanName) throw new AppError('Customer name is required.', 400, 'CUSTOMER_NAME_REQUIRED');
-  if (cleanPhone.length < 5)
-    throw new AppError('A valid customer phone is required.', 400, 'CUSTOMER_PHONE_REQUIRED');
-  let customer = await connection.get('SELECT * FROM customers WHERE name = ? AND phone = ?;', [
-    cleanName,
-    cleanPhone,
-  ]);
-  if (!customer) {
-    const result = await connection.run('INSERT INTO customers (name, phone) VALUES (?, ?);', [
-      cleanName,
-      cleanPhone,
-    ]);
-    customer = { id: result.lastID, name: cleanName, phone: cleanPhone };
-    await writeAuditLog({
-      userId: creator.userId,
-      shiftId: creator.shiftId,
-      actionType: 'CUSTOMER_CREATE',
-      entityType: 'customers',
-      entityId: customer.id,
-      afterValues: { name: customer.name, phone: customer.phone },
-      notes: `Customer registered during preorder: ${customer.name}`,
-      connection,
-    });
-  }
-  return customer;
 }
 
 function preorderReceiptSnapshot({
@@ -133,7 +105,7 @@ export async function createPreorder(preorderData, cashierId, idempotencyKey) {
   );
   const payload = {
     customerName: String(preorderData.customerName || '').trim(),
-    customerPhone: String(preorderData.customerPhone || '').trim(),
+    customerPhone: normalizeCustomerPhone(preorderData.customerPhone),
     items,
     discount,
     depositPaid,
@@ -146,11 +118,10 @@ export async function createPreorder(preorderData, cashierId, idempotencyKey) {
     { key: idempotencyKey, userId: cashierId, operation: 'PREORDER_CREATE', payload },
     async (connection) => {
       const shift = await requireOwnOpenShift(connection, cashierId);
-      const customer = await findOrCreateCustomer(
-        connection,
-        payload.customerName,
-        payload.customerPhone,
-        { userId: cashierId, shiftId: shift.id }
+      const { customer } = await resolveCustomerForPreorder(
+        { name: payload.customerName, phone: payload.customerPhone },
+        { userId: cashierId, shiftId: shift.id },
+        connection
       );
       let subtotal = 0;
       let minimumDeposit = 0;

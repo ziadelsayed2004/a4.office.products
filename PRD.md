@@ -180,7 +180,8 @@ Preorders are used when a product or requested quantity is unavailable.
 
 ### Creation
 
-- Customer name and phone are mandatory.
+- Customer phone is mandatory and uniquely identifies the customer after digit normalization.
+- Cashier lookup starts from the phone. An existing customer's name is server-owned and read-only; a name is required only for a new phone, and that customer record is created atomically with successful preorder confirmation.
 - Items, quantities, price snapshot, total, deposit, remaining amount, payment method, pickup method, and notes are recorded.
 - Deposit must satisfy the product/business rule.
 - Creation increases open preorder counters and prints a receipt with a secure pickup token.
@@ -342,7 +343,7 @@ Canonical routes are used by new clients. Legacy receipt routes, `/qr-labels`, a
 - Return scanning enforces remaining quantities, supports partial/repeated returns and inactive products, and commits payment, stock, receipt, card snapshot, and audit data atomically and idempotently.
 - Reusable approval cards reject disabled, rotated, forged, or inactive-owner credentials and record every successful use.
 - Normal sale cannot produce negative stock.
-- Preorder requires customer name, phone, deposit, and secure token.
+- Preorder requires a customer phone, an existing customer or a name for a new customer, a deposit, and a secure token.
 - Pickup validates token, stock, payment, and active shift before atomic completion.
 - Receipts, Admin-only product labels, and the `85.6×54mm` approval card print in stable physical layouts after QR/images/fonts are ready.
 - Shift close and Admin approval totals are correct by payment method.

@@ -11,6 +11,17 @@ export async function searchCustomersController(req, res, next) {
   }
 }
 
+export async function lookupCustomerController(req, res, next) {
+  try {
+    return res.status(200).json({
+      status: 'success',
+      data: await customersService.lookupCustomerByPhone(req.query.phone),
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 export async function createCustomerController(req, res, next) {
   try {
     const customer = await customersService.createCustomer(req.body, req.user.id);

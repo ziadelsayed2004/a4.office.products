@@ -1,17 +1,26 @@
 import db, { withTransaction } from '../../db/index.js';
 import { writeAuditLog } from '../../utils/auditLogger.js';
 import { AppError } from '../../utils/errors.js';
+import { normalizeCustomerPhone } from '../../utils/customerPhone.js';
 
-function normalizeCustomer({ name, phone } = {}) {
+function requireCustomerName(name) {
   const cleanName = String(name || '').trim();
-  const cleanPhone = String(phone || '').trim();
   if (!cleanName) throw new AppError('Customer name is required.', 400, 'CUSTOMER_NAME_REQUIRED');
   if (cleanName.length > 200)
     throw new AppError('Customer name is too long.', 400, 'CUSTOMER_NAME_INVALID');
+  return cleanName;
+}
+
+function requireCustomerPhone(phone) {
+  const cleanPhone = normalizeCustomerPhone(phone);
   if (cleanPhone.length < 5 || cleanPhone.length > 30) {
     throw new AppError('A valid customer phone is required.', 400, 'CUSTOMER_PHONE_INVALID');
   }
-  return { name: cleanName, phone: cleanPhone };
+  return cleanPhone;
+}
+
+function normalizeCustomer({ name, phone } = {}) {
+  return { name: requireCustomerName(name), phone: requireCustomerPhone(phone) };
 }
 
 export async function searchCustomers(queryStr = '', connection = db) {
@@ -22,12 +31,26 @@ export async function searchCustomers(queryStr = '', connection = db) {
   const params = [];
   const search = String(queryStr || '').trim();
   if (search) {
-    const value = `%${search}%`;
-    query += ' AND (name LIKE ? OR phone LIKE ?)';
-    params.push(value, value);
+    const textValue = `%${search}%`;
+    const normalizedPhone = normalizeCustomerPhone(search);
+    if (normalizedPhone) {
+      query += ' AND (name LIKE ? OR phone LIKE ?)';
+      params.push(textValue, `%${normalizedPhone}%`);
+    } else {
+      query += ' AND name LIKE ?';
+      params.push(textValue);
+    }
   }
   query += ' ORDER BY c.name ASC LIMIT 50;';
   return (await connection.all(query, params)).map(decorateCustomerDependencies);
+}
+
+export async function lookupCustomerByPhone(phone, connection = db) {
+  const normalizedPhone = requireCustomerPhone(phone);
+  const customer = await connection.get('SELECT id, name, phone FROM customers WHERE phone = ?;', [
+    normalizedPhone,
+  ]);
+  return { found: Boolean(customer), customer: customer || null };
 }
 
 function decorateCustomerDependencies(customer) {
@@ -54,9 +77,8 @@ export async function getCustomerById(id, connection = db) {
   return customer ? decorateCustomerDependencies(customer) : null;
 }
 
-async function insertCustomer(connection, customer, creatorUserId) {
-  const existing = await connection.get('SELECT * FROM customers WHERE name = ? AND phone = ?;', [
-    customer.name,
+async function insertCustomer(connection, customer, creator) {
+  const existing = await connection.get('SELECT * FROM customers WHERE phone = ?;', [
     customer.phone,
   ]);
   if (existing)
@@ -77,12 +99,13 @@ async function insertCustomer(connection, customer, creatorUserId) {
   }
 
   await writeAuditLog({
-    userId: creatorUserId,
+    userId: creator.userId,
+    shiftId: creator.shiftId,
     actionType: 'CUSTOMER_CREATE',
     entityType: 'customers',
     entityId: result.lastID,
     afterValues: customer,
-    notes: `Customer registered: ${customer.name}`,
+    notes: creator.notes || `Customer registered: ${customer.name}`,
     connection,
   });
   return { id: result.lastID, ...customer };
@@ -90,18 +113,36 @@ async function insertCustomer(connection, customer, creatorUserId) {
 
 export async function createCustomer(input, creatorUserId) {
   const customer = normalizeCustomer(input);
-  return withTransaction((connection) => insertCustomer(connection, customer, creatorUserId));
+  return withTransaction((connection) =>
+    insertCustomer(connection, customer, { userId: creatorUserId })
+  );
 }
 
 export async function findOrCreateCustomer(input, creatorUserId) {
-  const customer = normalizeCustomer(input);
+  const phone = requireCustomerPhone(input?.phone);
   return withTransaction(async (connection) => {
-    const existing = await connection.get('SELECT * FROM customers WHERE name = ? AND phone = ?;', [
-      customer.name,
-      customer.phone,
-    ]);
-    return existing || insertCustomer(connection, customer, creatorUserId);
+    const existing = await connection.get('SELECT * FROM customers WHERE phone = ?;', [phone]);
+    if (existing) return existing;
+    const customer = { name: requireCustomerName(input?.name), phone };
+    return insertCustomer(connection, customer, { userId: creatorUserId });
   });
+}
+
+export async function resolveCustomerForPreorder(input, creator, connection) {
+  const phone = requireCustomerPhone(input?.phone);
+  const existing = await connection.get('SELECT * FROM customers WHERE phone = ?;', [phone]);
+  if (existing) return { customer: existing, created: false };
+
+  const customer = await insertCustomer(
+    connection,
+    { name: requireCustomerName(input?.name), phone },
+    {
+      userId: creator.userId,
+      shiftId: creator.shiftId,
+      notes: `Customer registered during preorder: ${String(input?.name || '').trim()}`,
+    }
+  );
+  return { customer, created: true };
 }
 
 export async function updateCustomer(id, input, adminUserId) {
@@ -112,10 +153,10 @@ export async function updateCustomer(id, input, adminUserId) {
       name: input.name === undefined ? old.name : input.name,
       phone: input.phone === undefined ? old.phone : input.phone,
     });
-    const conflict = await connection.get(
-      'SELECT id FROM customers WHERE name = ? AND phone = ? AND id != ?;',
-      [customer.name, customer.phone, id]
-    );
+    const conflict = await connection.get('SELECT id FROM customers WHERE phone = ? AND id != ?;', [
+      customer.phone,
+      id,
+    ]);
     if (conflict)
       throw new AppError('This customer is already registered.', 409, 'CUSTOMER_CONFLICT');
 

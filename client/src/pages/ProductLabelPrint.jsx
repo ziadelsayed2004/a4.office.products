@@ -104,17 +104,15 @@ export default function ProductLabelPrint() {
       {product &&
         labels.map((index) => (
           <article className="product-label" data-label-ready="true" key={index}>
-            <header>
-              <strong>A4 Office Products</strong>
-              <span className="a4-ltr">{product.sku}</span>
-            </header>
-            <h1>{product.name}</h1>
-            <div className="product-label__body">
-              <div>
+            <div className="product-label__content">
+              <div className="product-label__meta">
+                <h1>{product.name}</h1>
                 <b>{price !== null && price !== undefined ? money(price) : ''}</b>
-                <span className="a4-ltr">{barcode}</span>
               </div>
-              <Barcode value={barcode} size={size} />
+              <div className="product-label__barcode-frame">
+                <Barcode value={barcode} size={size} />
+                <span className="product-label__code a4-ltr">{barcode}</span>
+              </div>
             </div>
           </article>
         ))}

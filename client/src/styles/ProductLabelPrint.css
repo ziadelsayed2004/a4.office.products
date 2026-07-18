@@ -1,7 +1,7 @@
 .product-label-print {
   margin: 0;
   padding: 0;
-  display: grid;
+  display: block;
   justify-content: center;
   background: #ffffff;
   color: #000000;
@@ -9,19 +9,16 @@
 
 .product-label {
   --label-padding: 1.2mm;
-  --label-gap: 0.6mm;
-  --label-header-height: 2.2mm;
-  --label-title-height: 5.2mm;
+  --label-gap: 0.5mm;
   box-sizing: border-box;
+  position: relative;
   overflow: hidden;
-  padding: var(--label-padding);
+  padding: 0;
   border: 1px solid #000000;
-  break-inside: avoid-page;
-  page-break-inside: avoid;
+  break-inside: avoid-page !important;
+  page-break-inside: avoid !important;
   background: #ffffff;
-  display: grid;
-  grid-template-rows: var(--label-header-height) var(--label-title-height) minmax(0, 1fr);
-  gap: var(--label-gap);
+  contain: strict;
 }
 
 .product-label-print--small .product-label {
@@ -37,99 +34,104 @@
 .product-label-print--large .product-label {
   --label-padding: 3mm;
   --label-gap: 1mm;
-  --label-header-height: 3mm;
-  --label-title-height: 8mm;
   width: 80mm;
   height: 50mm;
 }
 
-.product-label header,
-.product-label__body {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2mm;
-}
-
-.product-label header {
+.product-label__content {
+  position: absolute;
+  inset: var(--label-padding);
   min-width: 0;
-  height: 100%;
+  min-height: 0;
   overflow: hidden;
-  border-bottom: 0.3mm solid #000000;
-  font-size: 5pt;
-  line-height: 1.1;
+  display: block;
 }
 
-.product-label header strong,
-.product-label header span {
+.product-label__meta {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4.2mm;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 1mm;
 }
 
-.product-label h1 {
+.product-label__meta h1 {
   margin: 0;
-  height: 100%;
+  min-width: 0;
+  max-height: 2.2em;
   overflow: hidden;
-  text-align: center;
+  text-align: right;
   overflow-wrap: anywhere;
-  font-size: 6.5pt;
+  font-size: 6pt;
   line-height: 1.1;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
-.product-label-print--large h1 {
-  font-size: 10pt;
-}
-
-.product-label__body {
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
-  overflow: hidden;
-}
-
-.product-label__body > div {
-  display: grid;
-  gap: 0.4mm;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.product-label__body b {
-  font-size: 7.5pt;
+.product-label__meta b {
+  font-size: 6pt;
   line-height: 1.1;
+  white-space: nowrap;
 }
 
-.product-label__body span {
-  max-height: 2.2em;
+.product-label__barcode-frame {
+  position: absolute;
+  inset: 4.7mm 0 0;
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
-  font: 5pt/1.1 monospace;
-  overflow-wrap: anywhere;
-}
-
-.product-label__body > svg {
-  width: 55%;
-  max-width: 55%;
-  height: auto;
-  max-height: 100%;
-  flex: 0 0 auto;
+  display: block;
 }
 
 .product-label__barcode {
+  position: absolute;
+  inset: 0 0 2.8mm;
+  width: 100% !important;
+  height: calc(100% - 2.8mm) !important;
+  min-width: 0;
+  min-height: 0;
   shape-rendering: crispEdges;
 }
 
-.product-label-print--large .product-label__body b {
+.product-label__code {
+  position: absolute;
+  inset: auto 0 0;
+  height: 2.3mm;
+  min-width: 0;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 5.5pt/1 monospace;
+  letter-spacing: 0.2mm;
+}
+
+.product-label-print--large .product-label__meta h1,
+.product-label-print--large .product-label__meta b {
   font-size: 10pt;
 }
 
-.product-label-print--large .product-label__body span {
-  font-size: 7pt;
+.product-label-print--large .product-label__meta {
+  height: 8mm;
+}
+
+.product-label-print--large .product-label__barcode-frame {
+  inset-block-start: 9mm;
+}
+
+.product-label-print--large .product-label__code {
+  height: 4mm;
+  font-size: 8pt;
+}
+
+.product-label-print--large .product-label__barcode {
+  inset-block-end: 4.5mm;
+  height: calc(100% - 4.5mm) !important;
 }
 
 @page {
@@ -140,6 +142,8 @@
   .product-label {
     margin: 0;
     border: 0;
+    display: block !important;
+    overflow: hidden !important;
     break-after: page;
     page-break-after: always;
   }

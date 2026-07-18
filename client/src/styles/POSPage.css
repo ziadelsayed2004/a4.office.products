@@ -216,6 +216,9 @@
   border-top: 1px solid var(--border-color);
   display: grid;
 }
+.pos-customer__status {
+  align-items: center;
+}
 .pos-summary {
   padding-block: var(--space-3);
   gap: var(--space-2);

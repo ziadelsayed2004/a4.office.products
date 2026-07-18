@@ -38,6 +38,7 @@ import { AppSnackbar } from '../components/AppSnackbar.jsx';
 import { CashierReturnWizard } from '../components/CashierReturnWizard.jsx';
 import { money, number, statusLabel } from '../utils/formatters.js';
 import { createIdempotencyKey, parsePiasters, piastersToInput } from '../utils/money.js';
+import { isValidCustomerPhone } from '../utils/customerPhone.js';
 import {
   FAIL_CLOSED_BROWSER_PRINT_SETTINGS,
   normalizeBrowserPrintSettings,
@@ -106,6 +107,8 @@ export default function POS() {
   const searchRef = useRef(null);
   const searchSequence = useRef(0);
   const searchTimer = useRef(null);
+  const customerLookupSequence = useRef(0);
+  const customerLookupTimer = useRef(null);
   const scanQueue = useRef(Promise.resolve());
   const draftHydrated = useRef(false);
   const [mode, setMode] = useState(MODES.SALE);
@@ -126,6 +129,7 @@ export default function POS() {
     customerPhone: '',
     pickupMethod: 'walk_in',
   });
+  const [customerLookup, setCustomerLookup] = useState({ status: 'idle', customer: null });
   const [openingInput, setOpeningInput] = useState('0.00');
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [pickupOpen, setPickupOpen] = useState(false);
@@ -214,6 +218,15 @@ export default function POS() {
     selectedDeposit = minimumDeposit;
   }
   const due = mode === MODES.PREORDER ? selectedDeposit : total;
+  const preorderCustomerReady =
+    customerLookup.status === 'found' ||
+    (customerLookup.status === 'not_found' && Boolean(customer.customerName.trim()));
+
+  const invalidateCustomerLookup = () => {
+    clearTimeout(customerLookupTimer.current);
+    customerLookupSequence.current += 1;
+    setCustomerLookup({ status: 'idle', customer: null });
+  };
 
   const draftKey = (draftMode) =>
     `${DRAFT_PREFIX}.${user?.id || 'anonymous'}.${currentShift?.id || 'no-shift'}.${draftMode}`;
@@ -286,6 +299,41 @@ export default function POS() {
     searchTimer.current = setTimeout(() => search(query), 250);
     return () => clearTimeout(searchTimer.current);
   }, [mode, query, currentShift?.status]);
+
+  useEffect(() => {
+    clearTimeout(customerLookupTimer.current);
+    const requestNumber = ++customerLookupSequence.current;
+    const phone = customer.customerPhone;
+
+    if (mode !== MODES.PREORDER || currentShift?.status !== 'OPEN' || !phone.trim()) {
+      setCustomerLookup({ status: 'idle', customer: null });
+      return;
+    }
+    if (!isValidCustomerPhone(phone)) {
+      setCustomerLookup({ status: 'invalid', customer: null });
+      return;
+    }
+
+    setCustomerLookup({ status: 'loading', customer: null });
+    customerLookupTimer.current = setTimeout(async () => {
+      try {
+        const response = await api.get(`/api/customers/lookup?phone=${encodeURIComponent(phone)}`);
+        if (requestNumber !== customerLookupSequence.current) return;
+        const result = response.data || {};
+        if (result.found && result.customer) {
+          setCustomer((value) => ({ ...value, customerName: result.customer.name }));
+          setCustomerLookup({ status: 'found', customer: result.customer });
+        } else {
+          setCustomerLookup({ status: 'not_found', customer: null });
+        }
+      } catch (error) {
+        if (requestNumber !== customerLookupSequence.current) return;
+        setCustomerLookup({ status: 'error', customer: null, message: error.message });
+      }
+    }, 300);
+
+    return () => clearTimeout(customerLookupTimer.current);
+  }, [customer.customerPhone, currentShift?.status, mode]);
 
   useEffect(() => {
     if (!currentShift?.id || currentShift.status !== 'OPEN') {
@@ -522,8 +570,17 @@ export default function POS() {
     if (discount > subtotal)
       return setToast({ severity: 'error', message: 'الخصم أكبر من الإجمالي.' });
     if (mode === MODES.PREORDER) {
-      if (!customer.customerName.trim() || !customer.customerPhone.trim())
-        return setToast({ severity: 'error', message: 'اسم العميل ورقم الهاتف مطلوبان للحجز.' });
+      if (!isValidCustomerPhone(customer.customerPhone))
+        return setToast({
+          severity: 'error',
+          message: 'رقم الهاتف يجب أن يحتوي من 5 إلى 30 رقمًا.',
+        });
+      if (customerLookup.status === 'error')
+        return setToast({ severity: 'error', message: 'تعذر التحقق من العميل. أعد المحاولة.' });
+      if (!['found', 'not_found'].includes(customerLookup.status))
+        return setToast({ severity: 'warning', message: 'انتظر حتى يكتمل البحث عن العميل.' });
+      if (customerLookup.status === 'not_found' && !customer.customerName.trim())
+        return setToast({ severity: 'error', message: 'اسم العميل مطلوب للرقم الجديد.' });
       if (selectedDeposit < minimumDeposit || selectedDeposit > total)
         return setToast({
           severity: 'error',
@@ -587,7 +644,10 @@ export default function POS() {
           ? await api.post(
               '/api/pos/preorders',
               {
-                ...customer,
+                customerPhone: customer.customerPhone,
+                ...(customerLookup.status === 'not_found'
+                  ? { customerName: customer.customerName }
+                  : {}),
                 pickupMethod: 'walk_in',
                 items: itemPayload,
                 discount,
@@ -610,6 +670,10 @@ export default function POS() {
       removeDraft(mode);
       setCart([]);
       setPayments({});
+      if (mode === MODES.PREORDER) {
+        invalidateCustomerLookup();
+        setCustomer({ customerName: '', customerPhone: '', pickupMethod: 'walk_in' });
+      }
       await search('');
       const autoKey = mode === MODES.PREORDER ? 'auto_print_preorder_deposit' : 'auto_print_sale';
       if (String(printSettings[autoKey] ?? 'false') === 'true' && result.receipt_id) {
@@ -933,22 +997,64 @@ export default function POS() {
             </div>
             {mode === MODES.PREORDER && (
               <div className="pos-customer">
-                <Field label="اسم العميل" required>
-                  <TextField
-                    value={customer.customerName}
-                    onChange={(event) =>
-                      setCustomer((value) => ({ ...value, customerName: event.target.value }))
-                    }
-                  />
-                </Field>
                 <Field label="رقم الهاتف" required>
                   <TextField
                     value={customer.customerPhone}
-                    onChange={(event) =>
-                      setCustomer((value) => ({ ...value, customerPhone: event.target.value }))
-                    }
+                    onChange={(event) => {
+                      const customerPhone = event.target.value;
+                      invalidateCustomerLookup();
+                      setCustomer((value) => ({ ...value, customerPhone, customerName: '' }));
+                    }}
+                    inputMode="tel"
+                    className="a4-ltr"
                   />
                 </Field>
+                {customerLookup.status === 'loading' && (
+                  <Alert severity="info" className="pos-customer__status">
+                    جاري البحث عن العميل...
+                  </Alert>
+                )}
+                {customerLookup.status === 'invalid' && (
+                  <Alert severity="warning" className="pos-customer__status">
+                    رقم الهاتف يجب أن يحتوي من 5 إلى 30 رقمًا.
+                  </Alert>
+                )}
+                {customerLookup.status === 'error' && (
+                  <Alert severity="error" className="pos-customer__status">
+                    {customerLookup.message || 'تعذر البحث عن العميل. حاول مرة أخرى.'}
+                  </Alert>
+                )}
+                {customerLookup.status === 'found' && (
+                  <>
+                    <Alert severity="success" className="pos-customer__status">
+                      تم العثور على عميل مسجل بهذا الرقم.
+                    </Alert>
+                    <Field label="اسم العميل">
+                      <TextField
+                        value={customer.customerName}
+                        slotProps={{ input: { readOnly: true } }}
+                      />
+                    </Field>
+                  </>
+                )}
+                {customerLookup.status === 'not_found' && (
+                  <>
+                    <Alert severity="info" className="pos-customer__status">
+                      رقم جديد؛ أدخل اسم العميل وسيُنشأ سجله عند تأكيد الحجز.
+                    </Alert>
+                    <Field label="اسم العميل" required>
+                      <TextField
+                        value={customer.customerName}
+                        onChange={(event) =>
+                          setCustomer((value) => ({
+                            ...value,
+                            customerName: event.target.value,
+                          }))
+                        }
+                      />
+                    </Field>
+                  </>
+                )}
               </div>
             )}
             <div className="pos-summary">
@@ -995,7 +1101,7 @@ export default function POS() {
               fullWidth
               startIcon={<ReceiptLongRounded />}
               onClick={startCheckout}
-              disabled={!cart.length}
+              disabled={!cart.length || (mode === MODES.PREORDER && !preorderCustomerReady)}
             >
               {mode === MODES.PREORDER ? 'تحصيل العربون وإنشاء الحجز' : 'الدفع وإصدار الإيصال'}
             </Button>

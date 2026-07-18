@@ -1,8 +1,15 @@
 import { z } from 'zod';
+import { isValidCustomerPhone } from '../utils/customerPhone.js';
 
 const trimmed = (max) => z.string().trim().min(1).max(max);
 const optionalTrimmed = (max) => z.string().trim().max(max).optional();
 const optionalNullableTrimmed = (max) => z.union([z.string().trim().max(max), z.null()]).optional();
+const customerPhone = z
+  .string()
+  .trim()
+  .min(1)
+  .max(60)
+  .refine(isValidCustomerPhone, 'Customer phone must contain between 5 and 30 digits.');
 const booleanFlag = z.union([z.boolean(), z.literal(0), z.literal(1)]);
 const integer = (min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER) =>
   z.coerce.number().int().min(min).max(max);
@@ -52,11 +59,12 @@ export const loginBody = z.object({ username: trimmed(100), password: z.string()
 export const refreshBody = z.object({ refreshToken: z.string().min(20).max(500) });
 export const logoutBody = z.object({ refreshToken: z.string().min(20).max(500).optional() });
 export const customerSearchQuery = z.object({ q: optionalTrimmed(150) });
-export const customerBody = z.object({ name: trimmed(200), phone: trimmed(30).min(5) });
+export const customerLookupQuery = z.object({ phone: customerPhone });
+export const customerBody = z.object({ name: trimmed(200), phone: customerPhone });
 export const customerUpdateBody = z
   .object({
     name: trimmed(200).optional(),
-    phone: trimmed(30).min(5).optional(),
+    phone: customerPhone.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, 'At least one customer field is required.');
 
@@ -473,8 +481,8 @@ export const cashierReturnExecuteBody = cashierReturnQuoteBody.extend({
 
 export const preorderCreateBody = z
   .object({
-    customerName: trimmed(200),
-    customerPhone: trimmed(30).min(5),
+    customerName: optionalTrimmed(200),
+    customerPhone,
     items: z.array(saleItem).min(1).max(500),
     discount: optionalInteger(0).default(0),
     depositPaid: optionalInteger(0),

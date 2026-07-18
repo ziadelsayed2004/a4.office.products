@@ -56,7 +56,6 @@ function newForm(categoryId = '') {
     isActive: true,
     availabilityPolicy: STOCK_ONLY,
     lowStockThreshold: '5',
-    purchaseCost: '0.00',
     baseSalePrice: '',
     defaultPreorderDepositPct: '50',
     defaultPickupMethod: 'walk_in',
@@ -221,7 +220,6 @@ export default function Products() {
         isActive: Boolean(product.is_active),
         availabilityPolicy: product.availabilityPolicy || STOCK_ONLY,
         lowStockThreshold: String(product.low_stock_threshold ?? 5),
-        purchaseCost: piastersToInput(product.purchase_cost),
         baseSalePrice: piastersToInput(product.base_sale_price),
         defaultPreorderDepositPct: String(product.defaultPreorderDepositPct ?? 50),
         defaultPickupMethod: product.defaultPickupMethod || 'walk_in',
@@ -250,7 +248,6 @@ export default function Products() {
     isActive: Boolean(form.isActive),
     availabilityPolicy: form.availabilityPolicy,
     lowStockThreshold: Number(form.lowStockThreshold),
-    purchaseCost: parsePiasters(form.purchaseCost),
     baseSalePrice: parsePiasters(form.baseSalePrice),
     ...(form.availabilityPolicy === PREORDER_WHEN_OUT
       ? {
@@ -404,7 +401,6 @@ export default function Products() {
         label: 'سعر البيع الأساسي',
         render: (row) => money(row.base_sale_price),
       },
-      { key: 'purchase_cost', label: 'تكلفة الشراء', render: (row) => money(row.purchase_cost) },
       {
         key: 'status',
         label: 'الحالة',
@@ -670,14 +666,6 @@ export default function Products() {
                   slotProps={{ htmlInput: { min: 0, step: 1 } }}
                 />
               </Field>
-              <Field label="تكلفة الشراء">
-                <TextField
-                  value={form.purchaseCost}
-                  onChange={(event) =>
-                    setForm((value) => ({ ...value, purchaseCost: event.target.value }))
-                  }
-                />
-              </Field>
               {form.availabilityPolicy === PREORDER_WHEN_OUT && (
                 <Field label="نسبة العربون الافتراضية" required>
                   <TextField
@@ -718,10 +706,10 @@ export default function Products() {
 
         <FormSection
           title="التسعير"
-          description="سعر البيع الأساسي هو سعر التجزئة الافتراضي، وفئات الأسعار اختيارية للحالات الخاصة."
+          description="سعر البيع الأساسي هو السعر الافتراضي، وفئات الأسعار اختيارية للحالات الخاصة."
         >
           <FieldGrid>
-            <Field label="سعر البيع الأساسي (تجزئة/قطاعي)" required>
+            <Field label="سعر البيع الأساسي" required>
               <TextField
                 value={form.baseSalePrice}
                 onChange={(event) =>
@@ -731,7 +719,9 @@ export default function Products() {
             </Field>
           </FieldGrid>
           {tiers.some((tier) => tier.is_active === 1) && (
-            <Alert severity="info">اترك سعر الفئة فارغًا إذا لم يكن للمنتج سعر مخصص فيها.</Alert>
+            <Alert severity="info" className="product-price-tier-alert">
+              اترك سعر الفئة فارغًا إذا لم يكن للمنتج سعر مخصص فيها.
+            </Alert>
           )}
           <FieldGrid>
             {tiers

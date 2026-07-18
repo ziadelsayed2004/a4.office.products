@@ -13,6 +13,7 @@ import * as liveAdminActivity from './migrations/005_live_admin_activity.js';
 import * as retireBankTransfer from './migrations/006_retire_bank_transfer.js';
 import * as automaticIdentifiers from './migrations/007_automatic_identifiers.js';
 import * as baseSalePrice from './migrations/008_base_sale_price.js';
+import * as customerPhoneIdentity from './migrations/009_customer_phone_identity.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +26,7 @@ const migrations = [
   retireBankTransfer,
   automaticIdentifiers,
   baseSalePrice,
+  customerPhoneIdentity,
 ];
 
 async function tableExists(name) {
@@ -133,6 +135,12 @@ async function validateTargetSchema() {
     if (!paymentMethodColumns.some((candidate) => candidate.name === column)) {
       throw new Error(`Post-migration validation failed: payment_methods.${column} is missing.`);
     }
+  }
+  const customerPhoneIndex = await db.get(
+    "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_customers_phone_unique';"
+  );
+  if (!customerPhoneIndex) {
+    throw new Error('Post-migration validation failed: customer phone uniqueness is missing.');
   }
   const priceTierForeignKey = (await db.all('PRAGMA foreign_key_list(product_prices);')).find(
     (foreignKey) => foreignKey.table === 'price_tiers' && foreignKey.from === 'price_tier_id'

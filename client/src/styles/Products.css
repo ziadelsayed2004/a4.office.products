@@ -132,3 +132,6 @@
     padding: var(--space-3);
   }
 }
+.product-price-tier-alert {
+  margin-bottom: var(--space-4);
+}

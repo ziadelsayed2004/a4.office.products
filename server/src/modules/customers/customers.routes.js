@@ -5,6 +5,7 @@ import { isAdmin } from '../../middleware/rbac.js';
 import { validate } from '../../middleware/validate.js';
 import {
   customerBody,
+  customerLookupQuery,
   customerSearchQuery,
   customerUpdateBody,
   idParams,
@@ -14,6 +15,12 @@ const router = Router();
 
 // Apply auth check globally - both cashiers and admins can access customers lookup/register
 router.use(authenticate);
+
+router.get(
+  '/lookup',
+  validate({ query: customerLookupQuery }),
+  customersController.lookupCustomerController
+);
 
 router.get(
   '/',
