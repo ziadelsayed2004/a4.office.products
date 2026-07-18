@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Avatar,
   Badge,
   Box,
+  Button,
   Chip,
+  CircularProgress,
   Collapse,
   Divider,
   Drawer,
@@ -42,6 +44,8 @@ import {
   LogoutRounded,
   MenuOpenRounded,
   MenuRounded,
+  NotificationsNoneRounded,
+  NotificationsRounded,
   PaymentsRounded,
   PointOfSaleRounded,
   PrintRounded,
@@ -50,12 +54,19 @@ import {
   ShoppingBasketRounded,
   SwapHorizRounded,
   CloseRounded,
+  DoneAllRounded,
 } from '@mui/icons-material';
 import { useAuth } from '../app/AuthContext.jsx';
 import { APP_CONFIG } from '../config/appConfig.js';
 import { Breadcrumbs } from '../components/Breadcrumbs.jsx';
 import { useColorMode } from '../theme/ThemeConfig.jsx';
 import { t } from '../locales/t.js';
+import {
+  ADMIN_NOTIFICATIONS_CHANGED_EVENT,
+  getAdminNotifications,
+  markAdminNotificationRead,
+  markAllAdminNotificationsRead,
+} from '../services/adminNotifications.js';
 import logo from '../assets/a4-logo.png';
 import codzHubSparkDark from '../assets/CodzHub_Code_Spark_Mark_Dark.svg';
 import codzHubSparkLight from '../assets/CodzHub_Code_Spark_Mark_Light.svg';
@@ -86,6 +97,7 @@ const titles = {
   '/reports': ['التقارير', 'تقارير المبيعات والحجوزات والمخزون والشيفتات'],
   '/logs': ['سجل العمليات', 'تتبع كل العمليات الحساسة داخل النظام'],
   '/printer-settings': ['إعدادات الطباعة', 'إعدادات ريسيت البيع وملصقات المنتجات'],
+  '/notifications': ['الإشعارات', 'متابعة الأحداث التشغيلية التي تحتاج انتباه الأدمن'],
 };
 
 export function MainLayout() {
@@ -99,6 +111,11 @@ export function MainLayout() {
   );
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState(null);
+  const [notificationAnchor, setNotificationAnchor] = useState(null);
+  const [notificationItems, setNotificationItems] = useState([]);
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState('');
   const [openGroups, setOpenGroups] = useState({});
   const activeItemRef = useRef(null);
 
@@ -109,7 +126,40 @@ export function MainLayout() {
   useEffect(() => {
     setMobileOpen(false);
     setProfileAnchor(null);
+    setNotificationAnchor(null);
   }, [location.pathname]);
+
+  const loadNotifications = useCallback(
+    async ({ silent = false } = {}) => {
+      if (!isAdmin) return;
+      if (!silent) setNotificationsLoading(true);
+      try {
+        const data = await getAdminNotifications({ limit: 6 });
+        setNotificationItems(data.notifications || []);
+        setNotificationUnreadCount(Number(data.unreadCount || 0));
+        setNotificationsError('');
+      } catch (loadError) {
+        setNotificationsError(loadError.message);
+      } finally {
+        if (!silent) setNotificationsLoading(false);
+      }
+    },
+    [isAdmin]
+  );
+
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    loadNotifications();
+    const refresh = () => loadNotifications({ silent: true });
+    const interval = window.setInterval(refresh, 30_000);
+    window.addEventListener('focus', refresh);
+    window.addEventListener(ADMIN_NOTIFICATIONS_CHANGED_EVENT, refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener(ADMIN_NOTIFICATIONS_CHANGED_EVENT, refresh);
+    };
+  }, [isAdmin, loadNotifications]);
 
   useEffect(() => {
     activeItemRef.current?.scrollIntoView?.({ block: 'nearest' });
@@ -208,6 +258,11 @@ export function MainLayout() {
             path: '/reports',
             icon: <AssessmentRounded />,
           },
+          {
+            label: t('nav.notifications'),
+            path: '/notifications',
+            icon: <NotificationsRounded />,
+          },
           { label: t('nav.audit'), path: '/logs', icon: <HistoryRounded /> },
         ],
       },
@@ -257,6 +312,37 @@ export function MainLayout() {
     setProfileAnchor(null);
     await logout();
     navigate('/login');
+  };
+
+  const openNotifications = (event) => {
+    setNotificationAnchor(event.currentTarget);
+    loadNotifications({ silent: notificationItems.length > 0 });
+  };
+
+  const readNotification = async (notification) => {
+    try {
+      if (!notification.is_read) {
+        await markAdminNotificationRead(notification.id);
+        setNotificationItems((current) =>
+          current.map((item) => (item.id === notification.id ? { ...item, is_read: true } : item))
+        );
+        setNotificationUnreadCount((value) => Math.max(0, value - 1));
+      }
+      setNotificationAnchor(null);
+      if (notification.action_path) navigate(notification.action_path);
+    } catch (readError) {
+      setNotificationsError(readError.message);
+    }
+  };
+
+  const readAllNotifications = async () => {
+    try {
+      await markAllAdminNotificationsRead();
+      setNotificationItems((current) => current.map((item) => ({ ...item, is_read: true })));
+      setNotificationUnreadCount(0);
+    } catch (readError) {
+      setNotificationsError(readError.message);
+    }
   };
 
   const [pageTitle, pageSubtitle] = titles[location.pathname] || [
@@ -407,6 +493,28 @@ export function MainLayout() {
                 label={`شيفت #${currentShift.id}`}
               />
             )}
+            {isAdmin && (
+              <Tooltip title="الإشعارات">
+                <IconButton
+                  onClick={openNotifications}
+                  aria-label={`فتح الإشعارات${notificationUnreadCount ? `، ${notificationUnreadCount} غير مقروء` : ''}`}
+                  aria-expanded={Boolean(notificationAnchor)}
+                >
+                  <Badge
+                    color="error"
+                    badgeContent={notificationUnreadCount}
+                    max={99}
+                    invisible={notificationUnreadCount === 0}
+                  >
+                    {notificationUnreadCount > 0 ? (
+                      <NotificationsRounded />
+                    ) : (
+                      <NotificationsNoneRounded />
+                    )}
+                  </Badge>
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title={mode === 'light' ? 'الوضع الداكن' : 'الوضع الفاتح'}>
               <IconButton
                 onClick={toggleColorMode}
@@ -493,6 +601,79 @@ export function MainLayout() {
           </Box>
         </Box>
       </Box>
+
+      <Menu
+        anchorEl={notificationAnchor}
+        open={Boolean(notificationAnchor)}
+        onClose={() => setNotificationAnchor(null)}
+        transformOrigin={{ horizontal: 'left', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'left', vertical: 'bottom' }}
+        className="admin-notifications-menu"
+        slotProps={{ paper: { className: 'admin-notifications-menu__paper' } }}
+      >
+        <Box className="admin-notifications-menu__header">
+          <div>
+            <Typography component="strong">الإشعارات</Typography>
+            <Typography component="span">
+              {notificationUnreadCount > 0
+                ? `${notificationUnreadCount} غير مقروء`
+                : 'كل الإشعارات مقروءة'}
+            </Typography>
+          </div>
+          <Button
+            size="small"
+            startIcon={<DoneAllRounded />}
+            onClick={readAllNotifications}
+            disabled={notificationUnreadCount === 0}
+          >
+            قراءة الكل
+          </Button>
+        </Box>
+        <Divider />
+        {notificationsLoading && notificationItems.length === 0 && (
+          <Box className="admin-notifications-menu__state">
+            <CircularProgress size={24} />
+            <span>جاري تحميل الإشعارات...</span>
+          </Box>
+        )}
+        {notificationsError && (
+          <Box className="admin-notifications-menu__error">{notificationsError}</Box>
+        )}
+        {!notificationsLoading && !notificationsError && notificationItems.length === 0 && (
+          <Box className="admin-notifications-menu__state">
+            <NotificationsNoneRounded />
+            <span>لا توجد إشعارات بعد.</span>
+          </Box>
+        )}
+        {notificationItems.map((notification) => (
+          <MenuItem
+            className={`admin-notification-item ${notification.is_read ? 'is-read' : 'is-unread'}`}
+            key={notification.id}
+            onClick={() => readNotification(notification)}
+          >
+            <span
+              className={`admin-notification-item__icon is-${notification.severity.toLowerCase()}`}
+            >
+              <NotificationsRounded fontSize="small" />
+            </span>
+            <span className="admin-notification-item__content">
+              <strong>{notification.title}</strong>
+              <span>{notification.message}</span>
+            </span>
+            {!notification.is_read && <span className="admin-notification-item__dot" />}
+          </MenuItem>
+        ))}
+        <Divider />
+        <MenuItem
+          className="admin-notifications-menu__all"
+          onClick={() => {
+            setNotificationAnchor(null);
+            navigate('/notifications');
+          }}
+        >
+          عرض كل الإشعارات
+        </MenuItem>
+      </Menu>
 
       <Menu
         anchorEl={profileAnchor}

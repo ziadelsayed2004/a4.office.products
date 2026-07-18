@@ -31,7 +31,11 @@ import { api } from '../services/apiClient.js';
 import { printReceiptInFrame } from '../services/printService.js';
 import { useAuth } from '../app/AuthContext.jsx';
 import { useScannerCapture } from '../hooks/useScannerCapture.js';
-import { PaymentEntry, paymentRowsToPayload } from '../components/PaymentEntry.jsx';
+import {
+  PaymentEntry,
+  paymentRowsAreComplete,
+  paymentRowsToPayload,
+} from '../components/PaymentEntry.jsx';
 import { Field } from '../components/forms/Field.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
 import { AppSnackbar } from '../components/AppSnackbar.jsx';
@@ -211,13 +215,22 @@ export default function POS() {
   );
   const minimumDeposit =
     subtotal > 0 && discount > 0 ? Math.round((baseDeposit * total) / subtotal) : baseDeposit;
-  let selectedDeposit = minimumDeposit;
+  let selectedDeposit = 0;
+  let depositInputError = '';
   try {
     selectedDeposit = parsePiasters(depositInput || '0');
-  } catch {
-    selectedDeposit = minimumDeposit;
+  } catch (error) {
+    depositInputError = error.message;
   }
+  const preorderDepositValid =
+    !depositInputError && selectedDeposit >= minimumDeposit && selectedDeposit <= total;
   const due = mode === MODES.PREORDER ? selectedDeposit : total;
+  const checkoutPaymentsComplete =
+    (mode !== MODES.PREORDER || preorderDepositValid) &&
+    paymentRowsAreComplete(activeMethods, payments, due);
+  const pickupPaymentsComplete = pickupData
+    ? paymentRowsAreComplete(activeMethods, pickupPayments, pickupData.preorder.remaining_amount)
+    : false;
   const preorderCustomerReady =
     customerLookup.status === 'found' ||
     (customerLookup.status === 'not_found' && Boolean(customer.customerName.trim()));
@@ -366,8 +379,19 @@ export default function POS() {
   }, [cart, customer, depositInput, discountInput, mode]);
 
   useEffect(() => {
-    if (mode === MODES.PREORDER) setDepositInput(piastersToInput(minimumDeposit));
-  }, [minimumDeposit, mode]);
+    if (mode !== MODES.PREORDER) return;
+    setDepositInput((current) => {
+      try {
+        const currentDeposit = parsePiasters(current || '0');
+        if (currentDeposit >= minimumDeposit && currentDeposit <= total) return current;
+        if (currentDeposit > total) return piastersToInput(total);
+      } catch {
+        // Keep an invalid value visible so the cashier can correct it.
+        return current;
+      }
+      return piastersToInput(minimumDeposit);
+    });
+  }, [minimumDeposit, mode, total]);
 
   useEffect(() => {
     if (!checkoutOpen && !pickupOpen) requestAnimationFrame(() => searchRef.current?.focus());
@@ -581,10 +605,14 @@ export default function POS() {
         return setToast({ severity: 'warning', message: 'انتظر حتى يكتمل البحث عن العميل.' });
       if (customerLookup.status === 'not_found' && !customer.customerName.trim())
         return setToast({ severity: 'error', message: 'اسم العميل مطلوب للرقم الجديد.' });
-      if (selectedDeposit < minimumDeposit || selectedDeposit > total)
+      if (depositInputError) return setToast({ severity: 'error', message: depositInputError });
+      if (!preorderDepositValid)
         return setToast({
           severity: 'error',
-          message: `العربون يجب أن يكون بين ${money(minimumDeposit)} و${money(total)}.`,
+          message:
+            selectedDeposit < minimumDeposit
+              ? `العربون لا يمكن أن يقل عن الحد الأدنى ${money(minimumDeposit)}.`
+              : `العربون لا يمكن أن يزيد عن إجمالي الحجز ${money(total)}.`,
         });
     }
     setPayments({});
@@ -630,6 +658,13 @@ export default function POS() {
 
   const completeCheckout = async () => {
     if (loading) return;
+    if (mode === MODES.PREORDER && !preorderDepositValid) {
+      setToast({
+        severity: 'error',
+        message: depositInputError || `العربون لا يمكن أن يقل عن ${money(minimumDeposit)}.`,
+      });
+      return;
+    }
     setLoading(true);
     try {
       const paymentPayload = paymentRowsToPayload(activeMethods, payments, due);
@@ -1085,6 +1120,22 @@ export default function POS() {
                         value={depositInput}
                         onChange={(event) => setDepositInput(event.target.value)}
                         inputMode="decimal"
+                        error={Boolean(depositInputError) || !preorderDepositValid}
+                        helperText={
+                          depositInputError ||
+                          (selectedDeposit < minimumDeposit
+                            ? `الحد الأدنى ${money(minimumDeposit)}`
+                            : selectedDeposit > total
+                              ? `الحد الأقصى ${money(total)}`
+                              : `يمكنك تحصيل مبلغ أكبر من الحد الأدنى حتى ${money(total)}`)
+                        }
+                        slotProps={{
+                          htmlInput: {
+                            min: piastersToInput(minimumDeposit),
+                            max: piastersToInput(total),
+                            step: '0.01',
+                          },
+                        }}
                       />
                     </Field>
                   </div>
@@ -1101,7 +1152,10 @@ export default function POS() {
               fullWidth
               startIcon={<ReceiptLongRounded />}
               onClick={startCheckout}
-              disabled={!cart.length || (mode === MODES.PREORDER && !preorderCustomerReady)}
+              disabled={
+                !cart.length ||
+                (mode === MODES.PREORDER && (!preorderCustomerReady || !preorderDepositValid))
+              }
             >
               {mode === MODES.PREORDER ? 'تحصيل العربون وإنشاء الحجز' : 'الدفع وإصدار الإيصال'}
             </Button>
@@ -1256,7 +1310,7 @@ export default function POS() {
               <Button
                 variant="contained"
                 onClick={completeCheckout}
-                disabled={loading || (due > 0 && !splitPayment && !quickMethodCode)}
+                disabled={loading || !checkoutPaymentsComplete}
               >
                 {loading ? 'جاري التسجيل...' : 'تأكيد الدفع'}
               </Button>
@@ -1331,6 +1385,7 @@ export default function POS() {
             disabled={
               loading ||
               pickupData?.preorder?.status !== 'READY_FOR_PICKUP' ||
+              !pickupPaymentsComplete ||
               pickupData?.items?.some((item) => item.stock < item.quantity)
             }
           >

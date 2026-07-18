@@ -286,6 +286,28 @@ CREATE TABLE IF NOT EXISTS printer_settings (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Admin notification center. Notifications are shared with all Admin users;
+-- read state is stored separately for each Admin account.
+CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    severity TEXT NOT NULL DEFAULT 'INFO' CHECK(severity IN ('INFO', 'SUCCESS', 'WARNING', 'ERROR')),
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    action_path TEXT,
+    actor_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    source_type TEXT,
+    source_id INTEGER,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS notification_reads (
+    notification_id INTEGER NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    read_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(notification_id, user_id)
+);
+
 -- 22. RETURNS Table (Invoice returns tracker)
 CREATE TABLE IF NOT EXISTS returns (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -397,6 +419,10 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, enti
 CREATE INDEX IF NOT EXISTS idx_audit_logs_date ON audit_logs(created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_return_authorization ON return_authorizations(order_id) WHERE status = 'ACTIVE';
 CREATE INDEX IF NOT EXISTS idx_return_authorizations_list ON return_authorizations(status, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_source ON notifications(source_type, source_id)
+    WHERE source_type IS NOT NULL AND source_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_notification_reads_user ON notification_reads(user_id, read_at DESC);
 
 -- Additional Performance and Reporting Lookup Indexes
 CREATE INDEX IF NOT EXISTS idx_inv_ledger_latest ON inventory_ledger(product_id, id DESC);

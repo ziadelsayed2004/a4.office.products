@@ -27,6 +27,7 @@ const ProductLabelPrint = lazy(() => import('./pages/ProductLabelPrint.jsx'));
 const AuditLogs = lazy(() => import('./pages/AuditLogs.jsx'));
 const PrinterSettings = lazy(() => import('./pages/PrinterSettings.jsx'));
 const Returns = lazy(() => import('./pages/Returns.jsx'));
+const Notifications = lazy(() => import('./pages/Notifications.jsx'));
 const ReturnApprovalCardPrint = lazy(() => import('./pages/ReturnApprovalCardPrint.jsx'));
 
 function Protected({ children }) {
@@ -210,6 +211,14 @@ export default function App() {
                   element={
                     <AdminOnly>
                       <Returns />
+                    </AdminOnly>
+                  }
+                />
+                <Route
+                  path="notifications"
+                  element={
+                    <AdminOnly>
+                      <Notifications />
                     </AdminOnly>
                   }
                 />

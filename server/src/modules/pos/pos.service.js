@@ -24,6 +24,7 @@ function decorateProduct(product) {
     stockOnHand: stock,
     openPreorderQuantity: openQuantity,
     availabilityPolicy: product.availability_policy,
+    defaultPreorderDepositPct: Number(product.default_preorder_deposit_pct || 0),
     canSellNow: active && stock > 0,
     canPreorderNow:
       active &&

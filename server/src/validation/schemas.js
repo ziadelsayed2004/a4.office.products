@@ -137,6 +137,13 @@ export const auditQuery = dateRange(
   })
 );
 
+export const notificationsQuery = z.object({
+  unreadOnly: z.enum(['true', 'false']).optional(),
+  type: optionalTrimmed(100),
+  limit: optionalInteger(1, 100).default(20),
+  offset: optionalInteger(0).default(0),
+});
+
 export const openShiftBody = z.object({ openingCash: integer(0) });
 export const cashMovementBody = z.object({
   type: z.enum(['PAY_IN', 'PAY_OUT']),

@@ -1,9 +1,44 @@
 import db, { withTransaction } from '../../db/index.js';
 import { writeAuditLog } from '../../utils/auditLogger.js';
+import { normalizeCustomerPhone } from '../../utils/customerPhone.js';
 import { AppError, requireInteger, requirePiasters } from '../../utils/financial.js';
 
 const SYSTEM_PAYMENT_CODES = new Set(['Cash', 'Card', 'InstaPay', 'Wallet']);
 const RETIRED_PAYMENT_CODES = new Set(['Transfer']);
+
+function requirePaymentEvidence(method, value) {
+  const reference = String(value || '').trim();
+  if (method.code === 'Card') {
+    const digits = normalizeCustomerPhone(reference);
+    if (!/^\d{4}$/.test(digits)) {
+      throw new AppError(
+        'Card payments require the last four card digits.',
+        400,
+        'CARD_DIGITS_REQUIRED'
+      );
+    }
+    return digits;
+  }
+  if (method.code === 'InstaPay' || method.code === 'Wallet') {
+    const phone = normalizeCustomerPhone(reference);
+    if (phone.length < 5 || phone.length > 30) {
+      throw new AppError(
+        'This payment method requires a valid phone number.',
+        400,
+        'PAYMENT_PHONE_REQUIRED'
+      );
+    }
+    return phone;
+  }
+  if (!method.accepts_cash_received && !reference) {
+    throw new AppError(
+      'Payment evidence is required for this method.',
+      400,
+      'PAYMENT_EVIDENCE_REQUIRED'
+    );
+  }
+  return reference || null;
+}
 
 function decoratePaymentMethod(method) {
   const {
@@ -303,6 +338,7 @@ export async function validateSplitPayments(paymentsList, expectedTotalAmount, c
         'CASH_RECEIVED_NOT_ALLOWED'
       );
     }
+    const referenceNumber = requirePaymentEvidence(method, row.referenceNumber);
     appliedTotal += amount;
     normalized.push({
       methodId: method.id,
@@ -311,7 +347,7 @@ export async function validateSplitPayments(paymentsList, expectedTotalAmount, c
       amount,
       cashReceived,
       changeAmount,
-      referenceNumber: row.referenceNumber ? String(row.referenceNumber).trim() : null,
+      referenceNumber,
       note: row.note ? String(row.note).trim() : null,
     });
   }

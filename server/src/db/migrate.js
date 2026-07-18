@@ -14,6 +14,8 @@ import * as retireBankTransfer from './migrations/006_retire_bank_transfer.js';
 import * as automaticIdentifiers from './migrations/007_automatic_identifiers.js';
 import * as baseSalePrice from './migrations/008_base_sale_price.js';
 import * as customerPhoneIdentity from './migrations/009_customer_phone_identity.js';
+import * as adminNotifications from './migrations/010_admin_notifications.js';
+import * as walletLabel from './migrations/011_wallet_label.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,6 +29,8 @@ const migrations = [
   automaticIdentifiers,
   baseSalePrice,
   customerPhoneIdentity,
+  adminNotifications,
+  walletLabel,
 ];
 
 async function tableExists(name) {
@@ -110,6 +114,8 @@ async function validateTargetSchema() {
     'return_approval_card_print_requests',
     'number_sequences',
     'identifier_migration_map',
+    'notifications',
+    'notification_reads',
   ];
   for (const table of requiredTables) {
     if (!(await tableExists(table)))

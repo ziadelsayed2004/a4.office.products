@@ -16,3 +16,13 @@
 .payment-entry__method > strong {
   color: var(--a4-primary);
 }
+
+.payment-entry__fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.payment-entry__fields .MuiFormControl-root {
+  width: 100%;
+}

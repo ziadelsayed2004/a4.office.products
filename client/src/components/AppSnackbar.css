@@ -1,9 +1,53 @@
 .app-snackbar__alert.MuiAlert-root {
+  width: min(520px, calc(100vw - 32px));
   min-width: min(360px, calc(100vw - 32px));
   align-items: center;
-  border-radius: var(--radius-xs);
+  direction: rtl;
+  text-align: right;
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   font-family: var(--app-font-family);
+}
+
+.app-snackbar__alert .MuiAlert-icon {
+  margin: 0;
+  padding: 0;
+  align-self: center;
+  flex: 0 0 auto;
+}
+
+.app-snackbar__alert .MuiAlert-message {
+  min-width: 0;
+  padding: 0;
+  flex: 1;
+}
+
+.app-snackbar__message {
+  display: block;
+  padding-inline: var(--space-3);
+  overflow-wrap: anywhere;
+  color: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.app-snackbar__alert .MuiAlert-action {
+  margin: 0;
+  padding: 0;
+  align-self: center;
+  flex: 0 0 auto;
+}
+
+.app-snackbar__close.MuiIconButton-root {
+  width: 34px;
+  height: 34px;
+  color: inherit;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.app-snackbar__close.MuiIconButton-root:hover {
+  background: color-mix(in srgb, currentColor 18%, transparent);
 }
 
 @media (max-width: 600px) {
@@ -16,5 +60,10 @@
   .app-snackbar__alert.MuiAlert-root {
     width: 100%;
     min-width: 0;
+  }
+
+  .app-snackbar__message {
+    padding-inline: var(--space-2);
+    font-size: 0.8rem;
   }
 }

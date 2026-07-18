@@ -22,6 +22,7 @@ const routeLabels = {
   '/users': 'nav.users',
   '/reports': 'nav.reports',
   '/logs': 'nav.audit',
+  '/notifications': 'nav.notifications',
   '/printer-settings': 'nav.printers',
 };
 

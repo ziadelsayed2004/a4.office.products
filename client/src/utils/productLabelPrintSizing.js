@@ -5,9 +5,9 @@ export const PRODUCT_LABEL_SIZES = Object.freeze({
 });
 
 export const PRODUCT_LABEL_LAYOUT_BUDGETS = Object.freeze({
-  small: Object.freeze({ paddingMm: 1.2, gapMm: 0.5, metaMm: 4.2, codeMm: 2.3 }),
+  small: Object.freeze({ paddingMm: 1, gapMm: 0.4, metaMm: 3.8, codeMm: 2.1 }),
   medium: Object.freeze({ paddingMm: 1.2, gapMm: 0.5, metaMm: 4.2, codeMm: 2.3 }),
-  large: Object.freeze({ paddingMm: 3, gapMm: 1, metaMm: 8, codeMm: 4 }),
+  large: Object.freeze({ paddingMm: 2.5, gapMm: 0.8, metaMm: 7, codeMm: 3.5 }),
 });
 
 const CSS_PIXELS_PER_MM = 96 / 25.4;
@@ -60,9 +60,9 @@ export function buildProductLabelPageCss(value) {
   .theme-root,
   .product-label-print {
     box-sizing: border-box !important;
-    width: ${widthMm}mm !important;
+    width: 100% !important;
     min-width: 0 !important;
-    max-width: ${widthMm}mm !important;
+    max-width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
     margin: 0 !important;
@@ -77,12 +77,12 @@ export function buildProductLabelPageCss(value) {
   }
 
   .product-label {
-    width: ${widthMm}mm !important;
-    min-width: ${widthMm}mm !important;
-    max-width: ${widthMm}mm !important;
-    height: calc(${heightMm}mm - 0.2mm) !important;
-    min-height: calc(${heightMm}mm - 0.2mm) !important;
-    max-height: calc(${heightMm}mm - 0.2mm) !important;
+    width: 100vw !important;
+    min-width: 100vw !important;
+    max-width: 100vw !important;
+    height: calc(100vh - 0.2mm) !important;
+    min-height: calc(100vh - 0.2mm) !important;
+    max-height: calc(100vh - 0.2mm) !important;
   }
 }
 `;

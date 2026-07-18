@@ -1,4 +1,5 @@
 import db from '../db/index.js';
+import { createAdminNotificationFromAudit } from '../modules/notifications/notifications.service.js';
 
 /**
  * Log a financial, user-management, shift, or printing operation to the Audit Ledger.
@@ -19,11 +20,23 @@ export async function writeAuditLog({
 
   // Audit writes are part of the financial transaction. Deliberately allow a
   // failure to bubble so the business mutation cannot commit without its trail.
-  await connection.run(
+  const result = await connection.run(
     `INSERT INTO audit_logs (
       user_id, shift_id, action_type, entity_type, entity_id, before_values, after_values, notes
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
     [userId, shiftId, actionType, entityType, entityId, beforeStr, afterStr, notes]
+  );
+
+  await createAdminNotificationFromAudit(
+    {
+      auditLogId: result.lastID,
+      userId,
+      shiftId,
+      actionType,
+      entityId,
+      afterValues,
+    },
+    connection
   );
 
   console.log(`[AUDIT LOG] Action: ${actionType} | User: ${userId}`);

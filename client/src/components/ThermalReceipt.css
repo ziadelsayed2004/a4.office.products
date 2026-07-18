@@ -81,7 +81,7 @@
   min-width: 0;
   max-width: 65%;
   flex: 1 1 auto;
-  text-align: end;
+  text-align: left;
   overflow-wrap: anywhere;
   word-break: break-word;
 }

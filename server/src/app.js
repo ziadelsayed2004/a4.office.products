@@ -40,6 +40,7 @@ import cashierReturnRoutes, {
   adminReturnRoutes,
 } from './modules/cashierReturns/cashierReturns.routes.js';
 import numberPreviewRoutes from './modules/numberPreviews/numberPreviews.routes.js';
+import notificationRoutes from './modules/notifications/notifications.routes.js';
 import { PROJECT_ROOT } from './config/env.js';
 
 const app = express();
@@ -78,6 +79,7 @@ app.use('/api/pos/returns', cashierReturnRoutes);
 app.use('/api/shifts', shiftsRoutes);
 app.use('/api/admin', reportsRoutes);
 app.use('/api/admin/printer-settings', printerSettingsRoutes);
+app.use('/api/admin/notifications', notificationRoutes);
 app.use('/api/printer-settings', safePrinterSettingsRoutes);
 
 // Compatibility tombstone for the old unauthenticated, CDN-backed label page.

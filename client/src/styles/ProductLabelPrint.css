@@ -9,7 +9,12 @@
 
 .product-label {
   --label-padding: 1.2mm;
-  --label-gap: 0.5mm;
+  --label-meta-height: 4.2mm;
+  --label-barcode-top: 4.7mm;
+  --label-code-height: 2.3mm;
+  --label-barcode-code-gap: 0.5mm;
+  --label-meta-font-size: 6pt;
+  --label-code-font-size: 5.5pt;
   box-sizing: border-box;
   position: relative;
   overflow: hidden;
@@ -22,6 +27,13 @@
 }
 
 .product-label-print--small .product-label {
+  --label-padding: 1mm;
+  --label-meta-height: 3.8mm;
+  --label-barcode-top: 4.3mm;
+  --label-code-height: 2.1mm;
+  --label-barcode-code-gap: 0.4mm;
+  --label-meta-font-size: 5.2pt;
+  --label-code-font-size: 4.8pt;
   width: 38mm;
   height: 25mm;
 }
@@ -32,8 +44,13 @@
 }
 
 .product-label-print--large .product-label {
-  --label-padding: 3mm;
-  --label-gap: 1mm;
+  --label-padding: 2.5mm;
+  --label-meta-height: 7mm;
+  --label-barcode-top: 8mm;
+  --label-code-height: 3.5mm;
+  --label-barcode-code-gap: 0.8mm;
+  --label-meta-font-size: 8.5pt;
+  --label-code-font-size: 7pt;
   width: 80mm;
   height: 50mm;
 }
@@ -50,7 +67,7 @@
 .product-label__meta {
   position: absolute;
   inset: 0 0 auto;
-  height: 4.2mm;
+  height: var(--label-meta-height);
   min-width: 0;
   overflow: hidden;
   display: grid;
@@ -66,7 +83,7 @@
   overflow: hidden;
   text-align: right;
   overflow-wrap: anywhere;
-  font-size: 6pt;
+  font-size: var(--label-meta-font-size);
   line-height: 1.1;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -74,14 +91,14 @@
 }
 
 .product-label__meta b {
-  font-size: 6pt;
+  font-size: var(--label-meta-font-size);
   line-height: 1.1;
   white-space: nowrap;
 }
 
 .product-label__barcode-frame {
   position: absolute;
-  inset: 4.7mm 0 0;
+  inset: var(--label-barcode-top) 0 0;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -90,9 +107,9 @@
 
 .product-label__barcode {
   position: absolute;
-  inset: 0 0 2.8mm;
+  inset: 0 0 calc(var(--label-code-height) + var(--label-barcode-code-gap));
   width: 100% !important;
-  height: calc(100% - 2.8mm) !important;
+  height: calc(100% - var(--label-code-height) - var(--label-barcode-code-gap)) !important;
   min-width: 0;
   min-height: 0;
   shape-rendering: crispEdges;
@@ -101,37 +118,14 @@
 .product-label__code {
   position: absolute;
   inset: auto 0 0;
-  height: 2.3mm;
+  height: var(--label-code-height);
   min-width: 0;
   overflow: hidden;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font: 5.5pt/1 monospace;
+  font: var(--label-code-font-size) / 1 monospace;
   letter-spacing: 0.2mm;
-}
-
-.product-label-print--large .product-label__meta h1,
-.product-label-print--large .product-label__meta b {
-  font-size: 10pt;
-}
-
-.product-label-print--large .product-label__meta {
-  height: 8mm;
-}
-
-.product-label-print--large .product-label__barcode-frame {
-  inset-block-start: 9mm;
-}
-
-.product-label-print--large .product-label__code {
-  height: 4mm;
-  font-size: 8pt;
-}
-
-.product-label-print--large .product-label__barcode {
-  inset-block-end: 4.5mm;
-  height: calc(100% - 4.5mm) !important;
 }
 
 @page {

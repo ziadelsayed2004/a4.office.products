@@ -1,18 +1,39 @@
-import { Alert, Button, Chip, List, ListItemButton, ListItemText } from '@mui/material';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Alert,
+  Button,
+  Chip,
+  CircularProgress,
+  List,
+  ListItemButton,
+  ListItemText,
+} from '@mui/material';
 import {
   AssignmentReturnRounded,
   AttachMoneyRounded,
+  CheckCircleRounded,
+  ErrorRounded,
+  InfoRounded,
+  NotificationsNoneRounded,
+  NotificationsRounded,
+  OpenInNewRounded,
   PointOfSaleRounded,
   ReceiptLongRounded,
   RefreshRounded,
   SwapHorizRounded,
   TrendingUpRounded,
+  WarningAmberRounded,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { MetricCard } from '../components/MetricCard.jsx';
 import { LoadingState } from '../components/LoadingState.jsx';
 import { useAdminLiveOverview } from '../hooks/useAdminLiveOverview.js';
+import {
+  ADMIN_NOTIFICATIONS_CHANGED_EVENT,
+  getAdminNotifications,
+  markAdminNotificationRead,
+} from '../services/adminNotifications.js';
 import { dateTime, money, number } from '../utils/formatters.js';
 import '../styles/Dashboard.css';
 
@@ -71,15 +92,74 @@ function activityMeta(activity) {
   };
 }
 
+const notificationIcons = Object.freeze({
+  INFO: <InfoRounded />,
+  SUCCESS: <CheckCircleRounded />,
+  WARNING: <WarningAmberRounded />,
+  ERROR: <ErrorRounded />,
+});
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { data, loading, error, connection, lastUpdated, refresh } = useAdminLiveOverview();
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsUnreadCount, setNotificationsUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [notificationsError, setNotificationsError] = useState('');
   const overview = normalizedOverview(data || {});
   const summary = overview.summary;
   const pendingShifts = Number(
     first(overview.alerts.pendingShifts, overview.alerts.pendingShiftReviews, 0)
   );
-  const lowStock = Number(first(overview.alerts.lowStock, overview.alerts.lowStockCount, 0));
+
+  const loadNotifications = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setNotificationsLoading(true);
+    try {
+      const notificationData = await getAdminNotifications({ limit: 3 });
+      setNotifications(notificationData.notifications || []);
+      setNotificationsUnreadCount(Number(notificationData.unreadCount || 0));
+      setNotificationsError('');
+    } catch (loadError) {
+      setNotificationsError(loadError.message);
+    } finally {
+      if (!silent) setNotificationsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNotifications();
+    const reloadNotifications = () => loadNotifications({ silent: true });
+    const interval = window.setInterval(reloadNotifications, 30_000);
+    window.addEventListener(ADMIN_NOTIFICATIONS_CHANGED_EVENT, reloadNotifications);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener(ADMIN_NOTIFICATIONS_CHANGED_EVENT, reloadNotifications);
+    };
+  }, [loadNotifications]);
+
+  useEffect(() => {
+    if (overview.generatedAt) loadNotifications({ silent: true });
+  }, [overview.generatedAt, loadNotifications]);
+
+  const openNotification = async (notification) => {
+    try {
+      if (!notification.is_read) {
+        await markAdminNotificationRead(notification.id);
+        setNotifications((current) =>
+          current.map((item) => (item.id === notification.id ? { ...item, is_read: true } : item))
+        );
+        setNotificationsUnreadCount((value) => Math.max(0, value - 1));
+      }
+      navigate(notification.action_path || '/notifications');
+    } catch (readError) {
+      setNotificationsError(readError.message);
+    }
+  };
+
+  const refreshDashboard = () => {
+    refresh();
+    loadNotifications();
+  };
 
   return (
     <div className="a4-page dashboard-live-page">
@@ -103,7 +183,7 @@ export default function Dashboard() {
             <Button
               variant="outlined"
               startIcon={<RefreshRounded />}
-              onClick={() => refresh()}
+              onClick={refreshDashboard}
               disabled={loading}
             >
               تحديث
@@ -150,23 +230,71 @@ export default function Dashboard() {
             />
           </div>
 
-          {(pendingShifts > 0 || lowStock > 0) && (
-            <div className="dashboard-alert-strip">
-              {pendingShifts > 0 && (
-                <Button
-                  color="warning"
-                  onClick={() => navigate('/shifts?status=PENDING_ADMIN_REVIEW')}
-                >
-                  {number(pendingShifts)} شيفت يحتاج مراجعة
-                </Button>
-              )}
-              {lowStock > 0 && (
-                <Button color="warning" onClick={() => navigate('/inventory')}>
-                  {number(lowStock)} تنبيه مخزون
-                </Button>
-              )}
+          <section className="a4-page-section dashboard-notifications-panel">
+            <div className="dashboard-panel-heading dashboard-notifications-panel__heading">
+              <div>
+                <div className="dashboard-notifications-panel__title-row">
+                  <NotificationsRounded />
+                  <h2 className="a4-section-title">أحدث الإشعارات</h2>
+                  {notificationsUnreadCount > 0 && (
+                    <Chip
+                      size="small"
+                      color="error"
+                      label={`${number(notificationsUnreadCount)} غير مقروء`}
+                    />
+                  )}
+                </div>
+                <p className="a4-section-subtitle">
+                  آخر التنبيهات التشغيلية المرتبطة بمركز الإشعارات.
+                </p>
+              </div>
+              <Button
+                size="small"
+                variant="outlined"
+                endIcon={<OpenInNewRounded />}
+                onClick={() => navigate('/notifications')}
+              >
+                قراءة المزيد
+              </Button>
             </div>
-          )}
+
+            {notificationsError && <Alert severity="warning">{notificationsError}</Alert>}
+
+            {notificationsLoading && notifications.length === 0 ? (
+              <div className="dashboard-notifications-panel__state">
+                <CircularProgress size={24} />
+                <span>جاري تحميل الإشعارات...</span>
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className="dashboard-notifications-panel__state">
+                <NotificationsNoneRounded />
+                <span>لا توجد إشعارات حتى الآن.</span>
+              </div>
+            ) : (
+              <div className="dashboard-notifications-list">
+                {notifications.map((notification) => (
+                  <button
+                    type="button"
+                    className={`dashboard-notification-item dashboard-notification-item--${String(notification.severity || 'INFO').toLowerCase()} ${notification.is_read ? 'is-read' : 'is-unread'}`}
+                    key={notification.id}
+                    onClick={() => openNotification(notification)}
+                  >
+                    <span className="dashboard-notification-item__icon" aria-hidden="true">
+                      {notificationIcons[notification.severity] || notificationIcons.INFO}
+                    </span>
+                    <span className="dashboard-notification-item__content">
+                      <span className="dashboard-notification-item__heading">
+                        <strong>{notification.title}</strong>
+                        {!notification.is_read && <i aria-label="غير مقروء" />}
+                      </span>
+                      <span>{notification.message}</span>
+                      <small>{dateTime(notification.created_at)}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
 
           <div className="dashboard-live-grid">
             <section className="a4-page-section dashboard-live-panel">
