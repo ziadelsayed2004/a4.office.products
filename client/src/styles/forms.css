@@ -147,6 +147,7 @@
 .MuiAutocomplete-option {
   justify-content: flex-start;
   text-align: right;
+  margin-top: 5px;
 }
 
 .MuiAutocomplete-endAdornment {

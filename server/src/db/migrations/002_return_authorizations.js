@@ -123,6 +123,9 @@ async function rebuildPayments(db) {
 async function rebuildReceipts(db) {
   await db.exec(`
     DROP TRIGGER IF EXISTS trg_receipt_snapshot_immutable;
+    DROP TABLE IF EXISTS print_requests_v002;
+    CREATE TABLE print_requests_v002 AS SELECT * FROM print_requests;
+    DROP TABLE print_requests;
     DROP TABLE IF EXISTS receipts_v002;
     CREATE TABLE receipts_v002 (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -145,8 +148,28 @@ async function rebuildReceipts(db) {
     DROP TABLE receipts;
     ALTER TABLE receipts_v002 RENAME TO receipts;
 
+    CREATE TABLE print_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      receipt_id INTEGER NOT NULL REFERENCES receipts(id) ON DELETE RESTRICT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      shift_id INTEGER NOT NULL REFERENCES shifts(id) ON DELETE RESTRICT,
+      request_key TEXT NOT NULL,
+      is_reprint INTEGER NOT NULL DEFAULT 0 CHECK(is_reprint IN (0, 1)),
+      reason TEXT,
+      copies INTEGER NOT NULL DEFAULT 1 CHECK(copies BETWEEN 1 AND 20),
+      requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, request_key)
+    );
+    INSERT INTO print_requests
+      (id, receipt_id, user_id, shift_id, request_key, is_reprint, reason, copies, requested_at)
+    SELECT id, receipt_id, user_id, shift_id, request_key, is_reprint, reason, copies, requested_at
+      FROM print_requests_v002;
+    DROP TABLE print_requests_v002;
+
     CREATE INDEX IF NOT EXISTS idx_receipts_reference ON receipts(reference_type, reference_id);
     CREATE INDEX IF NOT EXISTS idx_receipts_number ON receipts(receipt_number);
+    CREATE INDEX IF NOT EXISTS idx_print_requests_receipt
+      ON print_requests(receipt_id, requested_at);
     CREATE TRIGGER trg_receipt_snapshot_immutable
     BEFORE UPDATE OF snapshot_json, reference_type, reference_id, receipt_number ON receipts
     WHEN OLD.snapshot_json IS NOT NULL

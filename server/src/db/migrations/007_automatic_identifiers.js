@@ -59,6 +59,7 @@ export async function up(db) {
       UNIQUE(migration_version, entity_type, entity_id, old_value)
     );
     DROP TRIGGER IF EXISTS trg_receipt_snapshot_immutable;
+    DROP TRIGGER IF EXISTS trg_order_item_snapshot_immutable;
   `);
 
   const replacements = new Map();
@@ -246,6 +247,9 @@ export async function up(db) {
       BEFORE UPDATE OF sku, barcode, category_id ON products
       WHEN NEW.sku != OLD.sku OR NEW.barcode != OLD.barcode OR NEW.category_id != OLD.category_id
       BEGIN SELECT RAISE(ABORT, 'PRODUCT_IDENTITY_IMMUTABLE'); END;
+    CREATE TRIGGER IF NOT EXISTS trg_order_item_snapshot_immutable
+      BEFORE UPDATE ON order_items
+      BEGIN SELECT RAISE(ABORT, 'INVOICE_ITEM_SNAPSHOT_IMMUTABLE'); END;
     CREATE TRIGGER IF NOT EXISTS trg_receipt_snapshot_immutable
       BEFORE UPDATE OF snapshot_json, reference_type, reference_id, receipt_number ON receipts
       WHEN OLD.snapshot_json IS NOT NULL

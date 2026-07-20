@@ -259,7 +259,6 @@
 
 .dashboard-activity-list .MuiListItemButton-root {
   min-height: 70px;
-  padding-inline: 0;
   gap: var(--space-2);
 }
 
