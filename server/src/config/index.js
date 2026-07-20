@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { isIP } from 'node:net';
 import { z } from 'zod';
 import { PROJECT_ROOT, SERVER_ROOT } from './env.js';
+import { resolveChromiumExecutablePath } from '../utils/chromium.js';
 
 const integerString = (name, minimum, maximum, fallback) =>
   z
@@ -156,6 +157,10 @@ export function createConfig(
   const databasePath = path.resolve(serverRoot, values.SQLITE_DB_PATH);
   const productionDatabasePath = path.resolve(serverRoot, values.PRODUCTION_SQLITE_DB_PATH);
   const backupDirectory = path.resolve(projectRoot, values.BACKUP_DIR);
+  const chromiumExecutablePath = resolveChromiumExecutablePath({
+    configuredPath: values.CHROMIUM_EXECUTABLE_PATH,
+    environment,
+  });
   const sqliteExtension = (filename) =>
     ['.db', '.sqlite', '.sqlite3'].includes(path.extname(filename).toLowerCase());
 
@@ -284,13 +289,14 @@ export function createConfig(
     },
     shutdownTimeoutMs: values.SHUTDOWN_TIMEOUT_MS,
     pdf: {
-      chromiumExecutablePath: path.resolve(values.CHROMIUM_EXECUTABLE_PATH),
+      chromiumExecutablePath,
       timeoutMs: values.PDF_TIMEOUT_MS,
       maxConcurrency: values.PDF_MAX_CONCURRENCY,
       maxRecords: values.PDF_MAX_RECORDS,
       chromiumAvailable: () => {
+        if (!chromiumExecutablePath) return false;
         try {
-          fs.accessSync(path.resolve(values.CHROMIUM_EXECUTABLE_PATH), fs.constants.X_OK);
+          fs.accessSync(chromiumExecutablePath, fs.constants.X_OK);
           return true;
         } catch {
           return false;

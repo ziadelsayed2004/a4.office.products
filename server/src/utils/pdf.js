@@ -17,7 +17,7 @@ export function isChromiumAvailable() {
   return config.pdf.chromiumAvailable();
 }
 
-export async function renderPdf(html, { launch = puppeteer.launch } = {}) {
+export async function renderPdf(html, { launch = puppeteer.launch, elementPage = null } = {}) {
   if (!isChromiumAvailable()) {
     throw new AppError('PDF generation is unavailable.', 503, 'PDF_ENGINE_UNAVAILABLE');
   }
@@ -28,25 +28,72 @@ export async function renderPdf(html, { launch = puppeteer.launch } = {}) {
   activeJobs += 1;
   let browser;
   try {
+    const sandboxArgs =
+      process.platform === 'linux' && process.getuid?.() === 0
+        ? ['--no-sandbox', '--disable-setuid-sandbox']
+        : [];
     browser = await launch({
       executablePath: config.pdf.chromiumExecutablePath,
       headless: true,
       timeout: config.pdf.timeoutMs,
-      args: ['--disable-dev-shm-usage', '--disable-gpu', '--no-first-run'],
+      args: ['--disable-dev-shm-usage', '--disable-gpu', '--no-first-run', ...sandboxArgs],
     });
     const page = await browser.newPage();
     page.setDefaultTimeout(config.pdf.timeoutMs);
     await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: config.pdf.timeoutMs });
-    return Buffer.from(
-      await page.pdf({
-        format: 'A4',
+    let pdfOptions = {
+      format: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: { top: '12mm', right: '12mm', bottom: '12mm', left: '12mm' },
+    };
+
+    if (elementPage) {
+      await page.evaluate(async () => {
+        if (document.fonts?.ready) await document.fonts.ready;
+        await Promise.all(
+          [...document.images].map(async (image) => {
+            if (!image.complete) {
+              await new Promise((resolve) => {
+                image.addEventListener('load', resolve, { once: true });
+                image.addEventListener('error', resolve, { once: true });
+              });
+            }
+            await image.decode?.().catch(() => undefined);
+          })
+        );
+      });
+      const measurement = await page.evaluate(
+        ({ selector, widthMm, cutFeedMm }) => {
+          const element = document.querySelector(selector);
+          if (!element) throw new Error(`PDF sizing element was not found: ${selector}`);
+          const rect = element.getBoundingClientRect();
+          const pixelHeight = Math.max(rect.height, element.scrollHeight, element.offsetHeight);
+          if (!(rect.width > 0) || !(pixelHeight > 0)) {
+            throw new Error('PDF sizing element has invalid dimensions.');
+          }
+          const contentHeightMm = (pixelHeight * widthMm) / rect.width;
+          return Math.max(20, Math.ceil((contentHeightMm + cutFeedMm) * 10) / 10);
+        },
+        {
+          selector: elementPage.selector,
+          widthMm: elementPage.widthMm,
+          cutFeedMm: elementPage.cutFeedMm ?? 1.5,
+        }
+      );
+      pdfOptions = {
+        width: `${elementPage.widthMm}mm`,
+        height: `${measurement}mm`,
         printBackground: true,
-        preferCSSPageSize: true,
-        margin: { top: '12mm', right: '12mm', bottom: '12mm', left: '12mm' },
-      })
-    );
+        preferCSSPageSize: false,
+        margin: { top: '0', right: '0', bottom: '0', left: '0' },
+      };
+    }
+
+    return Buffer.from(await page.pdf(pdfOptions));
   } catch (error) {
     if (error instanceof AppError) throw error;
+    console.error('PDF generation failed:', error?.stack || error);
     throw new AppError('PDF generation failed.', 503, 'PDF_GENERATION_FAILED');
   } finally {
     await browser?.close().catch(() => undefined);
