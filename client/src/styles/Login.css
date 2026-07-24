@@ -88,7 +88,7 @@
   font-weight: 700;
 }
 
-.login-demo {
+/* .login-demo {
   margin-top: var(--space-5);
   padding: 11px var(--space-3);
   display: flex;
@@ -109,7 +109,7 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight: 700;
   text-align: left;
-}
+} */
 
 .login-footer {
   margin: var(--space-5) 0 0;

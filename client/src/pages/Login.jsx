@@ -122,10 +122,10 @@ export default function Login() {
           </FormActions>
         </form>
 
-        <div className="login-demo">
+        {/* <div className="login-demo">
           <span>حساب الإدارة التجريبي</span>
           <code>admin / admin123</code>
-        </div>
+        </div> */}
 
         <p className="login-footer">A4 Office Products — منصة إدارة المكتبة ونقطة البيع</p>
       </Paper>
