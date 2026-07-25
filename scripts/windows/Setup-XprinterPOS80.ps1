@@ -35,14 +35,14 @@ $network.SetDefaultPrinter($printer.Name)
 
 $desktopPath = [Environment]::GetFolderPath('Desktop')
 $launcherCandidates = @(
-  (Join-Path $desktopPath 'A4 Cashier - Production.exe'),
-  (Join-Path $PSScriptRoot '..\..\release\A4-Cashier-Production.exe')
+  (Join-Path $desktopPath 'A4 Cashier.exe'),
+  (Join-Path $PSScriptRoot '..\..\release\A4 Cashier.exe')
 )
 $launcherPath = $launcherCandidates |
   Where-Object { Test-Path -LiteralPath $_ } |
   Select-Object -First 1
 if (-not $launcherPath) {
-  throw 'A4-Cashier-Production.exe was not found. Run Build-A4CashierExe.ps1 first.'
+  throw 'A4 Cashier.exe was not found. Run Build-A4CashierExe.ps1 first.'
 }
 $launcherPath = [IO.Path]::GetFullPath($launcherPath)
 $shortcutPath = Join-Path $desktopPath 'A4 Cashier - Automatic Print.lnk'

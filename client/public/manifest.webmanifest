@@ -1,0 +1,23 @@
+{
+  "name": "A4 Cashier",
+  "short_name": "A4 Cashier",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#0f5fa6",
+  "icons": [
+    {
+      "src": "/favicon-taskbar.png?v=14",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-taskbar.png?v=14",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -80,8 +80,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\Build-A4Ca
 
 ينتج ملفين ثابتين لا يبدلان البيئة تلقائياً:
 
-- `release\A4-Cashier-Production.exe` يفتح `https://a4office.cloud` فقط.
-- `release\A4-Cashier-Local.exe` يفتح `http://localhost:5173` فقط.
+- `release\A4 Cashier.exe` يفتح `https://a4office.cloud` فقط.
+- `release\A4 Cashier - Local.exe` يفتح `http://localhost:5173` فقط.
 
 ينسخ السكربت الملفين إلى سطح المكتب باسمين واضحين، ويستخدم كل ملف جلسة Chrome مستقلة.
 

@@ -132,8 +132,8 @@ assert.doesNotMatch(ecosystem, /ALLOW_DATABASE_RESET/);
 assert.match(cashierLauncher, /https:\/\/a4office\.cloud/);
 assert.match(cashierLauncher, /http:\/\/localhost:5173/);
 assert.doesNotMatch(cashierLauncher, /TcpClient|ResolveAppUrl/);
-assert.match(cashierBuild, /A4-Cashier-Production\.exe/);
-assert.match(cashierBuild, /A4-Cashier-Local\.exe/);
+assert.match(cashierBuild, /A4 Cashier\.exe/);
+assert.match(cashierBuild, /A4 Cashier - Local\.exe/);
 
 function selectDeploymentJwt(candidate, environment) {
   const result = spawnSync(process.execPath, [jwtSelector], {

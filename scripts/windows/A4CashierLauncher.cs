@@ -5,15 +5,14 @@ using System.Windows.Forms;
 
 internal static class A4CashierLauncher
 {
+    private const string IconCacheVersion = "14";
 #if LOCAL_BUILD
     private const string AppUrl = "http://localhost:5173";
-    private const string ProfileName = "CashierChromeLocal";
+    private const string ProfileName = "CashierChromeLocalV14";
 #else
     private const string AppUrl = "https://a4office.cloud";
-    private const string ProfileName = "CashierChromeProduction";
+    private const string ProfileName = "CashierChromeProductionV14";
 #endif
-    private const string PrinterName = "POSPrinter POS80";
-
     [STAThread]
     private static void Main(string[] args)
     {
@@ -31,14 +30,13 @@ internal static class A4CashierLauncher
                 return;
             }
 
-            ConfigureDirectPrinting();
-
             string profilePath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "A4Office",
                 ProfileName
             );
             Directory.CreateDirectory(profilePath);
+            RefreshFaviconCache(profilePath);
 
             var startInfo = new ProcessStartInfo
             {
@@ -47,6 +45,9 @@ internal static class A4CashierLauncher
                     "--user-data-dir=\"" + profilePath + "\" " +
                     "--kiosk-printing " +
                     "--no-first-run " +
+                    "--no-default-browser-check " +
+                    "--disable-background-mode " +
+                    "--disable-extensions " +
                     "--disable-session-crashed-bubble " +
                     "--app=\"" + AppUrl + "\"",
                 UseShellExecute = true,
@@ -65,19 +66,30 @@ internal static class A4CashierLauncher
         }
     }
 
-    private static void ConfigureDirectPrinting()
+    private static void RefreshFaviconCache(string profilePath)
     {
-        var setDefaultPrinter = new ProcessStartInfo
+        string markerPath = Path.Combine(profilePath, ".a4-icon-cache-version");
+        try
         {
-            FileName = "rundll32.exe",
-            Arguments = "printui.dll,PrintUIEntry /y /n \"" + PrinterName + "\"",
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            WindowStyle = ProcessWindowStyle.Hidden
-        };
-        using (Process process = Process.Start(setDefaultPrinter))
+            if (File.Exists(markerPath) && File.ReadAllText(markerPath) == IconCacheVersion)
+            {
+                return;
+            }
+
+            string defaultProfile = Path.Combine(profilePath, "Default");
+            foreach (string fileName in new[] { "Favicons", "Favicons-journal" })
+            {
+                string cacheFile = Path.Combine(defaultProfile, fileName);
+                if (File.Exists(cacheFile))
+                {
+                    File.Delete(cacheFile);
+                }
+            }
+            File.WriteAllText(markerPath, IconCacheVersion);
+        }
+        catch
         {
-            if (process != null) process.WaitForExit(5000);
+            // A locked Chrome cache must never prevent the cashier app from starting.
         }
     }
 
