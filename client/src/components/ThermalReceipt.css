@@ -2,6 +2,9 @@
   box-sizing: border-box;
   margin-inline: auto;
   padding: 4mm;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
   color: #000000;
   background: #ffffff;
   font-family: Cairo, Arial, sans-serif;
@@ -51,6 +54,25 @@
   font-size: 8pt;
   font-style: normal;
   font-weight: 800;
+}
+
+.thermal-receipt__contact-qr {
+  display: grid;
+  justify-items: center;
+  gap: 0.5mm;
+  max-width: 100%;
+  break-inside: avoid;
+}
+
+.thermal-receipt__contact-qr svg {
+  width: 23mm;
+  height: 23mm;
+}
+
+.thermal-receipt__contact-qr span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 6.5pt;
 }
 
 .thermal-receipt__meta,
@@ -182,19 +204,24 @@
   }
 
   .thermal-receipt {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
     margin: 0 auto !important;
     color: #000000 !important;
     background: #ffffff !important;
     box-shadow: none !important;
-    break-inside: avoid-page;
-    page-break-inside: avoid;
-    break-after: page;
-    page-break-after: always;
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+    break-after: page !important;
+    page-break-after: always !important;
   }
 
   .thermal-receipt:last-child {
-    break-after: auto;
-    page-break-after: auto;
+    break-after: auto !important;
+    page-break-after: auto !important;
   }
 
   .thermal-receipt,

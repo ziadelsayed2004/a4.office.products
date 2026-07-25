@@ -22,6 +22,33 @@ function positiveCopies(value) {
   return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, 20) : 1;
 }
 
+function nextPaint(frameWindow = window) {
+  return new Promise((resolve) => frameWindow.requestAnimationFrame(() => resolve()));
+}
+
+async function printPreparedFrame(iframe, printMetadata = {}) {
+  const pageWidthMm = Number(printMetadata.pageWidthMm);
+  const pageHeightMm = Number(printMetadata.pageHeightMm);
+
+  // A transparent or tiny iframe can be composited as an empty printed page by
+  // Chromium. Keep it rendered off-screen and match its viewport to the page
+  // measured by the print document before opening the native print pipeline.
+  if (Number.isFinite(pageWidthMm) && pageWidthMm > 0) {
+    iframe.style.width = `${pageWidthMm}mm`;
+  }
+  if (Number.isFinite(pageHeightMm) && pageHeightMm > 0) {
+    iframe.style.height = `${pageHeightMm}mm`;
+  }
+
+  const frameWindow = iframe.contentWindow;
+  if (!frameWindow) throw new Error('تعذر الوصول إلى مستند الطباعة.');
+
+  await nextPaint(frameWindow);
+  await nextPaint(frameWindow);
+  frameWindow.focus();
+  frameWindow.print();
+}
+
 function receiptPrintUrl(receiptId, { copies, isReprint, requestKey }) {
   const query = new URLSearchParams({
     copies: String(positiveCopies(copies)),
@@ -64,7 +91,7 @@ function waitForIsolatedPrint({ receiptId, url }) {
       reject(error instanceof Error ? error : new Error(String(error)));
     };
 
-    const onMessage = (event) => {
+    const onMessage = async (event) => {
       if (event.origin !== window.location.origin || event.source !== iframe.contentWindow) return;
       if (event.data?.source !== PRINT_MESSAGE_SOURCE) return;
       if (String(event.data?.receiptId) !== String(receiptId)) return;
@@ -84,8 +111,7 @@ function waitForIsolatedPrint({ receiptId, url }) {
       window.clearTimeout(readyTimer);
 
       try {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
+        await printPreparedFrame(iframe, event.data);
         afterPrintTimer = window.setTimeout(
           () => finish({ printed: true, afterPrintTimedOut: true }),
           AFTER_PRINT_TIMEOUT_MS
@@ -172,6 +198,7 @@ export function printProductLabelsInFrame({ productId, barcode, quantity = 1, si
     iframe.setAttribute('aria-hidden', 'true');
     let readyTimer;
     let completeTimer;
+    let printStarted = false;
     let settled = false;
 
     const cleanup = () => {
@@ -194,7 +221,7 @@ export function printProductLabelsInFrame({ productId, barcode, quantity = 1, si
         reject(error instanceof Error ? error : new Error(String(error)));
       }
     };
-    const onMessage = (event) => {
+    const onMessage = async (event) => {
       if (event.origin !== window.location.origin || event.source !== iframe.contentWindow) return;
       if (
         event.data?.source !== LABEL_PRINT_MESSAGE_SOURCE ||
@@ -204,11 +231,11 @@ export function printProductLabelsInFrame({ productId, barcode, quantity = 1, si
       if (event.data.type === PRINT_ERROR)
         return fail(new Error(event.data.message || 'تعذر تجهيز الملصقات.'));
       if (event.data.type === PRINT_COMPLETE) return finish({ printed: true });
-      if (event.data.type !== PRINT_READY) return;
+      if (event.data.type !== PRINT_READY || printStarted) return;
+      printStarted = true;
       window.clearTimeout(readyTimer);
       try {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
+        await printPreparedFrame(iframe, event.data);
         completeTimer = window.setTimeout(
           () => finish({ printed: true, afterPrintTimedOut: true }),
           AFTER_PRINT_TIMEOUT_MS
@@ -266,7 +293,7 @@ function waitForReturnApprovalCardPrint({ cardId, url }) {
       cleanup();
       reject(error instanceof Error ? error : new Error(String(error)));
     };
-    const onMessage = (event) => {
+    const onMessage = async (event) => {
       if (event.origin !== window.location.origin || event.source !== iframe.contentWindow) return;
       if (event.data?.source !== RETURN_CARD_PRINT_MESSAGE_SOURCE) return;
       if (String(event.data?.cardId) !== String(cardId)) return;
@@ -277,8 +304,7 @@ function waitForReturnApprovalCardPrint({ cardId, url }) {
       printStarted = true;
       window.clearTimeout(readyTimer);
       try {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
+        await printPreparedFrame(iframe, event.data);
         completeTimer = window.setTimeout(
           () => finish({ printed: true, afterPrintTimedOut: true }),
           AFTER_PRINT_TIMEOUT_MS

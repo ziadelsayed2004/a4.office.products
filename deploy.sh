@@ -60,17 +60,42 @@ chown -R "$APP_USER:$APP_GROUP" "$APP_DIR"
 chmod 0750 "$APP_DIR"
 
 RESET_DATABASE="${RESET_DATABASE:-false}"
+PURGE_DATABASE_BACKUPS="${PURGE_DATABASE_BACKUPS:-false}"
 if [[ "$RESET_DATABASE" != "true" && "$RESET_DATABASE" != "false" ]]; then
   fail 'RESET_DATABASE must be true or false.'
 fi
+if [[ "$PURGE_DATABASE_BACKUPS" != "true" && "$PURGE_DATABASE_BACKUPS" != "false" ]]; then
+  fail 'PURGE_DATABASE_BACKUPS must be true or false.'
+fi
+if [[ "$PURGE_DATABASE_BACKUPS" == "true" && "$RESET_DATABASE" != "true" ]]; then
+  fail 'PURGE_DATABASE_BACKUPS=true requires RESET_DATABASE=true.'
+fi
 
 if [[ "$RESET_DATABASE" == "true" ]]; then
+  printf '\nThis permanently deletes the active A4 database'
+  if [[ "$PURGE_DATABASE_BACKUPS" == "true" ]]; then
+    printf ' and every stored database backup'
+  fi
+  printf '.\nType DELETE ALL A4 DATA to continue: '
+  read -r RESET_CONFIRMATION
+  [[ "$RESET_CONFIRMATION" == "DELETE ALL A4 DATA" ]] \
+    || fail 'Permanent database reset was cancelled.'
+  unset RESET_CONFIRMATION
+
+  PM2_HOME="$PM2_HOME" pm2 stop a4-pos-server >/dev/null 2>&1 || true
   printf 'RESET_DATABASE=true: removing the production SQLite database and sequence state.\n'
   rm -f -- \
     "$APP_DIR/server/src/db/a4_pos.db" \
     "$APP_DIR/server/src/db/a4_pos.db-wal" \
     "$APP_DIR/server/src/db/a4_pos.db-shm" \
     "$APP_DIR/server/src/db/a4_pos.db-journal"
+  if [[ "$PURGE_DATABASE_BACKUPS" == "true" ]]; then
+    printf 'PURGE_DATABASE_BACKUPS=true: removing stored SQLite database backups.\n'
+    find "$APP_DIR/backups" -maxdepth 1 -type f \
+      \( -name '*.db' -o -name '*.db-wal' -o -name '*.db-shm' -o -name '*.db-journal' \
+         -o -name '*.sqlite' -o -name '*.sqlite3' \) \
+      -delete
+  fi
 elif [[ -s "$APP_DIR/server/src/db/a4_pos.db" ]]; then
   PRE_DEPLOY_BACKUP="$APP_DIR/backups/a4_pos.pre_deploy.$(date -u +%Y%m%dT%H%M%SZ).db"
   sudo -u "$APP_USER" sqlite3 "$APP_DIR/server/src/db/a4_pos.db" ".backup '$PRE_DEPLOY_BACKUP'"

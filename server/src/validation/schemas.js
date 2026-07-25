@@ -382,9 +382,11 @@ export const posSearchQuery = z.object({ q: optionalTrimmed(200) });
 export const checkoutBody = z
   .object({
     customerId: optionalInteger(1),
+    customerName: optionalTrimmed(200),
+    customerPhone,
     items: z.array(saleItem).min(1).max(500),
     discount: optionalInteger(0).default(0),
-    payments: z.array(paymentRow).max(20),
+    payments: z.array(paymentRow).max(1),
   })
   .passthrough();
 const refundReference = z
@@ -497,7 +499,7 @@ export const preorderCreateBody = z
     pickupMethod: optionalTrimmed(100),
     expectedPickupDate: date.nullable().optional(),
     notes: optionalNullableTrimmed(2000),
-    payments: z.array(paymentRow).max(20),
+    payments: z.array(paymentRow).max(1),
   })
   .passthrough()
   .refine(
@@ -529,7 +531,7 @@ export const preorderStatusBody = z.object({
     'EXPIRED',
   ]),
 });
-export const preorderPickupBody = z.object({ payments: z.array(paymentRow).max(20) }).passthrough();
+export const preorderPickupBody = z.object({ payments: z.array(paymentRow).max(1) }).passthrough();
 
 export const receiptIdentifierParams = z.object({ id: trimmed(200) });
 export const receiptPrintBody = z
@@ -566,6 +568,7 @@ export const invoiceLookupQuery = z.object({
   token: optionalTrimmed(500),
   invoiceNumber: optionalTrimmed(200),
   receiptNumber: optionalTrimmed(200),
+  customer: optionalTrimmed(200),
   ownShift: z.enum(['true', 'false']).optional(),
   shiftId: optionalInteger(1),
   limit: optionalInteger(1, 100).default(50),
@@ -575,6 +578,7 @@ export const invoiceCredentialQuery = z.object({
   token: optionalTrimmed(500),
   invoiceNumber: optionalTrimmed(200),
   receiptNumber: optionalTrimmed(200),
+  customer: optionalTrimmed(200),
 });
 
 export const shiftCloseBody = z
@@ -604,6 +608,8 @@ export const printerSettingsBody = z
     print_show_customer: z.union([z.boolean(), z.enum(['true', 'false'])]).optional(),
     print_show_price_tier: z.union([z.boolean(), z.enum(['true', 'false'])]).optional(),
     print_show_qr: z.union([z.boolean(), z.enum(['true', 'false'])]).optional(),
+    print_show_contact_qr: z.union([z.boolean(), z.enum(['true', 'false'])]).optional(),
+    contact_qr_url: z.string().trim().max(2048).optional(),
     qr_printer_width: z
       .union([z.literal('38'), z.literal('50'), z.literal('80'), z.number()])
       .optional(),

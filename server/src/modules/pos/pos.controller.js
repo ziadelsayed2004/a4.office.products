@@ -34,6 +34,8 @@ export async function checkoutController(req, res, next) {
     const result = await posService.checkoutOrder({
       cashierId: req.user.id,
       customerId: req.body.customerId,
+      customerName: req.body.customerName,
+      customerPhone: req.body.customerPhone,
       items: req.body.items,
       discount: req.body.discount,
       payments: req.body.payments,

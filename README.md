@@ -58,7 +58,44 @@ npm run db:reset
 - طباعة ملصقات باركود المنتجات وإدارة كروت اعتماد المرتجع متاحتان لـAdmin فقط. يستخدم الباركود SKU افتراضياً وCODE128، مع الاحتفاظ بمسارات الطباعة القديمة كـaliases انتقالية.
 - كارت اعتماد المرتجع أفقي بمقاس ID-1 (`85.6×54mm`) ويحتوي QR بلا token خام أو بيانات عميل. يمكن طباعته على ورقة A4 بعلامات قص أو بالمقاس المباشر.
 
-إعدادات نوع/عنوان الطابعة القديمة تُحفظ للتوافق فقط ولا تُستخدم. الربط المباشر بطابعة حرارية مشروع مستقل لاحقاً بعد تحديد الجهاز وطريقة الاتصال.
+### Xprinter POS-80 على Windows والطباعة الصامتة
+
+الحزمة الرسمية المناسبة هي **Bill product driver** من صفحة تنزيلات Xprinter. بعد تنزيل
+المثبت الموقع `Xprinter-POS80-Driver-2024.01.29.1.exe` إلى مجلد Downloads، شغّل:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\Setup-XprinterPOS80.ps1
+```
+
+اختر `POS-80C` ووصلة `USB`/المنفذ `USB001` في مثبت الشركة. ينشئ السكربت اختصار
+`A4 Cashier - Automatic Print` على سطح المكتب، ويشغّل Chrome بملف كاشير مستقل وخيار
+`--kiosk-printing`. بعد تسجيل الدخول مرة واحدة، تذهب طلبات الطباعة التلقائية الموجودة في
+النظام مباشرة إلى POS-80 الافتراضية دون مربع حوار الطباعة.
+
+لبناء نسخة Windows EXE خفيفة بنفس وضع التطبيق والطباعة الصامتة:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\Build-A4CashierExe.ps1
+```
+
+ينتج ملفين ثابتين لا يبدلان البيئة تلقائياً:
+
+- `release\A4-Cashier-Production.exe` يفتح `https://a4office.cloud` فقط.
+- `release\A4-Cashier-Local.exe` يفتح `http://localhost:5173` فقط.
+
+ينسخ السكربت الملفين إلى سطح المكتب باسمين واضحين، ويستخدم كل ملف جلسة Chrome مستقلة.
+
+لتصفير قواعد SQLite المحلية ونسخها الاحتياطية نهائياً ثم تشغيل migrations وإنشاء أول Admin:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\Reset-A4Data.ps1 -PermanentlyDeleteAllData
+```
+
+يتطلب السكربت كتابة `DELETE ALL A4 DATA` ثم يطلب كلمة مرور Admin بشكل سري. لا يشغّل هذا
+الأمر أثناء عمل الخادم المحلي.
+
+إعدادات نوع/عنوان الطابعة القديمة تُحفظ للتوافق فقط؛ اختيار POS-80 الفعلية يتم من Windows
+كطابعة افتراضية، ويستخدمها وضع Chrome الصامت تلقائياً.
 
 ## الصلاحيات التشغيلية
 
@@ -104,10 +141,13 @@ git diff --check
 استخدم `.env.production.example` كمرجع فقط ولا تضع أسراراً في Git. أنشئ أول Admin بكلمة مرور مؤقتة غير مخزنة:
 
 ```bash
+read -r -s -p 'Admin password: ' BOOTSTRAP_PASSWORD
+printf '\n'
 BOOTSTRAP_ADMIN_USERNAME=admin \
 BOOTSTRAP_ADMIN_NAME='System Administrator' \
-BOOTSTRAP_ADMIN_PASSWORD='temporary-strong-password' \
+BOOTSTRAP_ADMIN_PASSWORD="$BOOTSTRAP_PASSWORD" \
 npm run admin:bootstrap
+unset BOOTSTRAP_PASSWORD
 ```
 
 راجع `DEPLOYMENT.md` قبل تشغيل `deploy.sh`. لا يشغّل المشروع أي deploy على خادم حي تلقائياً.

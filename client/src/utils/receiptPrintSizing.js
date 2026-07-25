@@ -110,6 +110,10 @@ export function buildReceiptPageCss({ widthMm, heightMm }) {
     width: ${width}mm !important;
     min-width: 0 !important;
     max-width: ${width}mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .theme-root,
@@ -117,6 +121,12 @@ export function buildReceiptPageCss({ widthMm, heightMm }) {
     display: block !important;
     height: auto !important;
     min-height: 0 !important;
+  }
+
+  .thermal-receipt {
+    display: block !important;
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
   }
 }
 `;

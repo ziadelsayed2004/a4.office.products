@@ -85,7 +85,7 @@ function preorderReceiptSnapshot({
     payments: payments.map((payment) => ({
       method: payment.method,
       methodName: payment.methodSnapshot,
-      stage: pickup ? 'PREORDER_PICKUP' : 'PREORDER_DEPOSIT',
+      stage: payment.stage || (pickup ? 'PREORDER_PICKUP' : 'PREORDER_DEPOSIT'),
       direction: 'IN',
       amount: payment.amount,
       cashReceived: payment.cashReceived,
@@ -461,8 +461,12 @@ export async function scanPreorderToken(token, cashierId, connection = db) {
   if (!mapping)
     throw new AppError('Preorder QR token is invalid.', 404, 'PREORDER_TOKEN_NOT_FOUND');
   const preorder = await connection.get(
-    `SELECT pr.*, pr.customer_name_snapshot AS customer_name, pr.customer_phone_snapshot AS customer_phone
-       FROM preorders pr WHERE pr.id = ?;`,
+    `SELECT pr.*,
+            COALESCE(NULLIF(pr.customer_name_snapshot, ''), c.name) AS customer_name,
+            COALESCE(NULLIF(pr.customer_phone_snapshot, ''), c.phone) AS customer_phone
+       FROM preorders pr
+       LEFT JOIN customers c ON c.id = pr.customer_id
+      WHERE pr.id = ?;`,
     [mapping.reference_id]
   );
   if (!preorder) throw new AppError('Preorder not found.', 404, 'PREORDER_NOT_FOUND');
@@ -482,14 +486,18 @@ export async function pickupPreorder(preorderId, pickupData, cashierId, idempote
     { key: idempotencyKey, userId: cashierId, operation: 'PREORDER_PICKUP', payload },
     async (connection) => {
       const shift = await requireOwnOpenShift(connection, cashierId);
-      const preorder = await connection.get('SELECT * FROM preorders WHERE id = ?;', [id]);
+      const preorder = await connection.get(
+        `SELECT pr.*,
+                COALESCE(NULLIF(pr.customer_name_snapshot, ''), c.name) AS resolved_customer_name,
+                COALESCE(NULLIF(pr.customer_phone_snapshot, ''), c.phone) AS resolved_customer_phone
+           FROM preorders pr
+           LEFT JOIN customers c ON c.id = pr.customer_id
+          WHERE pr.id = ?;`,
+        [id]
+      );
       if (!preorder) throw new AppError('Preorder not found.', 404, 'PREORDER_NOT_FOUND');
-      if (preorder.status !== 'READY_FOR_PICKUP') {
-        throw new AppError(
-          'Only a READY_FOR_PICKUP preorder can be picked up.',
-          409,
-          'PREORDER_NOT_READY'
-        );
+      if (!OPEN_STATUSES.includes(preorder.status)) {
+        throw new AppError('Only an active preorder can be picked up.', 409, 'PREORDER_NOT_READY');
       }
       const items = await connection.all(
         'SELECT * FROM preorder_items WHERE preorder_id = ? ORDER BY id;',
@@ -508,6 +516,22 @@ export async function pickupPreorder(preorderId, pickupData, cashierId, idempote
             'INSUFFICIENT_PICKUP_STOCK'
           );
         }
+      }
+      if (preorder.status === 'DEPOSIT_PAID_WAITING_STOCK') {
+        const readyTransition = await connection.run(
+          `UPDATE preorders
+              SET status = 'READY_FOR_PICKUP', updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND status = 'DEPOSIT_PAID_WAITING_STOCK';`,
+          [id]
+        );
+        if (readyTransition.changes !== 1) {
+          throw new AppError(
+            'Preorder was already changed by another request.',
+            409,
+            'PREORDER_STATE_CONFLICT'
+          );
+        }
+        preorder.status = 'READY_FOR_PICKUP';
       }
       const normalizedPayments = await validateSplitPayments(
         pickupData.payments,
@@ -529,8 +553,8 @@ export async function pickupPreorder(preorderId, pickupData, cashierId, idempote
           preorder.discount,
           preorder.total_amount,
           id,
-          preorder.customer_name_snapshot,
-          preorder.customer_phone_snapshot,
+          preorder.resolved_customer_name,
+          preorder.resolved_customer_phone,
         ]
       );
       const invoiceToken = await saveSecureToken(connection, 'invoice', orderResult.lastID);
@@ -596,10 +620,25 @@ export async function pickupPreorder(preorderId, pickupData, cashierId, idempote
         },
         normalizedPayments
       );
+      const allPreorderPayments = await connection.all(
+        `SELECT COALESCE(method_snapshot, payment_method) AS methodSnapshot,
+                stage, COALESCE(applied_amount, amount) AS amount,
+                cash_received AS cashReceived, change_amount AS changeAmount,
+                reference_number AS referenceNumber, note
+           FROM payments
+          WHERE is_excluded = 0
+            AND (
+              (reference_type = 'preorder' AND reference_id = ?)
+              OR (reference_type = 'order' AND reference_id = ?)
+            )
+          ORDER BY created_at, id;`,
+        [id, orderResult.lastID]
+      );
       const transition = await connection.run(
         `UPDATE preorders SET status = 'PICKED_UP', remaining_amount = 0, pickup_order_id = ?,
          pickup_shift_id = ?, pickup_cashier_id = ?, pickup_amount = ?, picked_up_at = CURRENT_TIMESTAMP,
-         updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'READY_FOR_PICKUP';`,
+         updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND status IN ('DEPOSIT_PAID_WAITING_STOCK', 'READY_FOR_PICKUP');`,
         [orderResult.lastID, shift.id, cashierId, preorder.remaining_amount, id]
       );
       if (transition.changes !== 1)
@@ -616,6 +655,8 @@ export async function pickupPreorder(preorderId, pickupData, cashierId, idempote
       const cashier = await connection.get('SELECT name FROM users WHERE id = ?;', [cashierId]);
       const snapshotPreorder = {
         ...preorder,
+        customer_name_snapshot: preorder.resolved_customer_name,
+        customer_phone_snapshot: preorder.resolved_customer_phone,
         status: 'PICKED_UP',
         pickup_order_id: orderResult.lastID,
         pickup_amount: preorder.remaining_amount,
@@ -627,7 +668,7 @@ export async function pickupPreorder(preorderId, pickupData, cashierId, idempote
         receiptNumber,
         preorder: snapshotPreorder,
         items,
-        payments: normalizedPayments,
+        payments: allPreorderPayments,
         cashierName: cashier.name,
         type: 'preorder_pickup',
       });

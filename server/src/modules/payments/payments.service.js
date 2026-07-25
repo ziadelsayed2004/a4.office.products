@@ -297,6 +297,13 @@ export async function validateSplitPayments(paymentsList, expectedTotalAmount, c
   if (!Array.isArray(paymentsList) || paymentsList.length === 0) {
     throw new AppError('At least one payment row is required.', 400, 'PAYMENTS_REQUIRED');
   }
+  if (paymentsList.length > 1) {
+    throw new AppError(
+      'Only one payment method is allowed for each transaction.',
+      400,
+      'SINGLE_PAYMENT_METHOD_REQUIRED'
+    );
+  }
 
   const active = await getPaymentMethods({ activeOnly: true }, connection);
   const byCode = new Map(active.map((method) => [method.code, method]));

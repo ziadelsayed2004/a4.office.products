@@ -339,6 +339,13 @@ async function authorizeInvoice(invoice, actor, { credential = null, connection 
     throw new AppError('Invoice access is forbidden.', 403, 'FORBIDDEN');
   if (invoice.cashier_id === actor.id || invoice.shift_owner_id === actor.id) return;
 
+  if (credential?.customer?.trim()) {
+    const search = String(credential.customer).trim().toLocaleLowerCase('ar');
+    const customerName = String(invoice.customer_name_snapshot || '').toLocaleLowerCase('ar');
+    const customerPhone = String(invoice.customer_phone_snapshot || '');
+    if (customerName.includes(search) || customerPhone.includes(search)) return;
+  }
+
   if (credential) {
     const resolvedId = await resolveExactInvoiceId(credential, connection);
     if (resolvedId === invoice.id) return;
@@ -611,6 +618,17 @@ export async function getInvoiceDetail(
 export async function lookupCashierInvoices(filters, actor, connection = db) {
   if (!actor || !['Cashier', 'Admin'].includes(actor.role)) {
     throw new AppError('Invoice access is forbidden.', 403, 'FORBIDDEN');
+  }
+
+  if (filters.customer?.trim()) {
+    return listInvoices(
+      {
+        customer: filters.customer,
+        limit: filters.limit,
+        offset: filters.offset,
+      },
+      { connection }
+    );
   }
 
   if (filters.ownShift === true) {

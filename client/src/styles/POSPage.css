@@ -2,6 +2,11 @@
 .pos-page {
   --cart-width: 390px;
 }
+.pos-page .field,
+.pos-page .MuiFormControl-root {
+  min-width: 0;
+  width: 100%;
+}
 .pos-mode-tabs {
   border-color: var(--border-color);
   border-radius: var(--radius-xs);
@@ -37,12 +42,13 @@
 .pos-search {
   margin-block: var(--space-4);
   gap: var(--space-2);
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   display: grid;
 }
 .pos-search > .MuiButton-root,
 .pickup-scanner__form > .MuiButton-root {
+  width: 100%;
   height: var(--control-height);
   min-height: var(--control-height);
 }
@@ -170,6 +176,12 @@
 }
 .pos-cart-item__head {
   margin-bottom: var(--space-3);
+  align-items: stretch;
+  display: grid;
+}
+.pos-cart-item__head .field,
+.pos-cart-item__head .MuiFormControl-root {
+  width: 100%;
 }
 .pos-cart-item__head strong,
 .pos-cart-item__head span {
@@ -219,6 +231,24 @@
 .pos-customer__status {
   align-items: center;
 }
+.customer-picker,
+.customer-picker__results {
+  gap: var(--space-3);
+  display: grid;
+}
+.customer-picker__result {
+  padding: var(--space-3) !important;
+  justify-content: space-between !important;
+  text-align: right !important;
+}
+.customer-picker__result > span {
+  min-width: 0;
+  gap: var(--space-1);
+  display: grid;
+}
+.customer-picker__result small {
+  color: var(--text-secondary);
+}
 .pos-summary {
   padding-block: var(--space-3);
   gap: var(--space-2);
@@ -227,15 +257,17 @@
   display: grid;
 }
 .pos-summary > div {
-  justify-content: space-between;
-  align-items: center;
+  align-items: stretch;
   gap: var(--space-2);
   text-align: right;
   font-size: 0.8125rem;
-  display: flex;
+  display: grid;
 }
 .pos-summary__discount-field {
-  width: 132px;
+  width: 100%;
+}
+.pos-summary__discount-field .MuiFormControl-root {
+  width: 100%;
 }
 .pos-summary__total {
   padding-top: var(--space-2);
@@ -296,7 +328,7 @@
 .pickup-scanner__form {
   margin-top: var(--space-5);
   gap: var(--space-2);
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   display: grid;
 }
@@ -323,7 +355,7 @@
 }
 .quick-payment__methods {
   gap: var(--space-2);
-  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   display: grid;
 }
 .number-preview-summary {
@@ -412,8 +444,14 @@
   border-radius: var(--radius-xs);
   background: var(--color-surface);
 }
+.pickup-dialog {
+  gap: var(--space-4);
+  display: grid;
+}
+.pickup-dialog .a4-grid--two {
+  grid-template-columns: minmax(0, 1fr);
+}
 .pickup-items {
-  margin-top: var(--space-3);
   gap: var(--space-2);
   display: grid;
 }
@@ -427,6 +465,27 @@
   background: var(--color-surface-alt);
   text-align: right;
   display: flex;
+}
+.pickup-item__details,
+.pickup-item__stock {
+  min-width: 0;
+  gap: 3px;
+  display: grid;
+}
+.pickup-item__details > span {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+.pickup-item__details > strong {
+  overflow-wrap: anywhere;
+}
+.pickup-item__stock {
+  flex: 0 0 auto;
+  text-align: left;
+}
+.pickup-item__stock > span {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
 }
 .pickup-dialog__divider {
   margin-block: var(--space-4);

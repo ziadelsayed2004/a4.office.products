@@ -10,6 +10,8 @@ import {
   withIdempotency,
 } from '../../utils/financial.js';
 import { insertPayments, validateSplitPayments } from '../payments/payments.service.js';
+import { resolveCustomerForPreorder } from '../customers/customers.service.js';
+import { normalizeCustomerPhone } from '../../utils/customerPhone.js';
 import { PRODUCT_POLICIES } from '../products/products.service.js';
 import { executeReturnAuthorization } from '../returnAuthorizations/returnAuthorizations.service.js';
 
@@ -156,6 +158,8 @@ function saleReceiptSnapshot({
 export async function checkoutOrder({
   cashierId,
   customerId,
+  customerName,
+  customerPhone,
   items,
   discount,
   payments,
@@ -165,6 +169,8 @@ export async function checkoutOrder({
   const parsedDiscount = requirePiasters(discount ?? 0, 'discount');
   const payload = {
     customerId: customerId || null,
+    customerName: String(customerName || '').trim(),
+    customerPhone: normalizeCustomerPhone(customerPhone),
     items: requestItems,
     discount: parsedDiscount,
     payments,
@@ -179,6 +185,13 @@ export async function checkoutOrder({
           requireInteger(Number(customerId), 'customerId', { min: 1 }),
         ]);
         if (!customer) throw new AppError('Customer not found.', 404, 'CUSTOMER_NOT_FOUND');
+      } else {
+        const resolved = await resolveCustomerForPreorder(
+          { name: payload.customerName, phone: payload.customerPhone },
+          { userId: cashierId, shiftId: shift.id },
+          connection
+        );
+        customer = resolved.customer;
       }
 
       const detailedItems = [];

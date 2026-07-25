@@ -92,6 +92,7 @@ export async function lookupCashierInvoicesController(req, res, next) {
         token: req.query.token,
         invoiceNumber: req.query.invoiceNumber,
         receiptNumber: req.query.receiptNumber,
+        customer: req.query.customer,
         ownShift: req.query.ownShift === 'true',
         shiftId: req.query.shiftId,
         limit: req.query.limit,
@@ -108,11 +109,12 @@ export async function lookupCashierInvoicesController(req, res, next) {
 export async function getCashierInvoiceController(req, res, next) {
   try {
     const credential =
-      req.query.token || req.query.invoiceNumber || req.query.receiptNumber
+      req.query.token || req.query.invoiceNumber || req.query.receiptNumber || req.query.customer
         ? {
             token: req.query.token,
             invoiceNumber: req.query.invoiceNumber,
             receiptNumber: req.query.receiptNumber,
+            customer: req.query.customer,
           }
         : null;
     const data = await invoicesService.getInvoiceDetail(req.params.id, req.user, { credential });

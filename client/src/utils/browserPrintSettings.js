@@ -5,6 +5,7 @@ const BOOLEAN_KEYS = [
   'print_show_customer',
   'print_show_price_tier',
   'print_show_qr',
+  'print_show_contact_qr',
 ];
 
 export const PRINTER_SETTINGS_UNAVAILABLE_MESSAGE =
@@ -22,6 +23,8 @@ export const FAIL_CLOSED_BROWSER_PRINT_SETTINGS = Object.freeze({
   print_show_customer: 'false',
   print_show_price_tier: 'false',
   print_show_qr: 'false',
+  print_show_contact_qr: 'false',
+  contact_qr_url: '',
   qr_printer_width: '50',
   qr_printer_height: '25',
   qr_label_count: '1',
@@ -45,6 +48,7 @@ export function normalizeBrowserPrintSettings(settings) {
     receipt_copies: boundedInteger(value.receipt_copies, 1, 20, 1),
     receipt_printer_header: safeText(value.receipt_printer_header),
     receipt_printer_footer: safeText(value.receipt_printer_footer),
+    contact_qr_url: safeText(value.contact_qr_url),
     qr_label_count: boundedInteger(value.qr_label_count, 1, 500, 1),
   };
 

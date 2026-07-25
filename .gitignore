@@ -8,6 +8,7 @@ yarn-error.log*
 client/dist/
 client/dist-ssr/
 coverage/
+release/
 .coverage/
 .cache/
 **/.vite/

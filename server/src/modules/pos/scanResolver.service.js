@@ -68,12 +68,16 @@ async function resolvePreorder(preorderId, connection) {
   const preorder = await connection.get(
     `SELECT p.id, p.preorder_number, p.status, p.shift_id, p.cashier_id,
             p.customer_name_snapshot, p.customer_phone_snapshot,
+            COALESCE(NULLIF(p.customer_name_snapshot, ''), c.name) AS customer_name,
+            COALESCE(NULLIF(p.customer_phone_snapshot, ''), c.phone) AS customer_phone,
             p.subtotal, p.discount, p.total_amount, p.deposit_required,
             p.deposit_paid, p.remaining_amount, p.pickup_method,
             p.expected_pickup_date, p.notes, p.qr_pickup_token,
             p.pickup_order_id, p.created_at, p.updated_at,
             u.name AS cashier_name
-       FROM preorders p JOIN users u ON u.id = p.cashier_id
+       FROM preorders p
+       JOIN users u ON u.id = p.cashier_id
+       LEFT JOIN customers c ON c.id = p.customer_id
       WHERE p.id = ?;`,
     [preorderId]
   );
@@ -93,14 +97,19 @@ async function resolvePreorder(preorderId, connection) {
     [preorder.id]
   );
   const sufficientStock = items.every((item) => item.stock_on_hand >= item.quantity);
-  const canPickup = preorder.status === 'READY_FOR_PICKUP' && sufficientStock;
+  const canPickup =
+    ['DEPOSIT_PAID_WAITING_STOCK', 'READY_FOR_PICKUP'].includes(preorder.status) && sufficientStock;
+  const normalizedItems = items.map((item) => ({
+    ...item,
+    stock: Number(item.stock_on_hand || 0),
+  }));
   return {
     type: 'preorder',
     action: canPickup ? 'PICKUP_REVIEW' : 'READ_ONLY',
     data: {
       preorder: { ...preorder, canPickup },
       canPickup,
-      items,
+      items: normalizedItems,
     },
   };
 }

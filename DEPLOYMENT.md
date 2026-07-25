@@ -26,17 +26,16 @@ sudo DOMAIN_NAME=a4office.cloud ./deploy.sh
 
 ```bash
 cd /root/a4-office
-git reset --hard
-git pull origin main
+git fetch --all --prune
+git pull --ff-only
 chmod +x deploy.sh
 sed -i -e 's/\r$//' deploy.sh
 sudo DOMAIN_NAME=a4office.cloud ./deploy.sh
 ```
 
-`git reset --hard` يحذف أي تعديلات محلية على ملفات Git في نسخة السيرفر، لذلك استخدم
-هذه الأوامر على نسخة الإنتاج فقط بعد رفع التعديلات المطلوبة إلى فرع `main`. لا يحذف
-السكربت قاعدة SQLite أو ملف `.env`، ويأخذ نسخة احتياطية متحققة من قاعدة البيانات قبل
-تشغيل migrations.
+يتوقف `git pull --ff-only` إذا كانت نسخة السيرفر تحتوي تعديلات محلية أو تاريخاً متعارضاً بدلاً
+من حذفها. ارفع التعديلات المطلوبة إلى فرع النشر أولاً. لا يحذف النشر المعتاد قاعدة SQLite أو
+ملف `.env`، ويأخذ نسخة احتياطية متحققة قبل تشغيل migrations.
 
 قبل أي migration ينشئ السكربت نسخة SQLite ويتحقق من سلامتها. بعد ذلك يشغّل `npm ci` لكل الحزم، مجموعة الفحوصات الكاملة، build، migrations، ثم يعيد تشغيل Nginx وPM2 ويتحقق من الصحة محليًا وعبر HTTPS.
 
@@ -80,11 +79,23 @@ curl -fsS https://a4office.cloud/api/health
 
 ```bash
 cd /root/a4-office
-RESET_DATABASE=true DOMAIN_NAME=a4office.cloud ./deploy.sh
+git fetch --all --prune
+git pull --ff-only
+chmod +x deploy.sh
+sudo env RESET_DATABASE=true PURGE_DATABASE_BACKUPS=true DOMAIN_NAME=a4office.cloud ./deploy.sh
 ```
 
-لا تضف `RESET_DATABASE=true` إلى أوامر التحديث المعتادة؛ غيابه يعني الحفاظ على قاعدة
-الإنتاج وأخذ نسخة احتياطية قبل migrations.
+يطلب السكربت كتابة `DELETE ALL A4 DATA` قبل حذف قاعدة الإنتاج وكل ملفات SQLite داخل
+`/root/a4-office/backups`، ثم يطلب بيانات أول Admin وكلمة مروره بشكل سري. لا تضف
+`RESET_DATABASE=true` أو `PURGE_DATABASE_BACKUPS=true` إلى أوامر التحديث المعتادة.
+
+بعد الانتهاء تحقق بالأوامر:
+
+```bash
+curl -fsS https://a4office.cloud/api/health
+sudo -u root -H pm2 status
+sudo -u root -H pm2 logs a4-pos-server --lines 100
+```
 
 ## Rollback
 

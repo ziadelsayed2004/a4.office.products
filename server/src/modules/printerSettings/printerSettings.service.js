@@ -10,10 +10,12 @@ const DEFAULT_SETTINGS = Object.freeze({
   print_show_customer: 'true',
   print_show_price_tier: 'true',
   print_show_qr: 'true',
+  print_show_contact_qr: 'false',
+  contact_qr_url: '',
   receipt_copies: '1',
   auto_print_sale: 'true',
   auto_print_preorder_deposit: 'true',
-  auto_print_preorder_pickup: 'true',
+  auto_print_preorder_pickup: 'false',
   qr_printer_width: '50',
   qr_printer_height: '25',
   qr_label_count: '1',
@@ -24,6 +26,7 @@ const BOOLEAN_KEYS = new Set([
   'print_show_customer',
   'print_show_price_tier',
   'print_show_qr',
+  'print_show_contact_qr',
   'auto_print_sale',
   'auto_print_preorder_deposit',
   'auto_print_preorder_pickup',
@@ -77,6 +80,41 @@ function normalizeSettings(settingsMap, current) {
     if (normalized[key] !== undefined && normalized[key].length > 300) {
       throw new AppError(`${key} cannot exceed 300 characters.`, 400, 'INVALID_PRINT_TEXT');
     }
+  }
+  if (normalized.contact_qr_url !== undefined) {
+    if (normalized.contact_qr_url.length > 2048) {
+      throw new AppError(
+        'Contact QR URL cannot exceed 2048 characters.',
+        400,
+        'INVALID_CONTACT_QR_URL'
+      );
+    }
+    if (normalized.contact_qr_url) {
+      let parsed;
+      try {
+        parsed = new URL(normalized.contact_qr_url);
+      } catch {
+        throw new AppError(
+          'Contact QR URL must be a valid HTTPS URL.',
+          400,
+          'INVALID_CONTACT_QR_URL'
+        );
+      }
+      if (parsed.protocol !== 'https:') {
+        throw new AppError('Contact QR URL must use HTTPS.', 400, 'INVALID_CONTACT_QR_URL');
+      }
+      normalized.contact_qr_url = parsed.toString();
+    }
+  }
+  const showContactQr =
+    normalized.print_show_contact_qr ?? current.print_show_contact_qr ?? 'false';
+  const contactQrUrl = normalized.contact_qr_url ?? current.contact_qr_url ?? '';
+  if (showContactQr === 'true' && !contactQrUrl) {
+    throw new AppError(
+      'A valid HTTPS contact URL is required when contact QR is enabled.',
+      400,
+      'CONTACT_QR_URL_REQUIRED'
+    );
   }
   if (normalized.receipt_copies !== undefined) {
     const copies = Number(normalized.receipt_copies);

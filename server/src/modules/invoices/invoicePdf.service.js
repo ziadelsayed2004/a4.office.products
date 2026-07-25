@@ -124,11 +124,21 @@ export async function buildInvoicePdfDocument(invoice, settings) {
   const showCustomer = booleanSetting(settings.print_show_customer);
   const showPriceTier = booleanSetting(settings.print_show_price_tier);
   const showQr = booleanSetting(settings.print_show_qr);
+  const showContactQr = booleanSetting(settings.print_show_contact_qr);
+  const contactQrUrl = first(settings.contact_qr_url);
   const width = receiptWidth(settings);
   const qrToken = first(receipt.qr_token, snapshot.qrToken, snapshot.qr_token, invoice.qr_token);
   const qrSvg =
     showQr && qrToken
       ? await QRCode.toString(String(qrToken), {
+          type: 'svg',
+          margin: 1,
+          errorCorrectionLevel: 'M',
+        })
+      : '';
+  const contactQrSvg =
+    showContactQr && contactQrUrl
+      ? await QRCode.toString(String(contactQrUrl), {
           type: 'svg',
           margin: 1,
           errorCorrectionLevel: 'M',
@@ -154,6 +164,26 @@ export async function buildInvoicePdfDocument(invoice, settings) {
     snapshot.invoice_number,
     invoice.invoice_number
   );
+  const preorderNumber = first(
+    snapshot.preorderNumber,
+    snapshot.preorder_number,
+    invoice.preorder?.preorder_number
+  );
+  const depositPaid = first(
+    snapshot.depositPaid,
+    snapshot.deposit_paid,
+    invoice.preorder?.deposit_paid
+  );
+  const remainingAmount = first(
+    snapshot.remainingAmount,
+    snapshot.remaining_amount,
+    invoice.preorder?.remaining_amount
+  );
+  const pickupAmount = first(
+    snapshot.pickupAmount,
+    snapshot.pickup_amount,
+    invoice.preorder?.pickup_amount
+  );
   const cashier = first(snapshot.cashierName, snapshot.cashier_name, invoice.cashier_name);
   const createdAt = first(
     receipt.created_at,
@@ -167,6 +197,7 @@ export async function buildInvoicePdfDocument(invoice, settings) {
   const meta = [
     receiptRow('رقم الإيصال', receiptNumber, { ltr: true }),
     receiptRow('رقم الفاتورة', invoiceNumber, { ltr: true }),
+    preorderNumber ? receiptRow('رقم الحجز', preorderNumber, { ltr: true }) : '',
     receiptRow('التاريخ', dateTime(createdAt)),
     cashier ? receiptRow('الكاشير', cashier) : '',
     showCustomer && customerName ? receiptRow('العميل', customerName) : '',
@@ -199,15 +230,15 @@ export async function buildInvoicePdfDocument(invoice, settings) {
 
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${escapeHtml(`فاتورة ${invoiceNumber}`)}</title>
   <style>
-  @page{margin:0}*{box-sizing:border-box}html,body{width:${width}mm;margin:0;background:#fff;color:#000}body{font-family:Cairo,"Noto Kufi Arabic","Noto Sans Arabic",Arial,sans-serif;direction:rtl}.thermal-receipt{width:${width}mm;margin:0;padding:4mm;color:#000;background:#fff;text-align:right}.thermal-receipt__brand{padding-bottom:2.5mm;display:grid;justify-items:center;gap:1mm;border-bottom:1px dashed #000;text-align:center}.thermal-receipt__brand img{width:16mm;height:16mm;object-fit:contain}.thermal-receipt__brand strong{font-size:10pt}.thermal-receipt__brand b{font-size:9pt}.thermal-receipt__meta,.thermal-receipt__items,.thermal-receipt__totals,.thermal-receipt__payments{padding-block:2mm;border-bottom:1px dashed #000}.thermal-receipt__row{padding-block:.8mm;display:flex;justify-content:space-between;align-items:flex-start;gap:2mm;font-size:8pt;break-inside:avoid}.thermal-receipt__row>span{min-width:0;flex:1 1 35%;overflow-wrap:anywhere}.thermal-receipt__row>strong{min-width:0;max-width:65%;flex:1 1 auto;text-align:left;overflow-wrap:anywhere;word-break:break-word}.thermal-receipt__item,.thermal-receipt__payment{padding-block:1.5mm;border-bottom:1px dotted #777;break-inside:avoid}.thermal-receipt__item:last-child,.thermal-receipt__payment:last-of-type{border-bottom:0}.thermal-receipt__item-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:2mm;font-size:8pt}.thermal-receipt__item-heading strong{min-width:0;overflow-wrap:anywhere}.thermal-receipt__item-heading span,.thermal-receipt__item small{color:#222;font-size:6.5pt}.thermal-receipt__return{display:block;font-weight:800}.thermal-receipt__grand-total{margin-top:1mm;padding-top:1.5mm;border-top:1px dashed #000;font-size:10pt}.thermal-receipt__payments>strong{display:block;margin-bottom:1mm;font-size:8pt}.thermal-receipt__qr{padding-top:3mm;display:grid;justify-items:center;gap:1mm;text-align:center;break-inside:avoid}.thermal-receipt__qr svg{width:29mm;height:29mm}.thermal-receipt__qr span,.thermal-receipt__qr code{max-width:100%;overflow-wrap:anywhere;font-size:6.5pt}.thermal-receipt__footer{margin-top:3mm;font-size:7pt;text-align:center;break-inside:avoid}.thermal-receipt__footer p{margin:0 0 1mm}
+  @page{margin:0}*{box-sizing:border-box}html,body{width:${width}mm;height:auto;min-height:0;margin:0;overflow:visible;background:#fff;color:#000}body{font-family:Cairo,"Noto Kufi Arabic","Noto Sans Arabic",Arial,sans-serif;direction:rtl}.thermal-receipt{display:block;width:${width}mm;height:auto;min-height:0;max-height:none;margin:0;padding:4mm;overflow:visible;color:#000;background:#fff;text-align:right;break-inside:avoid-page;page-break-inside:avoid}.thermal-receipt__brand{padding-bottom:2.5mm;display:grid;justify-items:center;gap:1mm;border-bottom:1px dashed #000;text-align:center}.thermal-receipt__brand img{width:16mm;height:16mm;object-fit:contain}.thermal-receipt__brand strong{font-size:10pt}.thermal-receipt__brand b{font-size:9pt}.thermal-receipt__contact-qr{display:grid;justify-items:center;gap:.5mm;max-width:100%;font-size:6.5pt;break-inside:avoid}.thermal-receipt__contact-qr svg{width:23mm;height:23mm}.thermal-receipt__meta,.thermal-receipt__items,.thermal-receipt__totals,.thermal-receipt__payments{padding-block:2mm;border-bottom:1px dashed #000}.thermal-receipt__row{padding-block:.8mm;display:flex;justify-content:space-between;align-items:flex-start;gap:2mm;font-size:8pt;break-inside:avoid}.thermal-receipt__row>span{min-width:0;flex:1 1 35%;overflow-wrap:anywhere}.thermal-receipt__row>strong{min-width:0;max-width:65%;flex:1 1 auto;text-align:left;overflow-wrap:anywhere;word-break:break-word}.thermal-receipt__item,.thermal-receipt__payment{padding-block:1.5mm;border-bottom:1px dotted #777;break-inside:avoid}.thermal-receipt__item:last-child,.thermal-receipt__payment:last-of-type{border-bottom:0}.thermal-receipt__item-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:2mm;font-size:8pt}.thermal-receipt__item-heading strong{min-width:0;overflow-wrap:anywhere}.thermal-receipt__item-heading span,.thermal-receipt__item small{color:#222;font-size:6.5pt}.thermal-receipt__return{display:block;font-weight:800}.thermal-receipt__grand-total{margin-top:1mm;padding-top:1.5mm;border-top:1px dashed #000;font-size:10pt}.thermal-receipt__payments>strong{display:block;margin-bottom:1mm;font-size:8pt}.thermal-receipt__qr{padding-top:3mm;display:grid;justify-items:center;gap:1mm;text-align:center;break-inside:avoid}.thermal-receipt__qr svg{width:29mm;height:29mm}.thermal-receipt__qr span,.thermal-receipt__qr code{max-width:100%;overflow-wrap:anywhere;font-size:6.5pt}.thermal-receipt__footer{margin-top:3mm;font-size:7pt;text-align:center;break-inside:avoid}.thermal-receipt__footer p{margin:0 0 1mm}
   </style></head><body><article class="thermal-receipt">
-    <header class="thermal-receipt__brand">${logoDataUri ? `<img src="${logoDataUri}" alt="A4 Office Products">` : ''}<strong>${escapeHtml(businessName)}</strong><b>${escapeHtml(receiptLabel(receipt.reference_type, invoice.origin))}</b></header>
+    <header class="thermal-receipt__brand">${logoDataUri ? `<img src="${logoDataUri}" alt="A4 Office Products">` : ''}<strong>${escapeHtml(businessName)}</strong>${contactQrSvg ? `<div class="thermal-receipt__contact-qr">${contactQrSvg}<span>تواصل معنا والشكاوى والاقتراحات</span></div>` : ''}<b>${escapeHtml(receiptLabel(receipt.reference_type, invoice.origin))}</b></header>
     <section class="thermal-receipt__meta">${meta}</section>
     <section class="thermal-receipt__items">${itemRows}</section>
-    <section class="thermal-receipt__totals">${receiptRow('المجموع الفرعي', money(subtotal))}${discount > 0 ? receiptRow('الخصم', `- ${money(discount)}`) : ''}${receiptRow('الإجمالي', money(total), { className: 'thermal-receipt__grand-total' })}</section>
+    <section class="thermal-receipt__totals">${receiptRow('المجموع الفرعي', money(subtotal))}${discount > 0 ? receiptRow('الخصم', `- ${money(discount)}`) : ''}${depositPaid !== undefined ? receiptRow('العربون المدفوع', money(depositPaid)) : ''}${pickupAmount !== undefined ? receiptRow('المحصل عند الاستلام', money(pickupAmount)) : ''}${remainingAmount !== undefined ? receiptRow('المتبقي', money(remainingAmount)) : ''}${receiptRow('الإجمالي', money(total), { className: 'thermal-receipt__grand-total' })}</section>
     ${payments.length ? `<section class="thermal-receipt__payments"><strong>المدفوعات</strong>${paymentRows}${receiptRow('إجمالي المسجل', money(totalPaid))}</section>` : ''}
     ${qrSvg ? `<section class="thermal-receipt__qr">${qrSvg}<span>امسح الرمز لفتح الفاتورة بأمان</span><code dir="ltr">${escapeHtml(qrToken)}</code></section>` : ''}
-    <footer class="thermal-receipt__footer"><p>${escapeHtml(footer)}</p><span>عدد طلبات الطباعة: ${number(receipt.print_count)}</span></footer>
+    <footer class="thermal-receipt__footer"><p>${escapeHtml(footer)}</p></footer>
   </article></body></html>`;
 }
 

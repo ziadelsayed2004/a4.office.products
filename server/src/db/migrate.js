@@ -16,6 +16,8 @@ import * as baseSalePrice from './migrations/008_base_sale_price.js';
 import * as customerPhoneIdentity from './migrations/009_customer_phone_identity.js';
 import * as adminNotifications from './migrations/010_admin_notifications.js';
 import * as walletLabel from './migrations/011_wallet_label.js';
+import * as optionalPickupPrinting from './migrations/012_optional_pickup_printing.js';
+import * as contactReceiptQr from './migrations/013_contact_receipt_qr.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,6 +33,8 @@ const migrations = [
   customerPhoneIdentity,
   adminNotifications,
   walletLabel,
+  optionalPickupPrinting,
+  contactReceiptQr,
 ];
 
 async function tableExists(name) {
@@ -205,7 +209,7 @@ async function seedDefaults() {
         ('receipt_printer_footer', 'شكراً لتعاملكم معنا'),
         ('auto_print_sale', 'true'),
         ('auto_print_preorder_deposit', 'true'),
-        ('auto_print_preorder_pickup', 'true');
+        ('auto_print_preorder_pickup', 'false');
     `);
   });
 

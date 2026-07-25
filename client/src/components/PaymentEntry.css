@@ -26,3 +26,18 @@
 .payment-entry__fields .MuiFormControl-root {
   width: 100%;
 }
+
+.payment-entry__change {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px dashed var(--a4-border);
+  border-radius: 10px;
+  justify-content: space-between;
+  align-items: center;
+  display: flex;
+}
+
+.payment-entry__change strong {
+  color: var(--a4-primary);
+  font-size: 1.05rem;
+}

@@ -21,6 +21,8 @@ import {
   AddRounded,
   CloseRounded,
   PointOfSaleRounded,
+  PersonSearchRounded,
+  PrintRounded,
   QrCodeScannerRounded,
   ReceiptLongRounded,
   RemoveRounded,
@@ -38,6 +40,7 @@ import {
 } from '../components/PaymentEntry.jsx';
 import { Field } from '../components/forms/Field.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
+import { LoadingState } from '../components/LoadingState.jsx';
 import { AppSnackbar } from '../components/AppSnackbar.jsx';
 import { CashierReturnWizard } from '../components/CashierReturnWizard.jsx';
 import { money, number, statusLabel } from '../utils/formatters.js';
@@ -113,6 +116,7 @@ export default function POS() {
   const searchTimer = useRef(null);
   const customerLookupSequence = useRef(0);
   const customerLookupTimer = useRef(null);
+  const customerSearchTimer = useRef(null);
   const scanQueue = useRef(Promise.resolve());
   const draftHydrated = useRef(false);
   const [mode, setMode] = useState(MODES.SALE);
@@ -134,13 +138,17 @@ export default function POS() {
     pickupMethod: 'walk_in',
   });
   const [customerLookup, setCustomerLookup] = useState({ status: 'idle', customer: null });
+  const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerResults, setCustomerResults] = useState([]);
+  const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
   const [openingInput, setOpeningInput] = useState('0.00');
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [pickupOpen, setPickupOpen] = useState(false);
   const [pickupData, setPickupData] = useState(null);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
-  const [splitPayment, setSplitPayment] = useState(false);
   const [quickMethodCode, setQuickMethodCode] = useState('');
+  const [pickupMethodCode, setPickupMethodCode] = useState('');
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
@@ -154,10 +162,17 @@ export default function POS() {
     [paymentMethods]
   );
   const selectedMethodName = useMemo(() => {
-    if (splitPayment) return 'دفع مقسم';
     const selected = activeMethods.find((method) => paymentMethodCode(method) === quickMethodCode);
     return selected?.name_ar || selected?.name || '';
-  }, [activeMethods, quickMethodCode, splitPayment]);
+  }, [activeMethods, quickMethodCode]);
+  const selectedCheckoutMethods = useMemo(
+    () => activeMethods.filter((method) => paymentMethodCode(method) === quickMethodCode),
+    [activeMethods, quickMethodCode]
+  );
+  const selectedPickupMethods = useMemo(
+    () => activeMethods.filter((method) => paymentMethodCode(method) === pickupMethodCode),
+    [activeMethods, pickupMethodCode]
+  );
 
   useEffect(() => {
     if (!checkoutOpen || success || ![MODES.SALE, MODES.PREORDER].includes(mode)) {
@@ -227,11 +242,18 @@ export default function POS() {
   const due = mode === MODES.PREORDER ? selectedDeposit : total;
   const checkoutPaymentsComplete =
     (mode !== MODES.PREORDER || preorderDepositValid) &&
-    paymentRowsAreComplete(activeMethods, payments, due);
+    paymentRowsAreComplete(selectedCheckoutMethods, payments, due);
   const pickupPaymentsComplete = pickupData
-    ? paymentRowsAreComplete(activeMethods, pickupPayments, pickupData.preorder.remaining_amount)
+    ? paymentRowsAreComplete(
+        selectedPickupMethods,
+        pickupPayments,
+        pickupData.preorder.remaining_amount
+      )
     : false;
-  const preorderCustomerReady =
+  const pickupHasEnoughStock =
+    Boolean(pickupData?.items?.length) &&
+    pickupData.items.every((item) => Number(item.stock) >= Number(item.quantity));
+  const customerReady =
     customerLookup.status === 'found' ||
     (customerLookup.status === 'not_found' && Boolean(customer.customerName.trim()));
 
@@ -240,6 +262,49 @@ export default function POS() {
     customerLookupSequence.current += 1;
     setCustomerLookup({ status: 'idle', customer: null });
   };
+
+  const openCustomerPicker = () => {
+    if (![MODES.SALE, MODES.PREORDER].includes(mode)) return;
+    setCustomerSearch('');
+    setCustomerResults([]);
+    setCustomerPickerOpen(true);
+  };
+
+  const chooseCustomer = (selectedCustomer) => {
+    clearTimeout(customerLookupTimer.current);
+    customerLookupSequence.current += 1;
+    setCustomer({
+      customerName: selectedCustomer.name,
+      customerPhone: selectedCustomer.phone,
+      pickupMethod: 'walk_in',
+    });
+    setCustomerLookup({ status: 'found', customer: selectedCustomer });
+    setCustomerPickerOpen(false);
+  };
+
+  useEffect(() => {
+    clearTimeout(customerSearchTimer.current);
+    if (!customerPickerOpen || !customerSearch.trim()) {
+      setCustomerResults([]);
+      setCustomerSearchLoading(false);
+      return undefined;
+    }
+    setCustomerSearchLoading(true);
+    customerSearchTimer.current = setTimeout(async () => {
+      try {
+        const response = await api.get(
+          `/api/customers?q=${encodeURIComponent(customerSearch.trim())}`
+        );
+        setCustomerResults(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        setCustomerResults([]);
+        setToast({ severity: 'error', message: error.message });
+      } finally {
+        setCustomerSearchLoading(false);
+      }
+    }, 250);
+    return () => clearTimeout(customerSearchTimer.current);
+  }, [customerPickerOpen, customerSearch]);
 
   const draftKey = (draftMode) =>
     `${DRAFT_PREFIX}.${user?.id || 'anonymous'}.${currentShift?.id || 'no-shift'}.${draftMode}`;
@@ -318,7 +383,11 @@ export default function POS() {
     const requestNumber = ++customerLookupSequence.current;
     const phone = customer.customerPhone;
 
-    if (mode !== MODES.PREORDER || currentShift?.status !== 'OPEN' || !phone.trim()) {
+    if (
+      ![MODES.SALE, MODES.PREORDER].includes(mode) ||
+      currentShift?.status !== 'OPEN' ||
+      !phone.trim()
+    ) {
       setCustomerLookup({ status: 'idle', customer: null });
       return;
     }
@@ -504,8 +573,8 @@ export default function POS() {
       saved?.customer || { customerName: '', customerPhone: '', pickupMethod: 'walk_in' }
     );
     setPayments({});
-    setSplitPayment(false);
     setQuickMethodCode('');
+    setPickupMethodCode('');
     setMobileCartOpen(false);
     requestAnimationFrame(() => searchRef.current?.focus());
   };
@@ -520,8 +589,15 @@ export default function POS() {
         navigate(`/invoices?token=${encodeURIComponent(clean)}`);
       } else if (resolved.type === 'preorder') {
         const value = resolved.data.preorder ? resolved.data : resolved.raw;
-        setPickupData(value);
+        setPickupData({
+          ...value,
+          items: (value.items || []).map((item) => ({
+            ...item,
+            stock: Number(item.stock ?? item.stock_on_hand ?? 0),
+          })),
+        });
         setPickupPayments({});
+        setPickupMethodCode('');
         setPickupKey(createIdempotencyKey('pickup'));
         setPickupOpen(true);
       } else if (resolved.type === 'return_approval_card') {
@@ -593,7 +669,7 @@ export default function POS() {
     if (!cart.length) return;
     if (discount > subtotal)
       return setToast({ severity: 'error', message: 'الخصم أكبر من الإجمالي.' });
-    if (mode === MODES.PREORDER) {
+    if ([MODES.SALE, MODES.PREORDER].includes(mode)) {
       if (!isValidCustomerPhone(customer.customerPhone))
         return setToast({
           severity: 'error',
@@ -605,6 +681,8 @@ export default function POS() {
         return setToast({ severity: 'warning', message: 'انتظر حتى يكتمل البحث عن العميل.' });
       if (customerLookup.status === 'not_found' && !customer.customerName.trim())
         return setToast({ severity: 'error', message: 'اسم العميل مطلوب للرقم الجديد.' });
+    }
+    if (mode === MODES.PREORDER) {
       if (depositInputError) return setToast({ severity: 'error', message: depositInputError });
       if (!preorderDepositValid)
         return setToast({
@@ -616,7 +694,6 @@ export default function POS() {
         });
     }
     setPayments({});
-    setSplitPayment(false);
     setQuickMethodCode('');
     setRequestKey(createIdempotencyKey(mode));
     setCheckoutOpen(true);
@@ -627,13 +704,38 @@ export default function POS() {
     const row = { amount: piastersToInput(due) };
     if (method.accepts_cash_received) row.cashReceived = piastersToInput(due);
     setQuickMethodCode(code);
-    setSplitPayment(false);
     setPayments({ [code]: row });
     setRequestKey(createIdempotencyKey(mode));
   };
 
+  const selectPickupPayment = (method) => {
+    const code = paymentMethodCode(method);
+    const dueAmount = Number(pickupData?.preorder?.remaining_amount || 0);
+    const row = { amount: piastersToInput(dueAmount) };
+    if (method.accepts_cash_received) row.cashReceived = piastersToInput(dueAmount);
+    setPickupMethodCode(code);
+    setPickupPayments({ [code]: row });
+    setPickupKey(createIdempotencyKey('pickup'));
+  };
+
   useEffect(() => {
     const handleShortcut = (event) => {
+      const shortcutCode = String(event.code || '');
+      const shortcutKey = String(event.key || '').toLowerCase();
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        (shortcutCode === 'KeyS' ||
+          shortcutCode === 'KeyK' ||
+          shortcutKey === 's' ||
+          shortcutKey === 'k') &&
+        [MODES.SALE, MODES.PREORDER].includes(mode)
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+        openCustomerPicker();
+        return;
+      }
       const target = event.target;
       const isTyping =
         target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName);
@@ -652,8 +754,8 @@ export default function POS() {
       else return;
       event.preventDefault();
     };
-    globalThis.addEventListener?.('keydown', handleShortcut);
-    return () => globalThis.removeEventListener?.('keydown', handleShortcut);
+    document.addEventListener('keydown', handleShortcut, { capture: true });
+    return () => document.removeEventListener('keydown', handleShortcut, { capture: true });
   });
 
   const completeCheckout = async () => {
@@ -694,6 +796,11 @@ export default function POS() {
           : await api.post(
               '/api/pos/orders/checkout',
               {
+                ...(customerLookup.status === 'found'
+                  ? { customerId: customerLookup.customer.id }
+                  : {}),
+                customerPhone: customer.customerPhone,
+                customerName: customer.customerName,
                 items: itemPayload,
                 discount,
                 payments: paymentPayload,
@@ -705,10 +812,8 @@ export default function POS() {
       removeDraft(mode);
       setCart([]);
       setPayments({});
-      if (mode === MODES.PREORDER) {
-        invalidateCustomerLookup();
-        setCustomer({ customerName: '', customerPhone: '', pickupMethod: 'walk_in' });
-      }
+      invalidateCustomerLookup();
+      setCustomer({ customerName: '', customerPhone: '', pickupMethod: 'walk_in' });
       await search('');
       const autoKey = mode === MODES.PREORDER ? 'auto_print_preorder_deposit' : 'auto_print_sale';
       if (String(printSettings[autoKey] ?? 'false') === 'true' && result.receipt_id) {
@@ -766,6 +871,23 @@ export default function POS() {
       }
     } catch (error) {
       setToast({ severity: 'error', message: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const printSuccessReceipt = async () => {
+    if (!success?.receipt_id || loading) return;
+    setLoading(true);
+    try {
+      await printReceiptInFrame({
+        receiptId: success.receipt_id,
+        copies: printSettings.copies || printSettings.receipt_copies,
+        isReprint: false,
+      });
+      setToast({ message: 'تم إرسال الإيصال للطباعة.' });
+    } catch (error) {
+      setToast({ severity: 'error', message: `تعذرت طباعة الإيصال: ${error.message}` });
     } finally {
       setLoading(false);
     }
@@ -1030,8 +1152,16 @@ export default function POS() {
                 <EmptyState title="السلة فارغة" description="أضف منتجاً من النتائج." />
               )}
             </div>
-            {mode === MODES.PREORDER && (
+            {[MODES.SALE, MODES.PREORDER].includes(mode) && (
               <div className="pos-customer">
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  startIcon={<PersonSearchRounded />}
+                  onClick={openCustomerPicker}
+                >
+                  بحث سريع عن عميل (Ctrl + K)
+                </Button>
                 <Field label="رقم الهاتف" required>
                   <TextField
                     value={customer.customerPhone}
@@ -1075,7 +1205,7 @@ export default function POS() {
                 {customerLookup.status === 'not_found' && (
                   <>
                     <Alert severity="info" className="pos-customer__status">
-                      رقم جديد؛ أدخل اسم العميل وسيُنشأ سجله عند تأكيد الحجز.
+                      رقم جديد؛ أدخل اسم العميل وسيُنشأ سجله عند تأكيد العملية.
                     </Alert>
                     <Field label="اسم العميل" required>
                       <TextField
@@ -1153,8 +1283,7 @@ export default function POS() {
               startIcon={<ReceiptLongRounded />}
               onClick={startCheckout}
               disabled={
-                !cart.length ||
-                (mode === MODES.PREORDER && (!preorderCustomerReady || !preorderDepositValid))
+                !cart.length || !customerReady || (mode === MODES.PREORDER && !preorderDepositValid)
               }
             >
               {mode === MODES.PREORDER ? 'تحصيل العربون وإنشاء الحجز' : 'الدفع وإصدار الإيصال'}
@@ -1239,40 +1368,19 @@ export default function POS() {
                   return (
                     <Button
                       key={code}
-                      variant={quickMethodCode === code && !splitPayment ? 'contained' : 'outlined'}
+                      variant={quickMethodCode === code ? 'contained' : 'outlined'}
                       onClick={() => selectQuickPayment(method)}
                     >
                       {method.name_ar || method.name || code} · {money(due)}
                     </Button>
                   );
                 })}
-                <Button
-                  variant={splitPayment ? 'contained' : 'outlined'}
-                  onClick={() => {
-                    setSplitPayment(true);
-                    setQuickMethodCode('');
-                    setPayments({});
-                    setRequestKey(createIdempotencyKey(mode));
-                  }}
-                >
-                  تقسيم الدفع
-                </Button>
               </div>
-              {splitPayment ? (
-                <PaymentEntry
-                  methods={activeMethods}
-                  due={due}
-                  value={payments}
-                  onChange={(value) => {
-                    setPayments(value);
-                    setRequestKey(createIdempotencyKey(mode));
-                  }}
-                />
+              {Number(due) === 0 ? (
+                <Alert severity="success">لا يوجد مبلغ مطلوب تحصيله لهذه العملية.</Alert>
               ) : quickMethodCode ? (
                 <PaymentEntry
-                  methods={activeMethods.filter(
-                    (method) => paymentMethodCode(method) === quickMethodCode
-                  )}
+                  methods={selectedCheckoutMethods}
                   due={due}
                   value={payments}
                   onChange={(value) => {
@@ -1281,7 +1389,7 @@ export default function POS() {
                   }}
                 />
               ) : (
-                <Alert severity="warning">لم يتم اختيار طريقة دفع تلقائيًا.</Alert>
+                <Alert severity="warning">اختر طريقة دفع واحدة لإكمال العملية.</Alert>
               )}
             </div>
           )}
@@ -1299,9 +1407,11 @@ export default function POS() {
               </Button>
               <Button
                 variant="contained"
-                onClick={() => navigate(`/receipts/${success.receipt_id}/print`)}
+                startIcon={<PrintRounded />}
+                onClick={printSuccessReceipt}
+                disabled={loading}
               >
-                عرض مستند الطباعة
+                {loading ? 'جاري الطباعة...' : 'طباعة الإيصال'}
               </Button>
             </>
           ) : (
@@ -1316,6 +1426,55 @@ export default function POS() {
               </Button>
             </>
           )}
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={customerPickerOpen}
+        onClose={() => setCustomerPickerOpen(false)}
+        fullScreen={fullScreen}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>البحث السريع عن عميل</DialogTitle>
+        <DialogContent dividers>
+          <div className="customer-picker">
+            <Field label="اسم العميل أو رقم الهاتف">
+              <TextField
+                autoFocus
+                value={customerSearch}
+                onChange={(event) => setCustomerSearch(event.target.value)}
+                placeholder="اكتب جزءًا من الاسم أو الرقم"
+              />
+            </Field>
+            {customerSearchLoading && <LoadingState label="جاري البحث عن العملاء..." />}
+            {!customerSearchLoading && customerSearch.trim() && customerResults.length === 0 && (
+              <Alert severity="info">لا يوجد عميل مسجل مطابق للبحث.</Alert>
+            )}
+            <div className="customer-picker__results">
+              {customerResults.map((result) => (
+                <Button
+                  key={result.id}
+                  variant="outlined"
+                  fullWidth
+                  className="customer-picker__result"
+                  onClick={() => chooseCustomer(result)}
+                >
+                  <span>
+                    <strong>{result.name}</strong>
+                    <small className="a4-ltr">{result.phone}</small>
+                  </span>
+                  <small>
+                    {number(result.dependency_counts?.orders || 0)} فاتورة ·{' '}
+                    {number(result.dependency_counts?.preorders || 0)} حجز
+                  </small>
+                </Button>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCustomerPickerOpen(false)}>إغلاق</Button>
         </DialogActions>
       </Dialog>
 
@@ -1347,7 +1506,12 @@ export default function POS() {
                     الحالة
                   </Typography>
                   <Typography fontWeight={800}>
-                    {statusLabel(pickupData.preorder.status)}
+                    {pickupHasEnoughStock &&
+                    ['DEPOSIT_PAID_WAITING_STOCK', 'READY_FOR_PICKUP'].includes(
+                      pickupData.preorder.status
+                    )
+                      ? 'المخزون متوفر — جاهز للاستلام'
+                      : statusLabel(pickupData.preorder.status)}
                   </Typography>
                   <Typography>المتبقي: {money(pickupData.preorder.remaining_amount)}</Typography>
                 </Paper>
@@ -1355,25 +1519,64 @@ export default function POS() {
               <div className="pickup-items">
                 {(pickupData.items || []).map((item) => (
                   <div key={item.id}>
-                    <span>
-                      {item.product_name} × {number(item.quantity)}
-                    </span>
-                    <strong className={item.stock < item.quantity ? 'stock-error' : ''}>
-                      المتاح {number(item.stock)}
-                    </strong>
+                    <div className="pickup-item__details">
+                      <strong>{item.product_name}</strong>
+                      <span className="a4-ltr">{item.product_sku || '—'}</span>
+                      <span>
+                        {number(item.quantity)} × {money(item.unit_price)} ={' '}
+                        {money(item.total_price)}
+                      </span>
+                    </div>
+                    <div className="pickup-item__stock">
+                      <span>المطلوب {number(item.quantity)}</span>
+                      <strong className={item.stock < item.quantity ? 'stock-error' : ''}>
+                        المتاح {number(item.stock)}
+                      </strong>
+                    </div>
                   </div>
                 ))}
               </div>
+              {pickupData.items?.some((item) => item.stock < item.quantity) && (
+                <Alert severity="error">
+                  لا يمكن تسليم الحجز لأن المخزون المتاح أقل من الكمية المطلوبة.
+                </Alert>
+              )}
               <Divider className="pickup-dialog__divider" />
-              <PaymentEntry
-                methods={activeMethods}
-                due={pickupData.preorder.remaining_amount}
-                value={pickupPayments}
-                onChange={(value) => {
-                  setPickupPayments(value);
-                  setPickupKey(createIdempotencyKey('pickup'));
-                }}
-              />
+              {Number(pickupData.preorder.remaining_amount) === 0 ? (
+                <Alert severity="success">الحجز مسدد بالكامل ولا يوجد مبلغ مطلوب.</Alert>
+              ) : (
+                <div className="quick-payment">
+                  <strong>اختر طريقة دفع واحدة لتحصيل المتبقي</strong>
+                  <div className="quick-payment__methods">
+                    {activeMethods.map((method) => {
+                      const code = paymentMethodCode(method);
+                      return (
+                        <Button
+                          key={code}
+                          variant={pickupMethodCode === code ? 'contained' : 'outlined'}
+                          onClick={() => selectPickupPayment(method)}
+                        >
+                          {method.name_ar || method.name || code} ·{' '}
+                          {money(pickupData.preorder.remaining_amount)}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  {pickupMethodCode ? (
+                    <PaymentEntry
+                      methods={selectedPickupMethods}
+                      due={pickupData.preorder.remaining_amount}
+                      value={pickupPayments}
+                      onChange={(value) => {
+                        setPickupPayments(value);
+                        setPickupKey(createIdempotencyKey('pickup'));
+                      }}
+                    />
+                  ) : (
+                    <Alert severity="warning">اختر طريقة الدفع لإكمال الاستلام.</Alert>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
@@ -1384,13 +1587,15 @@ export default function POS() {
             onClick={completePickup}
             disabled={
               loading ||
-              pickupData?.preorder?.status !== 'READY_FOR_PICKUP' ||
-              !pickupPaymentsComplete ||
-              pickupData?.items?.some((item) => item.stock < item.quantity)
+              !['DEPOSIT_PAID_WAITING_STOCK', 'READY_FOR_PICKUP'].includes(
+                pickupData?.preorder?.status
+              ) ||
+              (Number(pickupData?.preorder?.remaining_amount) > 0 && !pickupPaymentsComplete) ||
+              !pickupHasEnoughStock
             }
           >
-            {pickupData?.preorder?.status !== 'READY_FOR_PICKUP'
-              ? 'الحجز غير جاهز'
+            {!pickupHasEnoughStock
+              ? 'المخزون غير مكتمل'
               : loading
                 ? 'جاري التسليم...'
                 : 'تحصيل المتبقي وتسليم الحجز'}

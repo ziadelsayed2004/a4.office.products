@@ -9,6 +9,14 @@ const projectRoot = path.resolve(serverRoot, '..');
 
 const deploy = fs.readFileSync(path.join(projectRoot, 'deploy.sh'), 'utf8');
 const ecosystem = fs.readFileSync(path.join(projectRoot, 'ecosystem.config.js'), 'utf8');
+const cashierLauncher = fs.readFileSync(
+  path.join(projectRoot, 'scripts', 'windows', 'A4CashierLauncher.cs'),
+  'utf8'
+);
+const cashierBuild = fs.readFileSync(
+  path.join(projectRoot, 'scripts', 'windows', 'Build-A4CashierExe.ps1'),
+  'utf8'
+);
 const rootManifest = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
 const jwtSelector = path.join(serverRoot, 'scripts', 'select-deployment-jwt.mjs');
 const supportedNodeRange = '^20.19.0 || >=22.12.0';
@@ -45,6 +53,11 @@ assert.match(
   /^RETURN_QR_SECRET=$/m,
   'The production return QR secret placeholder must fail closed.'
 );
+assert.match(
+  fs.readFileSync(path.join(projectRoot, '.env.production.example'), 'utf8'),
+  /^BOOTSTRAP_ADMIN_PASSWORD=$/m,
+  'The production Admin bootstrap password must not have a default.'
+);
 
 for (const forbidden of [
   /chmod\s+(?:-R\s+)?777/,
@@ -75,7 +88,10 @@ for (const required of [
   "fail 'Chromium was installed but /usr/bin/chromium is unavailable.'",
   'ALLOW_DATABASE_RESET=false',
   'RESET_DATABASE="${RESET_DATABASE:-false}"',
+  'PURGE_DATABASE_BACKUPS="${PURGE_DATABASE_BACKUPS:-false}"',
+  'Type DELETE ALL A4 DATA to continue:',
   'RESET_DATABASE=true: removing the production SQLite database and sequence state.',
+  'PURGE_DATABASE_BACKUPS=true: removing stored SQLite database backups.',
   'SEED_DEMO_USERS=false',
   'BACKUP_DIR=./backups',
   'BACKUP_RETENTION=10',
@@ -113,6 +129,11 @@ assert.match(ecosystem, /NODE_ENV:\s*'production'/);
 assert.match(ecosystem, /PORT:\s*5000/);
 assert.match(ecosystem, /HOST:\s*'127\.0\.0\.1'/);
 assert.doesNotMatch(ecosystem, /ALLOW_DATABASE_RESET/);
+assert.match(cashierLauncher, /https:\/\/a4office\.cloud/);
+assert.match(cashierLauncher, /http:\/\/localhost:5173/);
+assert.doesNotMatch(cashierLauncher, /TcpClient|ResolveAppUrl/);
+assert.match(cashierBuild, /A4-Cashier-Production\.exe/);
+assert.match(cashierBuild, /A4-Cashier-Local\.exe/);
 
 function selectDeploymentJwt(candidate, environment) {
   const result = spawnSync(process.execPath, [jwtSelector], {

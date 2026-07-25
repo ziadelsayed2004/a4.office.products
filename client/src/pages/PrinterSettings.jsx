@@ -21,6 +21,7 @@ const BOOLEAN_KEYS = [
   'print_show_customer',
   'print_show_price_tier',
   'print_show_qr',
+  'print_show_contact_qr',
 ];
 
 const SUPPORTED_SETTING_KEYS = [
@@ -29,6 +30,7 @@ const SUPPORTED_SETTING_KEYS = [
   'receipt_copies',
   'receipt_printer_header',
   'receipt_printer_footer',
+  'contact_qr_url',
   ...BOOLEAN_KEYS,
   'qr_printer_width',
   'qr_printer_height',
@@ -43,10 +45,12 @@ const defaults = Object.freeze({
   receipt_printer_footer: 'شكراً لتعاملكم معنا',
   auto_print_sale: 'true',
   auto_print_preorder_deposit: 'true',
-  auto_print_preorder_pickup: 'true',
+  auto_print_preorder_pickup: 'false',
   print_show_customer: 'true',
   print_show_price_tier: 'true',
   print_show_qr: 'true',
+  print_show_contact_qr: 'false',
+  contact_qr_url: '',
   qr_printer_width: '50',
   qr_printer_height: '25',
   qr_label_count: '1',
@@ -69,6 +73,7 @@ function normalizeSettings(settings = {}) {
     receipt_printer_footer: String(
       merged.receipt_printer_footer ?? defaults.receipt_printer_footer
     ),
+    contact_qr_url: String(merged.contact_qr_url ?? '').trim(),
     qr_label_count: boundedInteger(merged.qr_label_count, 1, 500, 1),
   };
 
@@ -119,6 +124,18 @@ export default function PrinterSettings() {
   };
 
   const save = async () => {
+    if (form.print_show_contact_qr === 'true') {
+      try {
+        const contactUrl = new URL(form.contact_qr_url);
+        if (contactUrl.protocol !== 'https:') throw new Error('HTTPS is required.');
+      } catch {
+        setToast({
+          severity: 'error',
+          message: 'أدخل رابط HTTPS صحيح قبل تفعيل QR التواصل.',
+        });
+        return;
+      }
+    }
     setSaving(true);
     try {
       const payload = supportedPayload(form);
@@ -231,7 +248,7 @@ export default function PrinterSettings() {
                   onChange={toggle('auto_print_preorder_pickup')}
                 />
               }
-              label="بعد الاستلام"
+              label="طباعة تلقائية بعد الاستلام (اختياري)"
             />
           </div>
         </FormSection>
@@ -265,7 +282,34 @@ export default function PrinterSettings() {
               }
               label="رمز QR الآمن"
             />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={form.print_show_contact_qr === 'true'}
+                  onChange={toggle('print_show_contact_qr')}
+                />
+              }
+              label="QR التواصل والشكاوى"
+            />
           </div>
+          <FieldGrid>
+            <Field
+              className="full"
+              label="رابط صفحة التواصل والروابط المجمعة"
+              hint="يجب أن يبدأ بـ https:// ويظهر QR أسفل اللوجو عند تفعيل الخيار."
+            >
+              <TextField
+                type="url"
+                dir="ltr"
+                value={form.contact_qr_url}
+                placeholder="https://example.com/contact"
+                onChange={(event) =>
+                  setForm((value) => ({ ...value, contact_qr_url: event.target.value }))
+                }
+                slotProps={{ htmlInput: { maxLength: 2048 } }}
+              />
+            </Field>
+          </FieldGrid>
         </FormSection>
 
         <FormSection

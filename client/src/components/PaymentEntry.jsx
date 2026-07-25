@@ -77,7 +77,7 @@ export function paymentRowsToPayload(methods, rows, due) {
       note: row.note?.trim() || null,
     };
     if (method.accepts_cash_received) {
-      payment.cashReceived = parsePiasters(row.cashReceived || row.amount);
+      payment.cashReceived = parsePiasters(row.cashReceived);
       if (payment.cashReceived < amount)
         throw new Error('المبلغ النقدي المستلم أقل من المبلغ المطبق.');
     }
@@ -102,12 +102,6 @@ export function paymentRowsAreComplete(methods, rows, due) {
 export function PaymentEntry({ methods, due, value, onChange }) {
   const set = (code, key, nextValue) => {
     onChange({ ...value, [code]: { ...value[code], [key]: nextValue } });
-  };
-  const setCollectedAmount = (method, nextValue) => {
-    const code = methodCode(method);
-    const nextRow = { ...value[code], amount: nextValue };
-    if (method.accepts_cash_received) nextRow.cashReceived = nextValue;
-    onChange({ ...value, [code]: nextRow });
   };
   const preview = methods.reduce(
     (result, method) => {
@@ -139,18 +133,37 @@ export function PaymentEntry({ methods, due, value, onChange }) {
           const code = methodCode(method);
           const row = value[code] || {};
           const evidence = evidenceConfig(method);
+          let changeAmount = 0;
+          if (method.accepts_cash_received) {
+            try {
+              changeAmount = Math.max(0, parsePiasters(row.cashReceived || '0') - Number(due));
+            } catch {
+              changeAmount = 0;
+            }
+          }
           return (
             <section className="payment-entry__method" key={code}>
               <strong>{method.name_ar || method.name || code}</strong>
               <div className="payment-entry__fields">
-                <Field label="المبلغ المحصّل">
-                  <TextField
-                    value={row.amount || ''}
-                    onChange={(event) => setCollectedAmount(method, event.target.value)}
-                    placeholder="0.00"
-                    inputMode="decimal"
-                  />
+                <Field label="مبلغ الفاتورة">
+                  <TextField value={row.amount || ''} slotProps={{ input: { readOnly: true } }} />
                 </Field>
+                {method.accepts_cash_received && (
+                  <>
+                    <Field label="المبلغ النقدي المستلم" required>
+                      <TextField
+                        value={row.cashReceived || ''}
+                        onChange={(event) => set(code, 'cashReceived', event.target.value)}
+                        placeholder="0.00"
+                        inputMode="decimal"
+                      />
+                    </Field>
+                    <div className="payment-entry__change">
+                      <span>الباقي للعميل</span>
+                      <strong>{money(changeAmount)}</strong>
+                    </div>
+                  </>
+                )}
                 {evidence && (
                   <Field label={evidence.label}>
                     <TextField

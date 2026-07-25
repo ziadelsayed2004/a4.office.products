@@ -167,6 +167,7 @@ export function normalizeThermalReceipt(receipt = {}, settings = {}) {
       first(source.total, source.total_amount, invoice.total, preorder.total_amount, 0)
     ),
     depositPaid: first(source.depositPaid, source.deposit_paid, preorder.deposit_paid),
+    pickupAmount: first(source.pickupAmount, source.pickup_amount, preorder.pickup_amount),
     remainingAmount: first(
       source.remainingAmount,
       source.remaining_amount,
@@ -182,17 +183,18 @@ export function normalizeThermalReceipt(receipt = {}, settings = {}) {
       source.qrToken,
       source.qr_token
     ),
-    printCount: Number(first(receipt.print_count, source.print_count, 0)),
     showCustomer: String(first(printSettings.print_show_customer, false)) === 'true',
     showPriceTier: String(first(printSettings.print_show_price_tier, false)) === 'true',
     showQr: String(first(printSettings.print_show_qr, false)) === 'true',
+    showContactQr: String(first(printSettings.print_show_contact_qr, false)) === 'true',
+    contactQrUrl: first(printSettings.contact_qr_url),
   };
 }
 
 const variantLabels = {
   sale: 'إيصال بيع',
   deposit: 'إيصال عربون حجز',
-  pickup: 'إيصال استلام حجز',
+  pickup: 'فاتورة استلام حجز',
   return: 'إيصال مرتجع',
 };
 
@@ -214,6 +216,12 @@ export function ThermalReceipt({ receipt, settings, reprint = false, copyNumber 
         <img src={logo} alt="A4 Office Products" />
         <strong>{data.businessName}</strong>
         {data.businessSubtitle && <span>{data.businessSubtitle}</span>}
+        {data.showContactQr && data.contactQrUrl && (
+          <div className="thermal-receipt__contact-qr">
+            <QRCodeSVG value={String(data.contactQrUrl)} size={88} level="M" includeMargin />
+            <span>تواصل معنا والشكاوى والاقتراحات</span>
+          </div>
+        )}
         <b>{variantLabels[data.variant]}</b>
         {reprint && <em>نسخة معاد طباعتها</em>}
         {copies > 1 && (
@@ -281,6 +289,9 @@ export function ThermalReceipt({ receipt, settings, reprint = false, copyNumber 
         {data.depositPaid !== undefined && (
           <ReceiptRow label="العربون المدفوع" value={money(data.depositPaid)} />
         )}
+        {data.pickupAmount !== undefined && (
+          <ReceiptRow label="المحصل عند الاستلام" value={money(data.pickupAmount)} />
+        )}
         {data.remainingAmount !== undefined && (
           <ReceiptRow label="المتبقي" value={money(data.remainingAmount)} />
         )}
@@ -326,7 +337,6 @@ export function ThermalReceipt({ receipt, settings, reprint = false, copyNumber 
 
       <footer className="thermal-receipt__footer">
         <p>{data.footer}</p>
-        <span>عدد طلبات الطباعة: {number(data.printCount)}</span>
       </footer>
     </article>
   );

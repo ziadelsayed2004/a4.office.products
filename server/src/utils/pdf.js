@@ -68,7 +68,12 @@ export async function renderPdf(html, { launch = puppeteer.launch, elementPage =
           const element = document.querySelector(selector);
           if (!element) throw new Error(`PDF sizing element was not found: ${selector}`);
           const rect = element.getBoundingClientRect();
-          const pixelHeight = Math.max(rect.height, element.scrollHeight, element.offsetHeight);
+          const pixelHeight = Math.max(
+            rect.height,
+            element.scrollHeight,
+            element.offsetHeight,
+            element.getBoundingClientRect().bottom - element.getBoundingClientRect().top
+          );
           if (!(rect.width > 0) || !(pixelHeight > 0)) {
             throw new Error('PDF sizing element has invalid dimensions.');
           }

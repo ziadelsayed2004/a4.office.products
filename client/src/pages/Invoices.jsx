@@ -189,7 +189,7 @@ export default function Invoices() {
     }
   };
 
-  const lookupExactInvoice = async (overrideLookup = null) => {
+  const lookupExactInvoice = async (overrideLookup = null, nextPage = 1) => {
     const criteria = overrideLookup || lookup;
     const value = criteria.value.trim();
     if (!value) {
@@ -199,15 +199,20 @@ export default function Invoices() {
 
     setLoading(true);
     setError('');
-    setCashierMode('exact');
+    setCashierMode(criteria.type === 'customer' ? 'customer' : 'exact');
     try {
-      const query = new URLSearchParams({ [criteria.type]: value });
+      const query = new URLSearchParams({
+        [criteria.type]: value,
+        limit: String(PAGE_SIZE),
+        offset: String((nextPage - 1) * PAGE_SIZE),
+      });
       const response = await api.get(`/api/pos/invoices/lookup?${query}`);
       const normalized = normalizeList(response);
       setRows(normalized.rows);
       setTotal(normalized.total);
-      setPage(1);
-      if (normalized.rows.length === 1) await openDetails(normalized.rows[0]);
+      setPage(nextPage);
+      if (criteria.type !== 'customer' && normalized.rows.length === 1)
+        await openDetails(normalized.rows[0]);
       if (overrideLookup?.type === 'token') setSearchParams({}, { replace: true });
     } catch (err) {
       setRows([]);
@@ -229,7 +234,7 @@ export default function Invoices() {
     setDetailLoading(true);
     try {
       let endpoint = isAdmin ? `/api/admin/invoices/${id}` : `/api/pos/invoices/${id}`;
-      if (!isAdmin && cashierMode === 'exact' && lookup.value.trim()) {
+      if (!isAdmin && ['exact', 'customer'].includes(cashierMode) && lookup.value.trim()) {
         endpoint += `?${new URLSearchParams({ [lookup.type]: lookup.value.trim() })}`;
       }
       const response = await api.get(endpoint);
@@ -398,6 +403,7 @@ export default function Invoices() {
   const changePage = (_, nextPage) => {
     if (isAdmin) loadAdmin(nextPage);
     else if (cashierMode === 'own') loadOwnShift(nextPage);
+    else if (cashierMode === 'customer') lookupExactInvoice(null, nextPage);
   };
 
   const resetAdminFilters = () => {
@@ -418,7 +424,13 @@ export default function Invoices() {
           <Button
             variant="outlined"
             startIcon={<RefreshRounded />}
-            onClick={() => (isAdmin ? loadAdmin(page) : loadOwnShift(page))}
+            onClick={() =>
+              isAdmin
+                ? loadAdmin(page)
+                : cashierMode === 'customer'
+                  ? lookupExactInvoice(null, page)
+                  : loadOwnShift(page)
+            }
             disabled={loading}
           >
             تحديث
@@ -516,9 +528,10 @@ export default function Invoices() {
               <MenuItem value="VOID">ملغاة</MenuItem>
             </TextField>
           </Field>
-          <Field label="العميل">
+          <Field label="اسم العميل أو رقم الهاتف">
             <TextField
               value={adminFilters.customer}
+              placeholder="ابحث بجزء من الاسم أو الرقم"
               onChange={(event) =>
                 setAdminFilters((state) => ({ ...state, customer: event.target.value }))
               }
@@ -565,9 +578,10 @@ export default function Invoices() {
                   <MenuItem value="invoiceNumber">رقم الفاتورة</MenuItem>
                   <MenuItem value="receiptNumber">رقم الإيصال</MenuItem>
                   <MenuItem value="token">رمز QR الآمن</MenuItem>
+                  <MenuItem value="customer">اسم العميل أو رقم الهاتف</MenuItem>
                 </TextField>
               </Field>
-              <Field label="القيمة">
+              <Field label={lookup.type === 'customer' ? 'اسم العميل أو رقم الهاتف' : 'القيمة'}>
                 <TextField
                   autoFocus
                   value={lookup.value}
@@ -583,7 +597,7 @@ export default function Invoices() {
                 onClick={() => lookupExactInvoice()}
                 disabled={loading}
               >
-                فتح الفاتورة
+                {lookup.type === 'customer' ? 'بحث في الفواتير' : 'فتح الفاتورة'}
               </Button>
             </div>
           </section>
