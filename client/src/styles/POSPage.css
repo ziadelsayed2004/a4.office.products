@@ -137,11 +137,14 @@
 .pos-cart {
   top: calc(var(--topbar-height) + var(--space-4));
   max-height: calc(100vh - var(--topbar-height) - 34px);
+  max-height: calc(100dvh - var(--topbar-height) - 34px);
   text-align: right;
   flex-direction: column;
   display: flex;
   position: sticky;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 .pos-cart__header {
   justify-content: space-between;

@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 internal static class A4CashierLauncher
 {
@@ -98,6 +99,13 @@ internal static class A4CashierLauncher
         string[] candidates =
         {
             Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Google",
+                "Chrome",
+                "Application",
+                "chrome.exe"
+            ),
+            Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                 "Google",
                 "Chrome",
@@ -118,6 +126,21 @@ internal static class A4CashierLauncher
             if (File.Exists(candidate))
             {
                 return candidate;
+            }
+        }
+
+        string[] registryKeys =
+        {
+            @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe",
+            @"HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe",
+            @"HKEY_LOCAL_MACHINE\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"
+        };
+        foreach (string registryKey in registryKeys)
+        {
+            string registryPath = Registry.GetValue(registryKey, "", null) as string;
+            if (!string.IsNullOrWhiteSpace(registryPath) && File.Exists(registryPath))
+            {
+                return registryPath;
             }
         }
         return null;
