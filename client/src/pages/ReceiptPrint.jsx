@@ -11,6 +11,7 @@ import {
 import { ThermalReceipt } from '../components/ThermalReceipt.jsx';
 import { LoadingState } from '../components/LoadingState.jsx';
 import { applyReceiptPageSize } from '../utils/receiptPrintSizing.js';
+import { waitForPrintableAssets } from '../utils/printAssets.js';
 import {
   normalizeBrowserPrintSettings,
   PRINTER_SETTINGS_UNAVAILABLE_MESSAGE,
@@ -33,25 +34,6 @@ function postPrintMessage(type, receiptId, extra = {}) {
     },
     window.location.origin
   );
-}
-
-async function waitForAssets(container) {
-  if (document.fonts?.ready) await document.fonts.ready;
-
-  const images = [...(container?.querySelectorAll('img') || [])];
-  await Promise.all(
-    images.map(async (image) => {
-      if (!image.complete) {
-        await new Promise((resolve) => {
-          image.addEventListener('load', resolve, { once: true });
-          image.addEventListener('error', resolve, { once: true });
-        });
-      }
-      if (image.decode) await image.decode().catch(() => undefined);
-    })
-  );
-
-  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
 export default function ReceiptPrint() {
@@ -104,7 +86,7 @@ export default function ReceiptPrint() {
     let cleanupPageSize = () => undefined;
     document.title = `طباعة ${receipt.receipt_number || receiptId}`;
 
-    waitForAssets(containerRef.current)
+    waitForPrintableAssets(containerRef.current)
       .then(() => {
         if (!active) return;
         const pageSize = applyReceiptPageSize(containerRef.current);

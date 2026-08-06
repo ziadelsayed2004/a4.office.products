@@ -9,7 +9,7 @@ export const PRINT_ERROR = 'A4_PRINT_ERROR';
 export const LABEL_PRINT_MESSAGE_SOURCE = 'a4-isolated-label-print';
 export const RETURN_CARD_PRINT_MESSAGE_SOURCE = 'a4-isolated-return-card-print';
 
-const READY_TIMEOUT_MS = 20_000;
+const READY_TIMEOUT_MS = 45_000;
 const AFTER_PRINT_TIMEOUT_MS = 120_000;
 
 function createRequestKey() {

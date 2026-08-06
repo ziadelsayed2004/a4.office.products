@@ -11,6 +11,7 @@ import {
 } from '../services/printService.js';
 import { LoadingState } from '../components/LoadingState.jsx';
 import { money } from '../utils/formatters.js';
+import { waitForPrintableAssets } from '../utils/printAssets.js';
 import {
   applyProductLabelPageSize,
   normalizeProductLabelSize,
@@ -42,8 +43,7 @@ function Barcode({ value, size }) {
 }
 
 async function ready(container) {
-  if (document.fonts?.ready) await document.fonts.ready;
-  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  await waitForPrintableAssets(container);
   if (!container?.querySelector('svg.product-label__barcode rect'))
     throw new Error('تعذر إنشاء الباركود بالمقاس المحدد.');
 }

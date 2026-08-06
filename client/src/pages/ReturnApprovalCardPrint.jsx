@@ -10,6 +10,7 @@ import {
 } from '../services/printService.js';
 import { ReturnApprovalCard } from '../components/ReturnApprovalCard.jsx';
 import { LoadingState } from '../components/LoadingState.jsx';
+import { waitForPrintableAssets } from '../utils/printAssets.js';
 import {
   applyReturnApprovalCardPageSize,
   normalizeReturnApprovalCardPrintMode,
@@ -25,22 +26,7 @@ function post(type, cardId, extra = {}) {
 }
 
 async function waitForAssets(container) {
-  if (document.fonts?.ready) await document.fonts.ready;
-  const images = Array.from(container?.querySelectorAll('img') || []);
-  await Promise.all(
-    images.map(async (image) => {
-      if (!image.complete) {
-        await new Promise((resolve, reject) => {
-          image.addEventListener('load', resolve, { once: true });
-          image.addEventListener('error', () => reject(new Error('تعذر تحميل شعار الكارت.')), {
-            once: true,
-          });
-        });
-      }
-      if (typeof image.decode === 'function') await image.decode().catch(() => undefined);
-    })
-  );
-  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  await waitForPrintableAssets(container);
   if (!container?.querySelector('.return-approval-card__qr svg')) {
     throw new Error('تعذر إنشاء QR الخاص بكارت الاعتماد.');
   }
