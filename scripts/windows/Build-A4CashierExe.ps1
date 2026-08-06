@@ -162,6 +162,7 @@ function Build-Launcher {
   }
   $compilerParameters.CompilerOptions = $compilerOptions
   $compilerParameters.ReferencedAssemblies.Add('System.dll') | Out-Null
+  $compilerParameters.ReferencedAssemblies.Add('System.Web.Extensions.dll') | Out-Null
   $compilerParameters.ReferencedAssemblies.Add('System.Windows.Forms.dll') | Out-Null
   $provider = [Microsoft.CSharp.CSharpCodeProvider]::new()
   try {

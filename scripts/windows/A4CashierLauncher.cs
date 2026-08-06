@@ -1,6 +1,9 @@
 using System;
 using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
+using System.Text;
+using System.Web.Script.Serialization;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
@@ -38,6 +41,7 @@ internal static class A4CashierLauncher
             );
             Directory.CreateDirectory(profilePath);
             RefreshFaviconCache(profilePath);
+            ConfigureThermalPrintPreferences(profilePath);
 
             var startInfo = new ProcessStartInfo
             {
@@ -65,6 +69,86 @@ internal static class A4CashierLauncher
                 MessageBoxIcon.Error
             );
         }
+    }
+
+    private static void ConfigureThermalPrintPreferences(string profilePath)
+    {
+        string defaultProfile = Path.Combine(profilePath, "Default");
+        string preferencesPath = Path.Combine(defaultProfile, "Preferences");
+        string temporaryPath = preferencesPath + ".a4.tmp";
+        try
+        {
+            Directory.CreateDirectory(defaultProfile);
+            var serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
+            Dictionary<string, object> preferences = new Dictionary<string, object>();
+            if (File.Exists(preferencesPath))
+            {
+                preferences = serializer.Deserialize<Dictionary<string, object>>(
+                    File.ReadAllText(preferencesPath, Encoding.UTF8)
+                );
+                if (preferences == null) return;
+            }
+
+            Dictionary<string, object> printing = GetOrCreateDictionary(preferences, "printing");
+            Dictionary<string, object> sticky = GetOrCreateDictionary(
+                printing,
+                "print_preview_sticky_settings"
+            );
+            Dictionary<string, object> appState = new Dictionary<string, object>();
+            object serializedState;
+            if (sticky.TryGetValue("appState", out serializedState) && serializedState is string)
+            {
+                try
+                {
+                    appState = serializer.Deserialize<Dictionary<string, object>>(
+                        (string)serializedState
+                    ) ?? appState;
+                }
+                catch
+                {
+                    // Replace only the broken print-preview state, not the profile.
+                }
+            }
+
+            appState["version"] = 2;
+            appState["isHeaderFooterEnabled"] = false;
+            appState["marginsType"] = 1;
+            appState["isFitToPageEnabled"] = false;
+            appState["isCssBackgroundEnabled"] = true;
+            appState["scaling"] = "100";
+            appState.Remove("mediaSize");
+            sticky["appState"] = serializer.Serialize(appState);
+
+            File.WriteAllText(temporaryPath, serializer.Serialize(preferences), new UTF8Encoding(false));
+            File.Copy(temporaryPath, preferencesPath, true);
+            File.Delete(temporaryPath);
+        }
+        catch
+        {
+            try
+            {
+                if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            }
+            catch { }
+            // Chrome can still start if its preference file is locked or malformed.
+        }
+    }
+
+    private static Dictionary<string, object> GetOrCreateDictionary(
+        Dictionary<string, object> parent,
+        string key
+    )
+    {
+        object value;
+        var dictionary = parent.TryGetValue(key, out value)
+            ? value as Dictionary<string, object>
+            : null;
+        if (dictionary == null)
+        {
+            dictionary = new Dictionary<string, object>();
+            parent[key] = dictionary;
+        }
+        return dictionary;
     }
 
     private static void RefreshFaviconCache(string profilePath)
