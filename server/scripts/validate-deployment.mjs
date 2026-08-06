@@ -9,6 +9,10 @@ const projectRoot = path.resolve(serverRoot, '..');
 
 const deploy = fs.readFileSync(path.join(projectRoot, 'deploy.sh'), 'utf8');
 const ecosystem = fs.readFileSync(path.join(projectRoot, 'ecosystem.config.js'), 'utf8');
+const securityMiddleware = fs.readFileSync(
+  path.join(serverRoot, 'src', 'middleware', 'security.js'),
+  'utf8'
+);
 const cashierLauncher = fs.readFileSync(
   path.join(projectRoot, 'scripts', 'windows', 'A4CashierLauncher.cs'),
   'utf8'
@@ -129,6 +133,12 @@ assert.match(ecosystem, /NODE_ENV:\s*'production'/);
 assert.match(ecosystem, /PORT:\s*5000/);
 assert.match(ecosystem, /HOST:\s*'127\.0\.0\.1'/);
 assert.doesNotMatch(ecosystem, /ALLOW_DATABASE_RESET/);
+assert.match(
+  securityMiddleware,
+  /frameAncestors:\s*\["'self'"\]/,
+  'Same-origin print frames must be allowed by the production CSP.'
+);
+assert.doesNotMatch(securityMiddleware, /frameAncestors:\s*\["'none'"\]/);
 assert.match(cashierLauncher, /https:\/\/a4office\.cloud/);
 assert.match(cashierLauncher, /http:\/\/localhost:5173/);
 assert.doesNotMatch(cashierLauncher, /TcpClient|ResolveAppUrl/);

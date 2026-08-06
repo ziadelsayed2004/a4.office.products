@@ -35,7 +35,10 @@ export const helmetSecurityHeaders = helmet({
     directives: {
       defaultSrc: ["'self'"],
       baseUri: ["'self'"],
-      frameAncestors: ["'none'"],
+      // Receipt, label and return-card printing uses protected same-origin
+      // iframe routes. Keep cross-site framing blocked while allowing those
+      // print documents to signal readiness to the parent application.
+      frameAncestors: ["'self'"],
       objectSrc: ["'none'"],
       imgSrc: ["'self'", 'data:', 'blob:'],
       styleSrc: ["'self'", "'unsafe-inline'"],
