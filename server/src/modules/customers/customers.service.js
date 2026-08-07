@@ -27,6 +27,7 @@ export async function searchCustomers(filters = {}, connection = db) {
   const isObject = typeof filters === 'object' && filters !== null;
   const search = String((isObject ? filters.q : filters) || '').trim();
   const tierId = isObject ? filters.tierId : null;
+  const productId = isObject ? filters.productId : null;
 
   let query = `
     WITH tier_stats AS (
@@ -87,6 +88,15 @@ export async function searchCustomers(filters = {}, connection = db) {
     query +=
       ' AND EXISTS (SELECT 1 FROM tier_stats ts WHERE ts.customer_id = c.id AND ts.price_tier_id = ?)';
     params.push(tierId);
+  }
+
+  if (productId) {
+    query += ` AND EXISTS (
+      SELECT 1 FROM orders o JOIN order_items oi ON o.id = oi.order_id WHERE o.customer_id = c.id AND oi.product_id = ?
+      UNION ALL
+      SELECT 1 FROM preorders p JOIN preorder_items pi ON p.id = pi.preorder_id WHERE p.customer_id = c.id AND pi.product_id = ?
+    )`;
+    params.push(productId, productId);
   }
 
   query += ' ORDER BY c.name ASC LIMIT 50;';

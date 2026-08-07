@@ -459,7 +459,7 @@ export default function Reports() {
     <div className="a4-page reports-page">
       <PageHeader
         title="التقارير"
-        description="اعرض المبيعات والحجوزات والمخزون والشيفتات، ثم صدّر النتائج إلى ملف CSV عربي متوافق مع Excel."
+        description="اعرض المبيعات والحجوزات والمخزون والشيفتات، ثم صدّر النتائج إلى ملف Excel متوافق بالكامل وتنسيق احترافي."
         actions={
           <>
             <Button
@@ -480,11 +480,12 @@ export default function Reports() {
             </Button>
             <Button
               variant="contained"
-              startIcon={<DownloadRounded />}
-              onClick={() => exportReport('csv')}
+              color="secondary"
+              startIcon={exporting ? <CircularProgress size={16} /> : <DownloadRounded />}
+              onClick={() => exportReport('xlsx')}
               disabled={exporting || loading}
             >
-              {exporting ? 'جاري التصدير...' : 'CSV'}
+              {exporting ? 'جاري التصدير...' : 'Excel'}
             </Button>
           </>
         }

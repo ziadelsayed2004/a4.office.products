@@ -1,4 +1,5 @@
 import db from '../../db/index.js';
+import ExcelJS from 'exceljs';
 import {
   addCalendarDay,
   cairoMidnightUtc,
@@ -376,4 +377,36 @@ export function toCsv(headers, rows) {
   const lines = [headers.map(([label]) => safeCsvCell(label)).join(',')];
   for (const row of rows) lines.push(headers.map(([, key]) => safeCsvCell(row[key])).join(','));
   return `\ufeff${lines.join('\r\n')}\r\n`;
+}
+
+export async function toExcel(headers, rows, sheetName = 'تقرير') {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(sheetName, { views: [{ rightToLeft: true }] });
+
+  sheet.columns = headers.map(([label, key]) => ({
+    header: label,
+    key,
+    width: 25,
+  }));
+
+  sheet.getRow(1).font = { bold: true };
+  sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+
+  for (const row of rows) {
+    const rowData = {};
+    for (const [label, key] of headers) {
+      const val = row[key];
+      rowData[key] = typeof val === 'object' && val !== null ? JSON.stringify(val) : val;
+    }
+    const addedRow = sheet.addRow(rowData);
+    // Auto-detect phone numbers or things that look like numbers but should be text
+    for (const [, key] of headers) {
+      const val = String(rowData[key] || '');
+      if (val.match(/^0\d{9,15}$/) || val.match(/^\d{10,20}$/)) {
+        addedRow.getCell(key).numFmt = '@';
+      }
+    }
+  }
+
+  return workbook.xlsx.writeBuffer();
 }

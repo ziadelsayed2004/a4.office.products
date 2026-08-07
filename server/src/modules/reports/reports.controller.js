@@ -134,9 +134,14 @@ export async function exportReportController(req, res, next) {
       res.setHeader('Cache-Control', 'private, no-store');
       return res.status(200).send(buffer);
     }
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename=report_${type}_${Date.now()}.csv`);
-    return res.status(200).send(reportsService.toCsv(headers, rows));
+
+    const buffer = await reportsService.toExcel(headers, rows, type);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader('Content-Disposition', `attachment; filename=report_${type}_${Date.now()}.xlsx`);
+    return res.status(200).send(buffer);
   } catch (error) {
     return next(error);
   }

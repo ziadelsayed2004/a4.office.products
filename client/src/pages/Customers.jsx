@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import ExcelJS from 'exceljs';
 import {
   Alert,
   Button,
@@ -50,6 +51,8 @@ export default function Customers() {
   const [deleting, setDeleting] = useState(false);
   const [tiers, setTiers] = useState([]);
   const [tierId, setTierId] = useState('');
+  const [products, setProducts] = useState([]);
+  const [productId, setProductId] = useState('');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportTierId, setExportTierId] = useState('');
   const [exportColumns, setExportColumns] = useState({
@@ -61,12 +64,13 @@ export default function Customers() {
     tiers: true,
   });
 
-  const load = async (query = q, selectedTier = tierId) => {
+  const load = async (query = q, selectedTier = tierId, selectedProduct = productId) => {
     setLoading(true);
     try {
       const qs = new URLSearchParams();
       if (query) qs.append('q', query);
       if (selectedTier) qs.append('tierId', selectedTier);
+      if (selectedProduct) qs.append('productId', selectedProduct);
 
       setRows((await api.get(`/api/customers?${qs.toString()}`)).data || []);
       setError('');
@@ -77,10 +81,14 @@ export default function Customers() {
     }
   };
   useEffect(() => {
-    load('', '');
+    load('', '', '');
     api
       .get('/api/admin/price-tiers?activeOnly=true')
       .then((res) => setTiers(res.data || []))
+      .catch(() => {});
+    api
+      .get('/api/admin/products?limit=1000')
+      .then((res) => setProducts(res.data.products || []))
       .catch(() => {});
   }, []);
   const open = (row = null) => {
@@ -127,7 +135,7 @@ export default function Customers() {
     }
   };
 
-  const executeExport = () => {
+  const executeExport = async () => {
     let exportRows = rows;
     if (exportTierId) {
       exportRows = rows.filter((r) =>
@@ -141,15 +149,22 @@ export default function Customers() {
       return;
     }
 
-    const headers = [];
-    if (exportColumns.name) headers.push('اسم العميل');
-    if (exportColumns.phone) headers.push('رقم الهاتف');
-    if (exportColumns.created_at) headers.push('تاريخ التسجيل');
-    if (exportColumns.orders) headers.push('إجمالي الفواتير');
-    if (exportColumns.preorders) headers.push('إجمالي الحجوزات');
-    if (exportColumns.tiers) headers.push('إحصائيات الفئات');
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('العملاء', { views: [{ rightToLeft: true }] });
 
-    const csvRows = [headers.join(',')];
+    const columns = [];
+    if (exportColumns.name) columns.push({ header: 'اسم العميل', key: 'name', width: 30 });
+    if (exportColumns.phone) columns.push({ header: 'رقم الهاتف', key: 'phone', width: 20 });
+    if (exportColumns.created_at)
+      columns.push({ header: 'تاريخ التسجيل', key: 'created_at', width: 20 });
+    if (exportColumns.orders) columns.push({ header: 'إجمالي الفواتير', key: 'orders', width: 15 });
+    if (exportColumns.preorders)
+      columns.push({ header: 'إجمالي الحجوزات', key: 'preorders', width: 15 });
+    if (exportColumns.tiers) columns.push({ header: 'إحصائيات الفئات', key: 'tiers', width: 40 });
+
+    sheet.columns = columns;
+    sheet.getRow(1).font = { bold: true };
+    sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
 
     for (const r of exportRows) {
       const counts = r.dependency_counts || {};
@@ -159,22 +174,28 @@ export default function Customers() {
         .map((ts) => `${ts.tier_name}: ${ts.order_count} فاتورة / ${ts.preorder_count} حجز`)
         .join(' | ');
 
-      const rowData = [];
-      if (exportColumns.name) rowData.push(`"${(r.name || '').replace(/"/g, '""')}"`);
-      if (exportColumns.phone) rowData.push(`"${r.phone || ''}"`);
-      if (exportColumns.created_at) rowData.push(`"${dateTime(r.created_at)}"`);
-      if (exportColumns.orders) rowData.push(orders);
-      if (exportColumns.preorders) rowData.push(preorders);
-      if (exportColumns.tiers) rowData.push(`"${tierStatsStr}"`);
+      const rowData = {};
+      if (exportColumns.name) rowData.name = r.name || '';
+      if (exportColumns.phone) rowData.phone = r.phone || '';
+      if (exportColumns.created_at) rowData.created_at = dateTime(r.created_at);
+      if (exportColumns.orders) rowData.orders = orders;
+      if (exportColumns.preorders) rowData.preorders = preorders;
+      if (exportColumns.tiers) rowData.tiers = tierStatsStr;
 
-      csvRows.push(rowData.join(','));
+      const addedRow = sheet.addRow(rowData);
+      if (exportColumns.phone) {
+        addedRow.getCell('phone').numFmt = '@';
+      }
     }
 
-    const blob = new Blob(['\ufeff' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `customers_export_${new Date().getTime()}.csv`);
+    link.setAttribute('download', `customers_export_${new Date().getTime()}.xlsx`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -252,42 +273,81 @@ export default function Customers() {
         }
       />
       <section className="a4-page-section customers-page__workspace">
-        <div className="a4-toolbar a4-toolbar--section customers-search">
-          <Field className="customers-search__field" label="البحث عن عميل" density="compact">
-            <TextField
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && load()}
-              placeholder="ابحث بالاسم أو رقم الهاتف"
-            />
-          </Field>
-          <FormControl className="customers-search__tier" size="small">
-            <InputLabel id="tier-filter-label">فئة السعر</InputLabel>
-            <Select
-              labelId="tier-filter-label"
-              value={tierId}
-              label="فئة السعر"
-              onChange={(e) => {
-                setTierId(e.target.value);
-                load(q, e.target.value);
-              }}
+        <div
+          className="a4-toolbar a4-toolbar--section customers-search"
+          style={{ flexDirection: 'column', alignItems: 'stretch' }}
+        >
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+            <Field
+              className="customers-search__field"
+              label="البحث عن عميل"
+              density="compact"
+              style={{ flexGrow: 1 }}
             >
-              <MenuItem value="">الكل</MenuItem>
-              {tiers.map((t) => (
-                <MenuItem key={t.id} value={t.id}>
-                  {t.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Button
-            style={{ alignSelf: 'flex-end', height: '40px' }}
-            variant="outlined"
-            startIcon={<SearchRounded />}
-            onClick={() => load()}
-          >
-            بحث
-          </Button>
+              <TextField
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && load()}
+                placeholder="ابحث بالاسم أو رقم الهاتف"
+              />
+            </Field>
+            <Button
+              style={{ height: '40px' }}
+              variant="outlined"
+              startIcon={<SearchRounded />}
+              onClick={() => load()}
+            >
+              بحث
+            </Button>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <FormControl
+              className="customers-search__tier"
+              size="small"
+              style={{ minWidth: '200px' }}
+            >
+              <InputLabel id="tier-filter-label">فئة السعر</InputLabel>
+              <Select
+                labelId="tier-filter-label"
+                value={tierId}
+                label="فئة السعر"
+                onChange={(e) => {
+                  setTierId(e.target.value);
+                  load(q, e.target.value, productId);
+                }}
+              >
+                <MenuItem value="">الكل</MenuItem>
+                {tiers.map((t) => (
+                  <MenuItem key={t.id} value={t.id}>
+                    {t.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl
+              className="customers-search__product"
+              size="small"
+              style={{ minWidth: '200px' }}
+            >
+              <InputLabel id="product-filter-label">المنتج</InputLabel>
+              <Select
+                labelId="product-filter-label"
+                value={productId}
+                label="المنتج"
+                onChange={(e) => {
+                  setProductId(e.target.value);
+                  load(q, tierId, e.target.value);
+                }}
+              >
+                <MenuItem value="">الكل</MenuItem>
+                {products.map((p) => (
+                  <MenuItem key={p.id} value={p.id}>
+                    {p.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </div>
         </div>
         {error && (
           <Alert severity="error" className="customers-page__alert">

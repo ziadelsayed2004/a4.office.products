@@ -61,6 +61,7 @@ export const logoutBody = z.object({ refreshToken: z.string().min(20).max(500).o
 export const customerSearchQuery = z.object({
   q: optionalTrimmed(150),
   tierId: optionalInteger(1),
+  productId: optionalInteger(1),
 });
 export const customerLookupQuery = z.object({ phone: customerPhone });
 export const customerBody = z.object({ name: trimmed(200), phone: customerPhone });
