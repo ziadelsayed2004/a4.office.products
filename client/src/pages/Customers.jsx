@@ -178,28 +178,28 @@ export default function Customers() {
     { key: 'phone', label: 'رقم الهاتف', render: (r) => <span className="a4-ltr">{r.phone}</span> },
     { key: 'created_at', label: 'تاريخ التسجيل', render: (r) => dateTime(r.created_at) },
     {
-      key: 'dependencies',
-      label: 'السجل المرتبط',
+      key: 'orders',
+      label: 'إجمالي الفواتير',
+      render: (r) => r.dependency_counts?.orders ?? r.order_count ?? 0,
+    },
+    {
+      key: 'preorders',
+      label: 'إجمالي الحجوزات',
+      render: (r) => r.dependency_counts?.preorders ?? r.preorder_count ?? 0,
+    },
+    {
+      key: 'tiers',
+      label: 'فئات السعر المستخدمة',
       render: (r) => {
-        const counts = r.dependency_counts || {};
-        const orders = counts.orders ?? r.order_count ?? 0;
-        const preorders = counts.preorders ?? r.preorder_count ?? 0;
         const tierStats = r.tier_statistics || [];
-
+        if (!tierStats.length) return <span style={{ color: 'var(--a4-c-text-secondary)' }}>الأساسي فقط</span>;
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <span>
-              {orders} فاتورة · {preorders} حجز
-            </span>
-            {tierStats.length > 0 && (
-              <div style={{ fontSize: '0.85em', color: 'var(--a4-c-text-secondary)' }}>
-                {tierStats.map((ts) => (
-                  <span key={ts.tier_id} style={{ display: 'block' }}>
-                    {ts.tier_name}: {ts.order_count} ف · {ts.preorder_count} ح
-                  </span>
-                ))}
-              </div>
-            )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.85em' }}>
+            {tierStats.map((ts) => (
+              <span key={ts.tier_id} style={{ display: 'block' }}>
+                {ts.tier_name}: <span dir="ltr">{ts.order_count} ف · {ts.preorder_count} ح</span>
+              </span>
+            ))}
           </div>
         );
       },
