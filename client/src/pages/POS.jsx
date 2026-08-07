@@ -1106,7 +1106,9 @@ export default function POS() {
                             السعر الأساسي — {money(item.baseSalePrice)}
                           </MenuItem>
                           {item.prices
-                            .filter((p) => p.price !== null && p.price !== undefined && p.price !== '')
+                            .filter(
+                              (p) => p.price !== null && p.price !== undefined && p.price !== ''
+                            )
                             .map((price) => (
                               <MenuItem key={price.price_tier_id} value={price.price_tier_id}>
                                 {price.tier_name} — {money(price.price)}

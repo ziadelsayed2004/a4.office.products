@@ -84,7 +84,8 @@ export async function searchCustomers(filters = {}, connection = db) {
   }
 
   if (tierId) {
-    query += ' AND EXISTS (SELECT 1 FROM tier_stats ts WHERE ts.customer_id = c.id AND ts.price_tier_id = ?)';
+    query +=
+      ' AND EXISTS (SELECT 1 FROM tier_stats ts WHERE ts.customer_id = c.id AND ts.price_tier_id = ?)';
     params.push(tierId);
   }
 
@@ -101,12 +102,17 @@ export async function lookupCustomerByPhone(phone, connection = db) {
 }
 
 function decorateCustomerDependencies(customer) {
-  const { order_count: orderCount = 0, preorder_count: preorderCount = 0, tier_statistics, ...data } = customer;
+  const {
+    order_count: orderCount = 0,
+    preorder_count: preorderCount = 0,
+    tier_statistics,
+    ...data
+  } = customer;
   const dependencyCounts = {
     orders: Number(orderCount),
     preorders: Number(preorderCount),
   };
-  
+
   let parsedTierStats = [];
   if (tier_statistics) {
     try {

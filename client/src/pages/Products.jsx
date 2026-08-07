@@ -251,20 +251,20 @@ export default function Products() {
     baseSalePrice: parsePiasters(form.baseSalePrice),
     ...(form.availabilityPolicy === PREORDER_WHEN_OUT
       ? {
-        defaultPreorderDepositPct: Number(form.defaultPreorderDepositPct),
-        defaultPickupMethod: 'walk_in',
-        preorderInstructions: form.preorderInstructions.trim() || null,
-      }
+          defaultPreorderDepositPct: Number(form.defaultPreorderDepositPct),
+          defaultPickupMethod: 'walk_in',
+          preorderInstructions: form.preorderInstructions.trim() || null,
+        }
       : {}),
     notes: form.notes.trim() || null,
     isBook: form.isBook,
     bookDetails: form.isBook
       ? {
-        school_grade: form.schoolGrade || null,
-        subject: form.subject || null,
-        author: form.author || null,
-        term: form.term,
-      }
+          school_grade: form.schoolGrade || null,
+          subject: form.subject || null,
+          author: form.author || null,
+          term: form.term,
+        }
       : null,
     prices: tiers
       .filter((tier) => tier.is_active === 1)
@@ -759,8 +759,8 @@ export default function Products() {
                             unlinkPriceTierIds: event.target.checked
                               ? [...value.unlinkPriceTierIds, price.price_tier_id]
                               : value.unlinkPriceTierIds.filter(
-                                (tierId) => tierId !== price.price_tier_id
-                              ),
+                                  (tierId) => tierId !== price.price_tier_id
+                                ),
                           }))
                         }
                       />

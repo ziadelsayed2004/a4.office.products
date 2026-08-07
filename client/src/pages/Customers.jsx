@@ -1,6 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, IconButton, TextField, Tooltip, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
-import { AddRounded, DeleteRounded, EditRounded, SearchRounded, DownloadRounded } from '@mui/icons-material';
+import {
+  Alert,
+  Button,
+  IconButton,
+  TextField,
+  Tooltip,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+} from '@mui/material';
+import {
+  AddRounded,
+  DeleteRounded,
+  EditRounded,
+  SearchRounded,
+  DownloadRounded,
+} from '@mui/icons-material';
 import { api } from '../services/apiClient.js';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { DataTable } from '../components/DataTable.jsx';
@@ -27,14 +43,14 @@ export default function Customers() {
   const [deleting, setDeleting] = useState(false);
   const [tiers, setTiers] = useState([]);
   const [tierId, setTierId] = useState('');
-  
+
   const load = async (query = q, selectedTier = tierId) => {
     setLoading(true);
     try {
       const qs = new URLSearchParams();
       if (query) qs.append('q', query);
       if (selectedTier) qs.append('tierId', selectedTier);
-      
+
       setRows((await api.get(`/api/customers?${qs.toString()}`)).data || []);
       setError('');
     } catch (e) {
@@ -45,7 +61,10 @@ export default function Customers() {
   };
   useEffect(() => {
     load('', '');
-    api.get('/api/price-tiers?activeOnly=true').then(res => setTiers(res.data || [])).catch(() => {});
+    api
+      .get('/api/price-tiers?activeOnly=true')
+      .then((res) => setTiers(res.data || []))
+      .catch(() => {});
   }, []);
   const open = (row = null) => {
     setEditing(row);
@@ -92,11 +111,19 @@ export default function Customers() {
   };
 
   const exportCsv = () => {
-    if (!rows.length) return setToast({ severity: 'warning', message: 'لا توجد بيانات لاستخراجها.' });
-    
-    const headers = ['اسم العميل', 'رقم الهاتف', 'تاريخ التسجيل', 'إجمالي الفواتير', 'إجمالي الحجوزات', 'إحصائيات الفئات'];
+    if (!rows.length)
+      return setToast({ severity: 'warning', message: 'لا توجد بيانات لاستخراجها.' });
+
+    const headers = [
+      'اسم العميل',
+      'رقم الهاتف',
+      'تاريخ التسجيل',
+      'إجمالي الفواتير',
+      'إجمالي الحجوزات',
+      'إحصائيات الفئات',
+    ];
     const csvRows = [headers.join(',')];
-    
+
     for (const r of rows) {
       const counts = r.dependency_counts || {};
       const orders = counts.orders ?? r.order_count ?? 0;
@@ -104,18 +131,18 @@ export default function Customers() {
       const tierStatsStr = (r.tier_statistics || [])
         .map((ts) => `${ts.tier_name}: ${ts.order_count} فاتورة / ${ts.preorder_count} حجز`)
         .join(' | ');
-        
+
       const rowData = [
         `"${(r.name || '').replace(/"/g, '""')}"`,
         `"${r.phone || ''}"`,
         `"${dateTime(r.created_at)}"`,
         orders,
         preorders,
-        `"${tierStatsStr}"`
+        `"${tierStatsStr}"`,
       ];
       csvRows.push(rowData.join(','));
     }
-    
+
     const blob = new Blob(['\ufeff' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -138,13 +165,15 @@ export default function Customers() {
         const orders = counts.orders ?? r.order_count ?? 0;
         const preorders = counts.preorders ?? r.preorder_count ?? 0;
         const tierStats = r.tier_statistics || [];
-        
+
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <span>{orders} فاتورة · {preorders} حجز</span>
+            <span>
+              {orders} فاتورة · {preorders} حجز
+            </span>
             {tierStats.length > 0 && (
               <div style={{ fontSize: '0.85em', color: 'var(--a4-c-text-secondary)' }}>
-                {tierStats.map(ts => (
+                {tierStats.map((ts) => (
                   <span key={ts.tier_id} style={{ display: 'block' }}>
                     {ts.tier_name}: {ts.order_count} ف · {ts.preorder_count} ح
                   </span>
@@ -218,11 +247,18 @@ export default function Customers() {
             >
               <MenuItem value="">الكل</MenuItem>
               {tiers.map((t) => (
-                <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
+                <MenuItem key={t.id} value={t.id}>
+                  {t.name}
+                </MenuItem>
               ))}
             </Select>
           </Field>
-          <Button style={{ alignSelf: 'flex-end', height: '40px' }} variant="outlined" startIcon={<SearchRounded />} onClick={() => load()}>
+          <Button
+            style={{ alignSelf: 'flex-end', height: '40px' }}
+            variant="outlined"
+            startIcon={<SearchRounded />}
+            onClick={() => load()}
+          >
             بحث
           </Button>
         </div>

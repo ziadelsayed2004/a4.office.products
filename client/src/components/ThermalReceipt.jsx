@@ -288,23 +288,24 @@ export function ThermalReceipt({ receipt, settings, reprint = false, copyNumber 
       <section className="thermal-receipt__totals">
         <ReceiptRow label="المجموع الفرعي" value={money(data.subtotal)} />
         {data.discount > 0 && <ReceiptRow label="الخصم" value={`- ${money(data.discount)}`} />}
-        
+
         <ReceiptRow
           className="thermal-receipt__grand-total"
           label={data.variant === 'return' ? 'إجمالي المبلغ المردود' : 'الإجمالي'}
           value={money(data.total)}
         />
 
-        {(data.depositPaid !== undefined || data.remainingAmount !== undefined) && data.variant === 'deposit' && (
-          <div className="thermal-receipt__preorder-summary-box">
-            {data.depositPaid !== undefined && (
-              <ReceiptRow label="العربون المدفوع" value={money(data.depositPaid)} />
-            )}
-            {data.remainingAmount !== undefined && (
-              <ReceiptRow label="المتبقي على العميل" value={money(data.remainingAmount)} />
-            )}
-          </div>
-        )}
+        {(data.depositPaid !== undefined || data.remainingAmount !== undefined) &&
+          data.variant === 'deposit' && (
+            <div className="thermal-receipt__preorder-summary-box">
+              {data.depositPaid !== undefined && (
+                <ReceiptRow label="العربون المدفوع" value={money(data.depositPaid)} />
+              )}
+              {data.remainingAmount !== undefined && (
+                <ReceiptRow label="المتبقي على العميل" value={money(data.remainingAmount)} />
+              )}
+            </div>
+          )}
 
         {data.variant !== 'deposit' && (
           <>
