@@ -51,6 +51,7 @@ export default function Customers() {
   const [tiers, setTiers] = useState([]);
   const [tierId, setTierId] = useState('');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportTierId, setExportTierId] = useState('');
   const [exportColumns, setExportColumns] = useState({
     name: true,
     phone: true,
@@ -127,7 +128,14 @@ export default function Customers() {
   };
 
   const executeExport = () => {
-    if (!rows.length) {
+    let exportRows = rows;
+    if (exportTierId) {
+      exportRows = rows.filter((r) =>
+        r.tier_statistics?.some((ts) => String(ts.tier_id) === String(exportTierId))
+      );
+    }
+
+    if (!exportRows.length) {
       setToast({ severity: 'warning', message: 'لا توجد بيانات لاستخراجها.' });
       setExportDialogOpen(false);
       return;
@@ -143,7 +151,7 @@ export default function Customers() {
 
     const csvRows = [headers.join(',')];
 
-    for (const r of rows) {
+    for (const r of exportRows) {
       const counts = r.dependency_counts || {};
       const orders = counts.orders ?? r.order_count ?? 0;
       const preorders = counts.preorders ?? r.preorder_count ?? 0;
@@ -194,18 +202,7 @@ export default function Customers() {
         const tierStats = r.tier_statistics || [];
         if (!tierStats.length)
           return <span style={{ color: 'var(--a4-c-text-secondary)' }}>الأساسي فقط</span>;
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.85em' }}>
-            {tierStats.map((ts) => (
-              <span key={ts.tier_id} style={{ display: 'block' }}>
-                {ts.tier_name}:{' '}
-                <span dir="ltr">
-                  {ts.order_count} ف · {ts.preorder_count} ح
-                </span>
-              </span>
-            ))}
-          </div>
-        );
+        return <span>{tierStats.map((ts) => ts.tier_name).join('، ')}</span>;
       },
     },
     {
@@ -344,6 +341,23 @@ export default function Customers() {
       >
         <DialogTitle>تحديد أعمدة الاستخراج</DialogTitle>
         <DialogContent dividers>
+          <div style={{ marginBottom: '16px' }}>
+            <Field label="استخراج لفئة سعرية معينة">
+              <Select
+                value={exportTierId}
+                onChange={(e) => setExportTierId(e.target.value)}
+                displayEmpty
+                size="small"
+              >
+                <MenuItem value="">الكل (بدون تحديد)</MenuItem>
+                {tiers.map((t) => (
+                  <MenuItem key={t.id} value={t.id}>
+                    {t.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </Field>
+          </div>
           <FormGroup>
             <FormControlLabel
               control={

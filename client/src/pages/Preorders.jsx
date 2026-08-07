@@ -12,6 +12,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import { EditRounded, RefreshRounded, VisibilityRounded } from '@mui/icons-material';
+import { useAuth } from '../app/AuthContext.jsx';
 import { api } from '../services/apiClient.js';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { DataTable } from '../components/DataTable.jsx';
@@ -45,13 +46,15 @@ export default function Preorders() {
   const [nextStatus, setNextStatus] = useState('');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
+  const { isAdmin } = useAuth();
   const loadSequence = useRef(0);
   const load = async (nextFilters = filters) => {
     const requestId = ++loadSequence.current;
     setLoading(true);
     try {
       const q = new URLSearchParams(Object.entries(nextFilters).filter(([, v]) => v));
-      const nextRows = (await api.get(`/api/admin/preorders?${q}`)).data || [];
+      const endpoint = isAdmin ? `/api/admin/preorders?${q}` : `/api/pos/preorders/search?${q}`;
+      const nextRows = (await api.get(endpoint)).data || [];
       if (requestId !== loadSequence.current) return;
       setRows(nextRows);
       setError('');
@@ -110,7 +113,7 @@ export default function Preorders() {
               <VisibilityRounded fontSize="small" />
             </IconButton>
           </Tooltip>
-          {allowedTransitions[r.status]?.length ? (
+          {isAdmin && allowedTransitions[r.status]?.length ? (
             <Tooltip title="تغيير الحالة">
               <IconButton
                 size="small"
@@ -144,23 +147,26 @@ export default function Preorders() {
           <TextField
             value={filters.q}
             onChange={(e) => setFilters((v) => ({ ...v, q: e.target.value }))}
+            onKeyDown={(e) => e.key === 'Enter' && load(filters)}
             placeholder="رقم الحجز أو العميل أو الهاتف"
           />
         </Field>
-        <Field label="الحالة">
-          <TextField
-            select
-            value={filters.status}
-            onChange={(e) => setFilters((v) => ({ ...v, status: e.target.value }))}
-          >
-            <MenuItem value="">الكل</MenuItem>
-            {statuses.map((s) => (
-              <MenuItem key={s} value={s}>
-                {statusLabel(s)}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Field>
+        {isAdmin && (
+          <Field label="الحالة">
+            <TextField
+              select
+              value={filters.status}
+              onChange={(e) => setFilters((v) => ({ ...v, status: e.target.value }))}
+            >
+              <MenuItem value="">الكل</MenuItem>
+              {statuses.map((s) => (
+                <MenuItem key={s} value={s}>
+                  {statusLabel(s)}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Field>
+        )}
       </FilterPanel>
       {error && <Alert severity="error">{error}</Alert>}
       <section className="a4-page-section">

@@ -174,14 +174,7 @@ export default function App() {
                     </AdminOnly>
                   }
                 />
-                <Route
-                  path="preorders"
-                  element={
-                    <AdminOnly>
-                      <Preorders />
-                    </AdminOnly>
-                  }
-                />
+                <Route path="preorders" element={<Preorders />} />
                 <Route
                   path="customers"
                   element={

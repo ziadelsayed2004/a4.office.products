@@ -187,6 +187,11 @@ export function MainLayout() {
             path: '/invoices',
             icon: <DescriptionRounded />,
           },
+          {
+            label: t('nav.preorders'),
+            path: '/preorders',
+            icon: <BadgeRounded />,
+          },
         ],
       },
     ];
