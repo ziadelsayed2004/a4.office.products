@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, IconButton, TextField, Tooltip } from '@mui/material';
-import { AddRounded, DeleteRounded, EditRounded, SearchRounded } from '@mui/icons-material';
+import { Alert, Button, IconButton, TextField, Tooltip, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
+import { AddRounded, DeleteRounded, EditRounded, SearchRounded, DownloadRounded } from '@mui/icons-material';
 import { api } from '../services/apiClient.js';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { DataTable } from '../components/DataTable.jsx';
@@ -25,10 +25,17 @@ export default function Customers() {
   const [toast, setToast] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  const load = async (query = q) => {
+  const [tiers, setTiers] = useState([]);
+  const [tierId, setTierId] = useState('');
+  
+  const load = async (query = q, selectedTier = tierId) => {
     setLoading(true);
     try {
-      setRows((await api.get(`/api/customers?q=${encodeURIComponent(query || '')}`)).data || []);
+      const qs = new URLSearchParams();
+      if (query) qs.append('q', query);
+      if (selectedTier) qs.append('tierId', selectedTier);
+      
+      setRows((await api.get(`/api/customers?${qs.toString()}`)).data || []);
       setError('');
     } catch (e) {
       setError(e.message);
@@ -37,7 +44,8 @@ export default function Customers() {
     }
   };
   useEffect(() => {
-    load('');
+    load('', '');
+    api.get('/api/price-tiers?activeOnly=true').then(res => setTiers(res.data || [])).catch(() => {});
   }, []);
   const open = (row = null) => {
     setEditing(row);
@@ -82,6 +90,42 @@ export default function Customers() {
       setDeleting(false);
     }
   };
+
+  const exportCsv = () => {
+    if (!rows.length) return setToast({ severity: 'warning', message: 'لا توجد بيانات لاستخراجها.' });
+    
+    const headers = ['اسم العميل', 'رقم الهاتف', 'تاريخ التسجيل', 'إجمالي الفواتير', 'إجمالي الحجوزات', 'إحصائيات الفئات'];
+    const csvRows = [headers.join(',')];
+    
+    for (const r of rows) {
+      const counts = r.dependency_counts || {};
+      const orders = counts.orders ?? r.order_count ?? 0;
+      const preorders = counts.preorders ?? r.preorder_count ?? 0;
+      const tierStatsStr = (r.tier_statistics || [])
+        .map((ts) => `${ts.tier_name}: ${ts.order_count} فاتورة / ${ts.preorder_count} حجز`)
+        .join(' | ');
+        
+      const rowData = [
+        `"${(r.name || '').replace(/"/g, '""')}"`,
+        `"${r.phone || ''}"`,
+        `"${dateTime(r.created_at)}"`,
+        orders,
+        preorders,
+        `"${tierStatsStr}"`
+      ];
+      csvRows.push(rowData.join(','));
+    }
+    
+    const blob = new Blob(['\ufeff' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `customers_export_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const columns = [
     { key: 'name', label: 'اسم العميل' },
     { key: 'phone', label: 'رقم الهاتف', render: (r) => <span className="a4-ltr">{r.phone}</span> },
@@ -93,7 +137,22 @@ export default function Customers() {
         const counts = r.dependency_counts || {};
         const orders = counts.orders ?? r.order_count ?? 0;
         const preorders = counts.preorders ?? r.preorder_count ?? 0;
-        return `${orders} فاتورة · ${preorders} حجز`;
+        const tierStats = r.tier_statistics || [];
+        
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span>{orders} فاتورة · {preorders} حجز</span>
+            {tierStats.length > 0 && (
+              <div style={{ fontSize: '0.85em', color: 'var(--a4-c-text-secondary)' }}>
+                {tierStats.map(ts => (
+                  <span key={ts.tier_id} style={{ display: 'block' }}>
+                    {ts.tier_name}: {ts.order_count} ف · {ts.preorder_count} ح
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        );
       },
     },
     {
@@ -128,9 +187,14 @@ export default function Customers() {
         title="العملاء"
         description="سجل عملاء الحجوزات وابحث عنهم بالاسم أو رقم الهاتف."
         actions={
-          <Button variant="contained" startIcon={<AddRounded />} onClick={() => open()}>
-            عميل جديد
-          </Button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button variant="outlined" startIcon={<DownloadRounded />} onClick={exportCsv}>
+              استخراج
+            </Button>
+            <Button variant="contained" startIcon={<AddRounded />} onClick={() => open()}>
+              عميل جديد
+            </Button>
+          </div>
         }
       />
       <section className="a4-page-section customers-page__workspace">
@@ -143,7 +207,24 @@ export default function Customers() {
               placeholder="ابحث بالاسم أو رقم الهاتف"
             />
           </Field>
-          <Button variant="outlined" startIcon={<SearchRounded />} onClick={() => load()}>
+          <FormControl size="small" style={{ minWidth: '150px', marginTop: 'auto' }}>
+            <InputLabel id="tier-filter-label">فئة السعر</InputLabel>
+            <Select
+              labelId="tier-filter-label"
+              value={tierId}
+              label="فئة السعر"
+              onChange={(e) => {
+                setTierId(e.target.value);
+                load(q, e.target.value);
+              }}
+            >
+              <MenuItem value="">الكل</MenuItem>
+              {tiers.map((t) => (
+                <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button style={{ marginTop: 'auto' }} variant="outlined" startIcon={<SearchRounded />} onClick={() => load()}>
             بحث
           </Button>
         </div>

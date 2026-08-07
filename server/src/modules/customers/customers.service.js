@@ -23,24 +23,71 @@ function normalizeCustomer({ name, phone } = {}) {
   return { name: requireCustomerName(name), phone: requireCustomerPhone(phone) };
 }
 
-export async function searchCustomers(queryStr = '', connection = db) {
-  let query = `SELECT c.*,
-    (SELECT COUNT(*) FROM orders o WHERE o.customer_id = c.id) AS order_count,
-    (SELECT COUNT(*) FROM preorders p WHERE p.customer_id = c.id) AS preorder_count
-    FROM customers c WHERE 1=1`;
+export async function searchCustomers(filters = {}, connection = db) {
+  const isObject = typeof filters === 'object' && filters !== null;
+  const search = String((isObject ? filters.q : filters) || '').trim();
+  const tierId = isObject ? filters.tierId : null;
+
+  let query = `
+    WITH tier_stats AS (
+      SELECT 
+        customer_id,
+        price_tier_id,
+        SUM(order_count) AS order_count,
+        SUM(preorder_count) AS preorder_count
+      FROM (
+        SELECT o.customer_id, oi.price_tier_id, COUNT(DISTINCT o.id) AS order_count, 0 AS preorder_count
+        FROM orders o
+        JOIN order_items oi ON o.id = oi.order_id
+        WHERE oi.price_tier_id IS NOT NULL
+        GROUP BY o.customer_id, oi.price_tier_id
+        
+        UNION ALL
+        
+        SELECT p.customer_id, pi.price_tier_id, 0 AS order_count, COUNT(DISTINCT p.id) AS preorder_count
+        FROM preorders p
+        JOIN preorder_items pi ON p.id = pi.preorder_id
+        WHERE pi.price_tier_id IS NOT NULL
+        GROUP BY p.customer_id, pi.price_tier_id
+      )
+      GROUP BY customer_id, price_tier_id
+    )
+    SELECT c.*,
+      (SELECT COUNT(*) FROM orders o WHERE o.customer_id = c.id) AS order_count,
+      (SELECT COUNT(*) FROM preorders p WHERE p.customer_id = c.id) AS preorder_count,
+      (
+        SELECT json_group_array(json_object(
+          'tier_id', ts.price_tier_id,
+          'tier_name', pt.name,
+          'order_count', ts.order_count,
+          'preorder_count', ts.preorder_count
+        ))
+        FROM tier_stats ts
+        JOIN price_tiers pt ON ts.price_tier_id = pt.id
+        WHERE ts.customer_id = c.id
+      ) AS tier_statistics
+    FROM customers c
+    WHERE 1=1
+  `;
   const params = [];
-  const search = String(queryStr || '').trim();
+
   if (search) {
     const textValue = `%${search}%`;
     const normalizedPhone = normalizeCustomerPhone(search);
     if (normalizedPhone) {
-      query += ' AND (name LIKE ? OR phone LIKE ?)';
+      query += ' AND (c.name LIKE ? OR c.phone LIKE ?)';
       params.push(textValue, `%${normalizedPhone}%`);
     } else {
-      query += ' AND name LIKE ?';
+      query += ' AND c.name LIKE ?';
       params.push(textValue);
     }
   }
+
+  if (tierId) {
+    query += ' AND EXISTS (SELECT 1 FROM tier_stats ts WHERE ts.customer_id = c.id AND ts.price_tier_id = ?)';
+    params.push(tierId);
+  }
+
   query += ' ORDER BY c.name ASC LIMIT 50;';
   return (await connection.all(query, params)).map(decorateCustomerDependencies);
 }
@@ -54,25 +101,70 @@ export async function lookupCustomerByPhone(phone, connection = db) {
 }
 
 function decorateCustomerDependencies(customer) {
-  const { order_count: orderCount = 0, preorder_count: preorderCount = 0, ...data } = customer;
+  const { order_count: orderCount = 0, preorder_count: preorderCount = 0, tier_statistics, ...data } = customer;
   const dependencyCounts = {
     orders: Number(orderCount),
     preorders: Number(preorderCount),
   };
+  
+  let parsedTierStats = [];
+  if (tier_statistics) {
+    try {
+      parsedTierStats = JSON.parse(tier_statistics).filter(Boolean);
+    } catch {
+      parsedTierStats = [];
+    }
+  }
+
   return {
     ...data,
     can_delete: Object.values(dependencyCounts).every((count) => count === 0),
     dependency_counts: dependencyCounts,
+    tier_statistics: parsedTierStats,
   };
 }
 
 export async function getCustomerById(id, connection = db) {
   const customer = await connection.get(
-    `SELECT c.*,
+    `
+    WITH tier_stats AS (
+      SELECT 
+        customer_id,
+        price_tier_id,
+        SUM(order_count) AS order_count,
+        SUM(preorder_count) AS preorder_count
+      FROM (
+        SELECT o.customer_id, oi.price_tier_id, COUNT(DISTINCT o.id) AS order_count, 0 AS preorder_count
+        FROM orders o
+        JOIN order_items oi ON o.id = oi.order_id
+        WHERE o.customer_id = ? AND oi.price_tier_id IS NOT NULL
+        GROUP BY o.customer_id, oi.price_tier_id
+        
+        UNION ALL
+        
+        SELECT p.customer_id, pi.price_tier_id, 0 AS order_count, COUNT(DISTINCT p.id) AS preorder_count
+        FROM preorders p
+        JOIN preorder_items pi ON p.id = pi.preorder_id
+        WHERE p.customer_id = ? AND pi.price_tier_id IS NOT NULL
+        GROUP BY p.customer_id, pi.price_tier_id
+      )
+      GROUP BY customer_id, price_tier_id
+    )
+    SELECT c.*,
       (SELECT COUNT(*) FROM orders o WHERE o.customer_id = c.id) AS order_count,
-      (SELECT COUNT(*) FROM preorders p WHERE p.customer_id = c.id) AS preorder_count
+      (SELECT COUNT(*) FROM preorders p WHERE p.customer_id = c.id) AS preorder_count,
+      (
+        SELECT json_group_array(json_object(
+          'tier_id', ts.price_tier_id,
+          'tier_name', pt.name,
+          'order_count', ts.order_count,
+          'preorder_count', ts.preorder_count
+        ))
+        FROM tier_stats ts
+        JOIN price_tiers pt ON ts.price_tier_id = pt.id
+      ) AS tier_statistics
      FROM customers c WHERE c.id = ?;`,
-    [id]
+    [id, id, id]
   );
   return customer ? decorateCustomerDependencies(customer) : null;
 }

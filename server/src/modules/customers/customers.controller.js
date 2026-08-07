@@ -4,7 +4,7 @@ export async function searchCustomersController(req, res, next) {
   try {
     return res.status(200).json({
       status: 'success',
-      data: await customersService.searchCustomers(req.query.q),
+      data: await customersService.searchCustomers(req.query),
     });
   } catch (error) {
     return next(error);

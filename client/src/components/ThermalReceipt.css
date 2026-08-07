@@ -224,9 +224,51 @@
     page-break-after: auto !important;
   }
 
-  .thermal-receipt,
-  .thermal-receipt * {
-    color: #000000 !important;
-    background-color: #ffffff !important;
+  .thermal-receipt-inverted {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
+}
+
+/* Variant Styles */
+.thermal-receipt--deposit {
+  border-top: 2px double #000000;
+  border-bottom: 2px double #000000;
+}
+.thermal-receipt--deposit .thermal-receipt-inverted {
+  background-color: #000000;
+  color: #ffffff;
+  padding: 1.5mm 3mm;
+  margin-top: 1mm;
+  font-size: 10pt;
+}
+
+.thermal-receipt--pickup {
+  border: 1px dashed #000000;
+}
+
+.thermal-receipt--return {
+  border: 1px dotted #000000;
+}
+.thermal-receipt--return .thermal-receipt__brand b {
+  border: 1.5px solid #000000;
+  padding: 1mm 2mm;
+  font-weight: 900;
+}
+
+/* Preorder Summary Box */
+.thermal-receipt__preorder-summary-box {
+  margin-top: 2mm;
+  padding: 2mm;
+  border: 2px solid #000000;
+  border-radius: 2px;
+}
+.thermal-receipt__preorder-summary-box .thermal-receipt__row {
+  padding-block: 0.5mm;
+}
+.thermal-receipt__preorder-summary-box .thermal-receipt__row strong {
+  font-size: 9pt;
+  font-weight: 800;
 }

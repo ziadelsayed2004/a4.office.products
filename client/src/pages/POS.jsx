@@ -1105,11 +1105,13 @@ export default function POS() {
                           <MenuItem value="base">
                             السعر الأساسي — {money(item.baseSalePrice)}
                           </MenuItem>
-                          {item.prices.map((price) => (
-                            <MenuItem key={price.price_tier_id} value={price.price_tier_id}>
-                              {price.tier_name} — {money(price.price)}
-                            </MenuItem>
-                          ))}
+                          {item.prices
+                            .filter((p) => p.price !== null && p.price !== undefined && p.price !== '')
+                            .map((price) => (
+                              <MenuItem key={price.price_tier_id} value={price.price_tier_id}>
+                                {price.tier_name} — {money(price.price)}
+                              </MenuItem>
+                            ))}
                         </TextField>
                       </Field>
                     </div>

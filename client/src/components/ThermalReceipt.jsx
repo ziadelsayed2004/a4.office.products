@@ -208,7 +208,7 @@ const stageLabels = {
 export function ThermalReceipt({ receipt, settings, reprint = false, copyNumber = 1, copies = 1 }) {
   const data = normalizeThermalReceipt(receipt, settings);
   const totalPaid = data.payments.reduce((sum, payment) => sum + payment.amount, 0);
-  const className = `thermal-receipt thermal-receipt--${data.width}`;
+  const className = `thermal-receipt thermal-receipt--${data.width} thermal-receipt--${data.variant}`;
 
   return (
     <article className={className} data-receipt-ready="true" data-receipt-width-mm={data.width}>
@@ -222,7 +222,9 @@ export function ThermalReceipt({ receipt, settings, reprint = false, copyNumber 
             <span>تواصل معنا والشكاوى والاقتراحات</span>
           </div>
         )}
-        <b>{variantLabels[data.variant]}</b>
+        <b className={data.variant === 'deposit' ? 'thermal-receipt-inverted' : ''}>
+          {variantLabels[data.variant]}
+        </b>
         {reprint && <em>نسخة معاد طباعتها</em>}
         {copies > 1 && (
           <small>
@@ -286,20 +288,37 @@ export function ThermalReceipt({ receipt, settings, reprint = false, copyNumber 
       <section className="thermal-receipt__totals">
         <ReceiptRow label="المجموع الفرعي" value={money(data.subtotal)} />
         {data.discount > 0 && <ReceiptRow label="الخصم" value={`- ${money(data.discount)}`} />}
-        {data.depositPaid !== undefined && (
-          <ReceiptRow label="العربون المدفوع" value={money(data.depositPaid)} />
-        )}
-        {data.pickupAmount !== undefined && (
-          <ReceiptRow label="المحصل عند الاستلام" value={money(data.pickupAmount)} />
-        )}
-        {data.remainingAmount !== undefined && (
-          <ReceiptRow label="المتبقي" value={money(data.remainingAmount)} />
-        )}
+        
         <ReceiptRow
           className="thermal-receipt__grand-total"
           label={data.variant === 'return' ? 'إجمالي المبلغ المردود' : 'الإجمالي'}
           value={money(data.total)}
         />
+
+        {(data.depositPaid !== undefined || data.remainingAmount !== undefined) && data.variant === 'deposit' && (
+          <div className="thermal-receipt__preorder-summary-box">
+            {data.depositPaid !== undefined && (
+              <ReceiptRow label="العربون المدفوع" value={money(data.depositPaid)} />
+            )}
+            {data.remainingAmount !== undefined && (
+              <ReceiptRow label="المتبقي على العميل" value={money(data.remainingAmount)} />
+            )}
+          </div>
+        )}
+
+        {data.variant !== 'deposit' && (
+          <>
+            {data.depositPaid !== undefined && (
+              <ReceiptRow label="العربون المدفوع مسبقاً" value={money(data.depositPaid)} />
+            )}
+            {data.pickupAmount !== undefined && (
+              <ReceiptRow label="المحصل عند الاستلام" value={money(data.pickupAmount)} />
+            )}
+            {data.remainingAmount !== undefined && (
+              <ReceiptRow label="المتبقي" value={money(data.remainingAmount)} />
+            )}
+          </>
+        )}
       </section>
 
       {data.payments.length > 0 && (
