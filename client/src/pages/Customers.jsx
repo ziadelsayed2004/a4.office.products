@@ -237,7 +237,11 @@ export default function Customers() {
         description="سجل عملاء الحجوزات وابحث عنهم بالاسم أو رقم الهاتف."
         actions={
           <div style={{ display: 'flex', gap: '8px' }}>
-            <Button variant="outlined" startIcon={<DownloadRounded />} onClick={() => setExportDialogOpen(true)}>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadRounded />}
+              onClick={() => setExportDialogOpen(true)}
+            >
               استخراج
             </Button>
             <Button variant="contained" startIcon={<AddRounded />} onClick={() => open()}>
@@ -326,39 +330,84 @@ export default function Customers() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={remove}
       />
-      <Dialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
         <DialogTitle>تحديد أعمدة الاستخراج</DialogTitle>
         <DialogContent dividers>
           <FormGroup>
             <FormControlLabel
-              control={<Checkbox checked={exportColumns.name} onChange={(e) => setExportColumns(c => ({...c, name: e.target.checked}))} />}
+              control={
+                <Checkbox
+                  checked={exportColumns.name}
+                  onChange={(e) => setExportColumns((c) => ({ ...c, name: e.target.checked }))}
+                />
+              }
               label="اسم العميل"
             />
             <FormControlLabel
-              control={<Checkbox checked={exportColumns.phone} onChange={(e) => setExportColumns(c => ({...c, phone: e.target.checked}))} />}
+              control={
+                <Checkbox
+                  checked={exportColumns.phone}
+                  onChange={(e) => setExportColumns((c) => ({ ...c, phone: e.target.checked }))}
+                />
+              }
               label="رقم الهاتف"
             />
             <FormControlLabel
-              control={<Checkbox checked={exportColumns.created_at} onChange={(e) => setExportColumns(c => ({...c, created_at: e.target.checked}))} />}
+              control={
+                <Checkbox
+                  checked={exportColumns.created_at}
+                  onChange={(e) =>
+                    setExportColumns((c) => ({ ...c, created_at: e.target.checked }))
+                  }
+                />
+              }
               label="تاريخ التسجيل"
             />
             <FormControlLabel
-              control={<Checkbox checked={exportColumns.orders} onChange={(e) => setExportColumns(c => ({...c, orders: e.target.checked}))} />}
+              control={
+                <Checkbox
+                  checked={exportColumns.orders}
+                  onChange={(e) => setExportColumns((c) => ({ ...c, orders: e.target.checked }))}
+                />
+              }
               label="إجمالي الفواتير"
             />
             <FormControlLabel
-              control={<Checkbox checked={exportColumns.preorders} onChange={(e) => setExportColumns(c => ({...c, preorders: e.target.checked}))} />}
+              control={
+                <Checkbox
+                  checked={exportColumns.preorders}
+                  onChange={(e) => setExportColumns((c) => ({ ...c, preorders: e.target.checked }))}
+                />
+              }
               label="إجمالي الحجوزات"
             />
             <FormControlLabel
-              control={<Checkbox checked={exportColumns.tiers} onChange={(e) => setExportColumns(c => ({...c, tiers: e.target.checked}))} />}
+              control={
+                <Checkbox
+                  checked={exportColumns.tiers}
+                  onChange={(e) => setExportColumns((c) => ({ ...c, tiers: e.target.checked }))}
+                />
+              }
               label="إحصائيات الفئات"
             />
           </FormGroup>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setExportDialogOpen(false)} color="inherit">إلغاء</Button>
-          <Button onClick={executeExport} variant="contained" disabled={!Object.values(exportColumns).some(Boolean)}>استخراج البيانات</Button>
+          <Button onClick={() => setExportDialogOpen(false)} color="inherit">
+            إلغاء
+          </Button>
+          <Button
+            onClick={executeExport}
+            variant="contained"
+            disabled={!Object.values(exportColumns).some(Boolean)}
+          >
+            استخراج البيانات
+          </Button>
         </DialogActions>
       </Dialog>
       <AppSnackbar state={toast} onClose={() => setToast(null)} />
