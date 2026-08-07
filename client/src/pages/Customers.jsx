@@ -78,7 +78,7 @@ export default function Customers() {
   useEffect(() => {
     load('', '');
     api
-      .get('/api/price-tiers?activeOnly=true')
+      .get('/api/admin/price-tiers?activeOnly=true')
       .then((res) => setTiers(res.data || []))
       .catch(() => {});
   }, []);
@@ -260,14 +260,16 @@ export default function Customers() {
               placeholder="ابحث بالاسم أو رقم الهاتف"
             />
           </Field>
-          <Field className="customers-search__tier" label="فئة السعر" density="compact">
+          <FormControl className="customers-search__tier" size="small">
+            <InputLabel id="tier-filter-label">فئة السعر</InputLabel>
             <Select
+              labelId="tier-filter-label"
               value={tierId}
+              label="فئة السعر"
               onChange={(e) => {
                 setTierId(e.target.value);
                 load(q, e.target.value);
               }}
-              displayEmpty
             >
               <MenuItem value="">الكل</MenuItem>
               {tiers.map((t) => (
@@ -276,7 +278,7 @@ export default function Customers() {
                 </MenuItem>
               ))}
             </Select>
-          </Field>
+          </FormControl>
           <Button
             style={{ alignSelf: 'flex-end', height: '40px' }}
             variant="outlined"
