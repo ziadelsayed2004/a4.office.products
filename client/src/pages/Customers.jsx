@@ -9,6 +9,13 @@ import {
   MenuItem,
   InputLabel,
   FormControl,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import {
   AddRounded,
@@ -43,6 +50,15 @@ export default function Customers() {
   const [deleting, setDeleting] = useState(false);
   const [tiers, setTiers] = useState([]);
   const [tierId, setTierId] = useState('');
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportColumns, setExportColumns] = useState({
+    name: true,
+    phone: true,
+    created_at: true,
+    orders: true,
+    preorders: true,
+    tiers: true,
+  });
 
   const load = async (query = q, selectedTier = tierId) => {
     setLoading(true);
@@ -110,18 +126,21 @@ export default function Customers() {
     }
   };
 
-  const exportCsv = () => {
-    if (!rows.length)
-      return setToast({ severity: 'warning', message: 'لا توجد بيانات لاستخراجها.' });
+  const executeExport = () => {
+    if (!rows.length) {
+      setToast({ severity: 'warning', message: 'لا توجد بيانات لاستخراجها.' });
+      setExportDialogOpen(false);
+      return;
+    }
 
-    const headers = [
-      'اسم العميل',
-      'رقم الهاتف',
-      'تاريخ التسجيل',
-      'إجمالي الفواتير',
-      'إجمالي الحجوزات',
-      'إحصائيات الفئات',
-    ];
+    const headers = [];
+    if (exportColumns.name) headers.push('اسم العميل');
+    if (exportColumns.phone) headers.push('رقم الهاتف');
+    if (exportColumns.created_at) headers.push('تاريخ التسجيل');
+    if (exportColumns.orders) headers.push('إجمالي الفواتير');
+    if (exportColumns.preorders) headers.push('إجمالي الحجوزات');
+    if (exportColumns.tiers) headers.push('إحصائيات الفئات');
+
     const csvRows = [headers.join(',')];
 
     for (const r of rows) {
@@ -132,14 +151,14 @@ export default function Customers() {
         .map((ts) => `${ts.tier_name}: ${ts.order_count} فاتورة / ${ts.preorder_count} حجز`)
         .join(' | ');
 
-      const rowData = [
-        `"${(r.name || '').replace(/"/g, '""')}"`,
-        `"${r.phone || ''}"`,
-        `"${dateTime(r.created_at)}"`,
-        orders,
-        preorders,
-        `"${tierStatsStr}"`,
-      ];
+      const rowData = [];
+      if (exportColumns.name) rowData.push(`"${(r.name || '').replace(/"/g, '""')}"`);
+      if (exportColumns.phone) rowData.push(`"${r.phone || ''}"`);
+      if (exportColumns.created_at) rowData.push(`"${dateTime(r.created_at)}"`);
+      if (exportColumns.orders) rowData.push(orders);
+      if (exportColumns.preorders) rowData.push(preorders);
+      if (exportColumns.tiers) rowData.push(`"${tierStatsStr}"`);
+
       csvRows.push(rowData.join(','));
     }
 
@@ -151,6 +170,7 @@ export default function Customers() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setExportDialogOpen(false);
   };
 
   const columns = [
@@ -217,7 +237,7 @@ export default function Customers() {
         description="سجل عملاء الحجوزات وابحث عنهم بالاسم أو رقم الهاتف."
         actions={
           <div style={{ display: 'flex', gap: '8px' }}>
-            <Button variant="outlined" startIcon={<DownloadRounded />} onClick={exportCsv}>
+            <Button variant="outlined" startIcon={<DownloadRounded />} onClick={() => setExportDialogOpen(true)}>
               استخراج
             </Button>
             <Button variant="contained" startIcon={<AddRounded />} onClick={() => open()}>
@@ -306,6 +326,41 @@ export default function Customers() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={remove}
       />
+      <Dialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>تحديد أعمدة الاستخراج</DialogTitle>
+        <DialogContent dividers>
+          <FormGroup>
+            <FormControlLabel
+              control={<Checkbox checked={exportColumns.name} onChange={(e) => setExportColumns(c => ({...c, name: e.target.checked}))} />}
+              label="اسم العميل"
+            />
+            <FormControlLabel
+              control={<Checkbox checked={exportColumns.phone} onChange={(e) => setExportColumns(c => ({...c, phone: e.target.checked}))} />}
+              label="رقم الهاتف"
+            />
+            <FormControlLabel
+              control={<Checkbox checked={exportColumns.created_at} onChange={(e) => setExportColumns(c => ({...c, created_at: e.target.checked}))} />}
+              label="تاريخ التسجيل"
+            />
+            <FormControlLabel
+              control={<Checkbox checked={exportColumns.orders} onChange={(e) => setExportColumns(c => ({...c, orders: e.target.checked}))} />}
+              label="إجمالي الفواتير"
+            />
+            <FormControlLabel
+              control={<Checkbox checked={exportColumns.preorders} onChange={(e) => setExportColumns(c => ({...c, preorders: e.target.checked}))} />}
+              label="إجمالي الحجوزات"
+            />
+            <FormControlLabel
+              control={<Checkbox checked={exportColumns.tiers} onChange={(e) => setExportColumns(c => ({...c, tiers: e.target.checked}))} />}
+              label="إحصائيات الفئات"
+            />
+          </FormGroup>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExportDialogOpen(false)} color="inherit">إلغاء</Button>
+          <Button onClick={executeExport} variant="contained" disabled={!Object.values(exportColumns).some(Boolean)}>استخراج البيانات</Button>
+        </DialogActions>
+      </Dialog>
       <AppSnackbar state={toast} onClose={() => setToast(null)} />
     </div>
   );
