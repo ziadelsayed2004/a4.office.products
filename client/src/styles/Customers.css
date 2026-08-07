@@ -4,17 +4,26 @@
 }
 
 .customers-search {
-  justify-content: flex-start;
+  display: flex;
+  flex-direction: row;
   align-items: flex-start;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .customers-search__field {
-  width: min(100%, 360px);
+  flex: 1 1 250px;
+  max-width: 400px;
+}
+
+.customers-search__tier {
+  flex: 0 0 160px;
 }
 
 .customers-search > .MuiButton-root {
   height: var(--control-height);
   min-height: var(--control-height);
+  align-self: flex-end;
 }
 
 .customers-page__alert {

@@ -207,24 +207,22 @@ export default function Customers() {
               placeholder="ابحث بالاسم أو رقم الهاتف"
             />
           </Field>
-          <FormControl size="small" style={{ minWidth: '150px', marginTop: 'auto' }}>
-            <InputLabel id="tier-filter-label">فئة السعر</InputLabel>
+          <Field className="customers-search__tier" label="فئة السعر" density="compact">
             <Select
-              labelId="tier-filter-label"
               value={tierId}
-              label="فئة السعر"
               onChange={(e) => {
                 setTierId(e.target.value);
                 load(q, e.target.value);
               }}
+              displayEmpty
             >
               <MenuItem value="">الكل</MenuItem>
               {tiers.map((t) => (
                 <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
               ))}
             </Select>
-          </FormControl>
-          <Button style={{ marginTop: 'auto' }} variant="outlined" startIcon={<SearchRounded />} onClick={() => load()}>
+          </Field>
+          <Button style={{ alignSelf: 'flex-end', height: '40px' }} variant="outlined" startIcon={<SearchRounded />} onClick={() => load()}>
             بحث
           </Button>
         </div>
