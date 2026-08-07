@@ -88,7 +88,7 @@ export default function Customers() {
       .catch(() => {});
     api
       .get('/api/admin/products?limit=1000')
-      .then((res) => setProducts(res.data.products || []))
+      .then((res) => setProducts(res.data?.data || res.data || []))
       .catch(() => {});
   }, []);
   const open = (row = null) => {
@@ -301,11 +301,7 @@ export default function Customers() {
             </Button>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <FormControl
-              className="customers-search__tier"
-              size="small"
-              style={{ minWidth: '200px' }}
-            >
+            <FormControl className="customers-search__tier" size="small" style={{ flex: 1 }}>
               <InputLabel id="tier-filter-label">فئة السعر</InputLabel>
               <Select
                 labelId="tier-filter-label"
@@ -324,11 +320,7 @@ export default function Customers() {
                 ))}
               </Select>
             </FormControl>
-            <FormControl
-              className="customers-search__product"
-              size="small"
-              style={{ minWidth: '200px' }}
-            >
+            <FormControl className="customers-search__product" size="small" style={{ flex: 1 }}>
               <InputLabel id="product-filter-label">المنتج</InputLabel>
               <Select
                 labelId="product-filter-label"
