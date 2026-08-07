@@ -192,12 +192,16 @@ export default function Customers() {
       label: 'فئات السعر المستخدمة',
       render: (r) => {
         const tierStats = r.tier_statistics || [];
-        if (!tierStats.length) return <span style={{ color: 'var(--a4-c-text-secondary)' }}>الأساسي فقط</span>;
+        if (!tierStats.length)
+          return <span style={{ color: 'var(--a4-c-text-secondary)' }}>الأساسي فقط</span>;
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.85em' }}>
             {tierStats.map((ts) => (
               <span key={ts.tier_id} style={{ display: 'block' }}>
-                {ts.tier_name}: <span dir="ltr">{ts.order_count} ف · {ts.preorder_count} ح</span>
+                {ts.tier_name}:{' '}
+                <span dir="ltr">
+                  {ts.order_count} ف · {ts.preorder_count} ح
+                </span>
               </span>
             ))}
           </div>
