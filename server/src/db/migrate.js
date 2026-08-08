@@ -19,6 +19,7 @@ import * as walletLabel from './migrations/011_wallet_label.js';
 import * as optionalPickupPrinting from './migrations/012_optional_pickup_printing.js';
 import * as contactReceiptQr from './migrations/013_contact_receipt_qr.js';
 import * as lookupIndexes from './migrations/014_lookup_indexes.js';
+import * as unifiedDocumentQr from './migrations/015_unified_document_qr.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,6 +38,7 @@ const migrations = [
   optionalPickupPrinting,
   contactReceiptQr,
   lookupIndexes,
+  unifiedDocumentQr,
 ];
 
 async function tableExists(name) {
@@ -122,6 +124,7 @@ async function validateTargetSchema() {
     'identifier_migration_map',
     'notifications',
     'notification_reads',
+    'document_qr_aliases',
   ];
   for (const table of requiredTables) {
     if (!(await tableExists(table)))

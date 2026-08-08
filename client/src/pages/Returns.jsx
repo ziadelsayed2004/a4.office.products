@@ -57,6 +57,13 @@ function returnRow(row) {
     ...item,
     id: valueOf(item, 'id', 'returnId', 'return_id'),
     returnNumber: valueOf(item, 'returnNumber', 'return_number'),
+    returnQrToken: valueOf(
+      item,
+      'returnQrToken',
+      'return_qr_token',
+      'returnNumber',
+      'return_number'
+    ),
     invoiceNumber: valueOf(item, 'invoiceNumber', 'invoice_number'),
     cashierName: valueOf(item, 'cashierName', 'cashier_name'),
     shiftId: valueOf(item, 'shiftId', 'shift_id'),

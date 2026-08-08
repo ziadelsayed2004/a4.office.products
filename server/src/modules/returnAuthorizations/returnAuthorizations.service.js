@@ -227,6 +227,13 @@ async function buildQuote(connection, { orderId, items }, { enforceNoActive = fa
   if (!['COMPLETED', 'PARTIALLY_RETURNED'].includes(order.status)) {
     throw new AppError('This invoice is not returnable.', 409, 'INVOICE_NOT_RETURNABLE');
   }
+  if (!String(order.invoice_number || '').trim() || !String(order.qr_token || '').trim()) {
+    throw new AppError(
+      'A finalized invoice is required before creating a return.',
+      409,
+      'FINAL_INVOICE_REQUIRED'
+    );
+  }
   if (enforceNoActive) {
     // Expiry is derived read-only everywhere else. During issuance we persist
     // it inside the same write transaction so the partial unique ACTIVE index
@@ -1097,11 +1104,14 @@ export async function executeReturnAuthorization({
         referenceId: result.lastID,
         printedBy: cashierId,
         receiptNumber,
+        qrToken: returnNumber,
         connection,
         snapshot: {
           version: 3,
           returnId: result.lastID,
           returnNumber,
+          returnQrToken: returnNumber,
+          return_qr_token: returnNumber,
           orderId: authorization.order_id,
           authorizationId: authorization.id,
           authorizationNumber: authorization.authorization_number,

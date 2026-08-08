@@ -75,7 +75,7 @@ async function resolvePreorder(preorderId, connection) {
             p.deposit_paid, p.remaining_amount, p.pickup_method,
             p.expected_pickup_date, p.notes, p.qr_pickup_token,
             p.pickup_order_id, p.picked_up_at, p.created_at, p.updated_at,
-            o.invoice_number,
+            o.invoice_number, o.qr_token AS invoice_qr_token,
             u.name AS cashier_name
        FROM preorders p
        JOIN users u ON u.id = p.cashier_id
@@ -92,6 +92,7 @@ async function resolvePreorder(preorderId, connection) {
             pi.price_tier_name_snapshot AS price_tier_name,
             pi.availability_policy_snapshot AS availability_policy,
             pi.deposit_pct_snapshot AS deposit_pct,
+            p.preorder_instructions,
             c.name AS category_name,
             pbd.book_type, pbd.school_grade, pbd.subject,
             pbd.teacher AS author, pbd.publisher, pbd.release_year, pbd.term,
@@ -137,9 +138,18 @@ export async function resolveScan(code, actor, connection = db, context = null) 
     'SELECT token_type, reference_id FROM secure_tokens WHERE token = ?;',
     [normalized]
   );
-  if (token?.token_type === 'product') return resolveProduct(token.reference_id, connection);
-  if (token?.token_type === 'preorder') return resolvePreorder(token.reference_id, connection);
-  if (token?.token_type === 'invoice') {
+  const alias = token
+    ? null
+    : await connection.get(
+        'SELECT document_type AS token_type, reference_id FROM document_qr_aliases WHERE alias = ?;',
+        [normalized]
+      );
+  const resolvedToken = token || alias;
+  if (resolvedToken?.token_type === 'product')
+    return resolveProduct(resolvedToken.reference_id, connection);
+  if (resolvedToken?.token_type === 'preorder')
+    return resolvePreorder(resolvedToken.reference_id, connection);
+  if (resolvedToken?.token_type === 'invoice') {
     const detail = await getInvoiceByExactCredential({ token: normalized }, actor, connection);
     return { type: 'invoice', action: 'READ_ONLY', data: detail };
   }
@@ -149,6 +159,19 @@ export async function resolveScan(code, actor, connection = db, context = null) 
     [normalized]
   );
   if (preorderNumber) return resolvePreorder(preorderNumber.id, connection);
+
+  const invoiceNumber = await connection.get(
+    'SELECT id FROM orders WHERE invoice_number = ? COLLATE NOCASE LIMIT 1;',
+    [normalized]
+  );
+  if (invoiceNumber) {
+    const detail = await getInvoiceByExactCredential(
+      { invoiceNumber: normalized },
+      actor,
+      connection
+    );
+    return { type: 'invoice', action: 'READ_ONLY', data: detail };
+  }
 
   if (/^(prod_|pre_|inv_|ret_|rac_)/.test(normalized)) {
     throw new AppError('Secure QR token is invalid.', 404, 'INVALID_SECURE_TOKEN');

@@ -189,8 +189,15 @@ function buildListWhere(filters = {}, { cashierId = null } = {}) {
     clauses.push(`(o.qr_token = ? OR EXISTS (
       SELECT 1 FROM secure_tokens st
        WHERE st.token = ? AND st.token_type = 'invoice' AND st.reference_id = o.id
+    ) OR EXISTS (
+      SELECT 1 FROM document_qr_aliases qa
+       WHERE qa.alias = ? AND qa.document_type = 'invoice' AND qa.reference_id = o.id
     ))`);
-    params.push(String(filters.token).trim(), String(filters.token).trim());
+    params.push(
+      String(filters.token).trim(),
+      String(filters.token).trim(),
+      String(filters.token).trim()
+    );
   }
   if (filters.receiptNumber) {
     clauses.push(
@@ -328,8 +335,12 @@ export async function resolveExactInvoiceId(criteria, connection = db) {
              SELECT st.reference_id FROM secure_tokens st
               WHERE st.token = ? AND st.token_type = 'invoice'
            )
+           OR o.id = (
+             SELECT qa.reference_id FROM document_qr_aliases qa
+              WHERE qa.alias = ? AND qa.document_type = 'invoice'
+           )
         LIMIT 1;`,
-      [token, token]
+      [token, token, token]
     );
   } else if (entries[0] === 'invoiceNumber') {
     row = await connection.get('SELECT id FROM orders WHERE invoice_number = ?;', [

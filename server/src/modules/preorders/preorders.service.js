@@ -3,7 +3,6 @@ import { writeAuditLog } from '../../utils/auditLogger.js';
 import {
   AppError,
   aggregateItems,
-  generateSecureToken,
   nextPreorderNumbers,
   nextSaleNumbers,
   requireInteger,
@@ -32,6 +31,7 @@ const PREORDER_ITEM_SELECT = `
          pi.price_tier_name_snapshot AS price_tier_name,
          pi.availability_policy_snapshot AS availability_policy,
          pi.deposit_pct_snapshot AS deposit_pct,
+         p.preorder_instructions,
          c.name AS category_name,
          pbd.book_type, pbd.school_grade, pbd.subject,
          pbd.teacher AS author, pbd.publisher, pbd.release_year, pbd.term,
@@ -271,7 +271,7 @@ export async function createPreorder(preorderData, cashierId, idempotencyKey) {
         connection
       );
       const { preorderNumber, receiptNumber } = await nextPreorderNumbers(connection);
-      const pickupToken = generateSecureToken('preorder');
+      const pickupToken = preorderNumber;
       const result = await connection.run(
         `INSERT INTO preorders
          (preorder_number, shift_id, cashier_id, customer_id, status, subtotal, discount,
@@ -691,7 +691,12 @@ export async function pickupPreorder(preorderId, pickupData, cashierId, idempote
           preorder.resolved_customer_phone,
         ]
       );
-      const invoiceToken = await saveSecureToken(connection, 'invoice', orderResult.lastID);
+      const invoiceToken = await saveSecureToken(
+        connection,
+        'invoice',
+        orderResult.lastID,
+        invoiceNumber
+      );
       await connection.run('UPDATE orders SET qr_token = ? WHERE id = ?;', [
         invoiceToken,
         orderResult.lastID,

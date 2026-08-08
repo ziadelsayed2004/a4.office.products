@@ -62,6 +62,7 @@ export function PreorderItems({ items = [], showStock = false }) {
           item.subject && `المادة: ${item.subject}`,
           item.term && `الترم: ${item.term === 'first' ? 'الأول' : 'الثاني'}`,
           item.release_year && `سنة الإصدار: ${item.release_year}`,
+          item.preorder_instructions && `تعليمات الحجز: ${item.preorder_instructions}`,
         ].filter(Boolean);
         const stock = Number(item.stock ?? item.stock_on_hand ?? 0);
         return (
@@ -85,6 +86,9 @@ export function PreorderItems({ items = [], showStock = false }) {
                 {item.product_sku ? <span className="a4-ltr">SKU: {item.product_sku}</span> : null}
                 {item.category_name ? <span>التصنيف: {item.category_name}</span> : null}
                 {item.price_tier_name ? <span>فئة السعر: {item.price_tier_name}</span> : null}
+                {item.availability_policy ? (
+                  <span>سياسة التوفر: {item.availability_policy}</span>
+                ) : null}
               </div>
             </div>
             <div className="preorder-details__item-values">

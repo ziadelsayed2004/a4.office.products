@@ -267,7 +267,7 @@ export async function checkoutOrder({
         ]
       );
       const orderId = orderResult.lastID;
-      const invoiceToken = await saveSecureToken(connection, 'invoice', orderId);
+      const invoiceToken = await saveSecureToken(connection, 'invoice', orderId, invoiceNumber);
       await connection.run('UPDATE orders SET qr_token = ? WHERE id = ?;', [invoiceToken, orderId]);
 
       for (const item of detailedItems) {

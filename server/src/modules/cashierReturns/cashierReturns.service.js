@@ -54,8 +54,10 @@ async function resolveInvoiceCode(connection, invoiceCode) {
       WHERE o.qr_token = ?
          OR o.id = (SELECT st.reference_id FROM secure_tokens st
                      WHERE st.token = ? AND st.token_type = 'invoice')
+         OR o.id = (SELECT qa.reference_id FROM document_qr_aliases qa
+                     WHERE qa.alias = ? AND qa.document_type = 'invoice')
       LIMIT 1;`,
-    [code, code]
+    [code, code, code]
   );
   if (row) return { orderId: row.id, matchedBy: 'token' };
 
@@ -138,6 +140,13 @@ async function loadReturnOrder(connection, orderId) {
   if (!order) throw new AppError('Invoice not found.', 404, 'INVOICE_NOT_FOUND');
   if (!['COMPLETED', 'PARTIALLY_RETURNED'].includes(order.status)) {
     throw new AppError('This invoice is not returnable.', 409, 'INVOICE_NOT_RETURNABLE');
+  }
+  if (!String(order.invoice_number || '').trim() || !String(order.qr_token || '').trim()) {
+    throw new AppError(
+      'A finalized invoice is required before creating a return.',
+      409,
+      'FINAL_INVOICE_REQUIRED'
+    );
   }
   return order;
 }
@@ -471,11 +480,14 @@ export async function executeReturn({ input, actor, idempotencyKey }) {
         referenceId: result.lastID,
         printedBy: actor.id,
         receiptNumber,
+        qrToken: returnNumber,
         connection,
         snapshot: {
           version: 4,
           returnId: result.lastID,
           returnNumber,
+          returnQrToken: returnNumber,
+          return_qr_token: returnNumber,
           orderId: quote.order.id,
           invoiceId: quote.order.id,
           invoiceNumber: quote.order.invoiceNumber,
@@ -648,6 +660,7 @@ function presentReturnRow(row) {
   return {
     id: row.id,
     returnNumber: row.return_number,
+    returnQrToken: row.return_number,
     orderId: row.order_id,
     invoiceNumber: row.invoice_number,
     receiptNumber: row.receipt_number,
