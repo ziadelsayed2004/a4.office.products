@@ -1542,11 +1542,7 @@ export default function POS() {
           ) : null}
           {pickupData && (
             <div className="pickup-dialog">
-              <PreorderDetails
-                preorder={pickupData.preorder}
-                items={pickupData.items}
-                showStock
-              />
+              <PreorderDetails preorder={pickupData.preorder} items={pickupData.items} showStock />
               <div className="a4-grid a4-grid--two">
                 <Paper variant="outlined" className="pickup-detail-card">
                   <Typography color="text.secondary" variant="caption">
@@ -1657,10 +1653,10 @@ export default function POS() {
             {!pickupData?.preorder?.canPickup
               ? 'عرض تفاصيل الحجز'
               : !pickupHasEnoughStock
-              ? 'المخزون غير مكتمل'
-              : loading
-                ? 'جاري التسليم...'
-                : 'تحصيل المتبقي وتسليم الحجز'}
+                ? 'المخزون غير مكتمل'
+                : loading
+                  ? 'جاري التسليم...'
+                  : 'تحصيل المتبقي وتسليم الحجز'}
           </Button>
         </DialogActions>
       </Dialog>

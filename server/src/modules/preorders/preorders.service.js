@@ -65,14 +65,21 @@ async function resolvePreorderLookupId(value, connection) {
       "SELECT reference_id FROM secure_tokens WHERE token = ? AND token_type = 'preorder';",
       [clean]
     );
-    if (!token) throw new AppError('Preorder QR token is invalid.', 404, 'PREORDER_TOKEN_NOT_FOUND');
+    if (!token)
+      throw new AppError('Preorder QR token is invalid.', 404, 'PREORDER_TOKEN_NOT_FOUND');
     return Number(token.reference_id);
   }
   if (/^inv_/i.test(clean)) {
-    throw new AppError('This is an invoice QR. Search for it in the invoice center.', 400, 'INVOICE_QR_IN_PREORDER_SEARCH');
+    throw new AppError(
+      'This is an invoice QR. Search for it in the invoice center.',
+      400,
+      'INVOICE_QR_IN_PREORDER_SEARCH'
+    );
   }
   if (/^pr-/i.test(clean)) {
-    const row = await connection.get('SELECT id FROM preorders WHERE preorder_number = ?;', [clean]);
+    const row = await connection.get('SELECT id FROM preorders WHERE preorder_number = ?;', [
+      clean,
+    ]);
     if (!row) throw new AppError('Preorder not found.', 404, 'PREORDER_NOT_FOUND');
     return Number(row.id);
   }
@@ -460,7 +467,9 @@ export async function listPreordersForAdmin(
     withMeta ? [...params, ...orderParams, limit, offset] : [...params, ...orderParams]
   );
   const detailed = await attachPreorderItems(rows, connection);
-  return withMeta ? { rows: detailed, total: Number(countRow?.total || 0), limit, offset } : detailed;
+  return withMeta
+    ? { rows: detailed, total: Number(countRow?.total || 0), limit, offset }
+    : detailed;
 }
 
 export async function searchPreordersForCashier(query, userId, connection = db, options = {}) {

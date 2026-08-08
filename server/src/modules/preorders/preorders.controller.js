@@ -23,7 +23,9 @@ export async function createPreorderController(req, res, next) {
 
 export async function listPreordersController(req, res, next) {
   try {
-    const data = await preordersService.listPreordersForAdmin(req.query, undefined, { withMeta: true });
+    const data = await preordersService.listPreordersForAdmin(req.query, undefined, {
+      withMeta: true,
+    });
     return res.status(200).json({ status: 'success', data });
   } catch (error) {
     return next(error);
@@ -90,11 +92,16 @@ export async function pickupPreorderController(req, res, next) {
 
 export async function searchPreordersController(req, res, next) {
   try {
-    const data = await preordersService.searchPreordersForCashier(req.query.q, req.user.id, undefined, {
-      activeOnly: req.query.activeOnly === 'true',
-      limit: req.query.limit,
-      offset: req.query.offset,
-    });
+    const data = await preordersService.searchPreordersForCashier(
+      req.query.q,
+      req.user.id,
+      undefined,
+      {
+        activeOnly: req.query.activeOnly === 'true',
+        limit: req.query.limit,
+        offset: req.query.offset,
+      }
+    );
     return res.status(200).json({ status: 'success', data });
   } catch (error) {
     return next(error);

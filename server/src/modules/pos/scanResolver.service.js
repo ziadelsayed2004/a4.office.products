@@ -178,7 +178,11 @@ export async function resolveScan(code, actor, connection = db, context = null) 
         [`${phone}%`, `%${phone}%`]
       );
       if (!rows.length)
-        throw new AppError('No active preorder matches this phone.', 404, 'ACTIVE_PREORDER_NOT_FOUND');
+        throw new AppError(
+          'No active preorder matches this phone.',
+          404,
+          'ACTIVE_PREORDER_NOT_FOUND'
+        );
       return { type: 'preorder_list', action: 'PICKUP_SELECT', data: { rows } };
     }
   }

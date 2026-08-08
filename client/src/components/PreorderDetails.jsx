@@ -30,13 +30,19 @@ export function PreorderSummary({ preorder }) {
       <DetailCard label="الحالة" hint={`المتبقي ${money(preorder.remaining_amount)}`}>
         <StatusChip status={preorder.status} />
       </DetailCard>
-      {preorder.cashier_name ? <DetailCard label="الكاشير">{preorder.cashier_name}</DetailCard> : null}
+      {preorder.cashier_name ? (
+        <DetailCard label="الكاشير">{preorder.cashier_name}</DetailCard>
+      ) : null}
       {preorder.expected_pickup_date ? (
         <DetailCard label="موعد الاستلام">
           <span className="a4-ltr">{preorder.expected_pickup_date}</span>
         </DetailCard>
       ) : null}
-      {preorder.invoice_number ? <DetailCard label="فاتورة الاستلام"><span className="a4-ltr">{preorder.invoice_number}</span></DetailCard> : null}
+      {preorder.invoice_number ? (
+        <DetailCard label="فاتورة الاستلام">
+          <span className="a4-ltr">{preorder.invoice_number}</span>
+        </DetailCard>
+      ) : null}
     </div>
   );
 }
@@ -59,10 +65,22 @@ export function PreorderItems({ items = [], showStock = false }) {
         ].filter(Boolean);
         const stock = Number(item.stock ?? item.stock_on_hand ?? 0);
         return (
-          <Paper variant="outlined" className="preorder-details__item" key={item.id || `${item.product_id}-${item.product_name}`}>
+          <Paper
+            variant="outlined"
+            className="preorder-details__item"
+            key={item.id || `${item.product_id}-${item.product_name}`}
+          >
             <div className="preorder-details__item-main">
-              <Typography className="preorder-details__product-name">{item.product_name || 'منتج غير معروف'}</Typography>
-              {bookMeta.length ? <div className="preorder-details__book-meta">{bookMeta.map((meta) => <span key={meta}>{meta}</span>)}</div> : null}
+              <Typography className="preorder-details__product-name">
+                {item.product_name || 'منتج غير معروف'}
+              </Typography>
+              {bookMeta.length ? (
+                <div className="preorder-details__book-meta">
+                  {bookMeta.map((meta) => (
+                    <span key={meta}>{meta}</span>
+                  ))}
+                </div>
+              ) : null}
               <div className="preorder-details__technical">
                 {item.product_sku ? <span className="a4-ltr">SKU: {item.product_sku}</span> : null}
                 {item.category_name ? <span>التصنيف: {item.category_name}</span> : null}
@@ -70,7 +88,9 @@ export function PreorderItems({ items = [], showStock = false }) {
               </div>
             </div>
             <div className="preorder-details__item-values">
-              <span>{number(item.quantity)} × {money(item.unit_price)}</span>
+              <span>
+                {number(item.quantity)} × {money(item.unit_price)}
+              </span>
               <strong>{money(item.total_price)}</strong>
               {showStock ? (
                 <span className={stock < Number(item.quantity) ? 'stock-error' : ''}>
@@ -91,13 +111,13 @@ export function PreorderDetails({ preorder, items, showStock = false }) {
       <PreorderSummary preorder={preorder} />
       <Divider />
       <section>
-        <Typography variant="h6" className="preorder-details__title">المنتجات</Typography>
+        <Typography variant="h6" className="preorder-details__title">
+          المنتجات
+        </Typography>
         <PreorderItems items={items} showStock={showStock} />
       </section>
       {preorder?.notes || preorder?.preorder_instructions_snapshot ? (
-        <Alert severity="info">
-          {preorder.notes || preorder.preorder_instructions_snapshot}
-        </Alert>
+        <Alert severity="info">{preorder.notes || preorder.preorder_instructions_snapshot}</Alert>
       ) : null}
     </div>
   );

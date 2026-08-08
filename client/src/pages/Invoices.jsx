@@ -620,7 +620,9 @@ export default function Invoices() {
                 onClick={() => lookupExactInvoice()}
                 disabled={loading}
               >
-                {inferInvoiceLookup(lookup.value) === 'customer' ? 'بحث في الفواتير' : 'فتح الفاتورة'}
+                {inferInvoiceLookup(lookup.value) === 'customer'
+                  ? 'بحث في الفواتير'
+                  : 'فتح الفاتورة'}
               </Button>
             </div>
           </section>

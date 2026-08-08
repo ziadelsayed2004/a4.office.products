@@ -530,14 +530,16 @@ export const preorderListQuery = z.object({
 });
 export const preorderSearchQuery = z.object({
   q: optionalTrimmed(200),
-  status: z.enum([
-    'DRAFT',
-    'DEPOSIT_PAID_WAITING_STOCK',
-    'READY_FOR_PICKUP',
-    'PICKED_UP',
-    'CANCELLED',
-    'EXPIRED',
-  ]).optional(),
+  status: z
+    .enum([
+      'DRAFT',
+      'DEPOSIT_PAID_WAITING_STOCK',
+      'READY_FOR_PICKUP',
+      'PICKED_UP',
+      'CANCELLED',
+      'EXPIRED',
+    ])
+    .optional(),
   activeOnly: z.enum(['true', 'false']).optional(),
   limit: optionalInteger(1, 100).default(25),
   offset: optionalInteger(0).default(0),
