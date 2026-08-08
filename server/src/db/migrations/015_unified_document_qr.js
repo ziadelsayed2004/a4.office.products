@@ -17,11 +17,6 @@ async function rememberAlias(db, alias, documentType, referenceId) {
   );
 }
 
-function snapshotQr(snapshot, qrToken) {
-  if (!snapshot || typeof snapshot !== 'object') return snapshot;
-  return { ...snapshot, qrToken };
-}
-
 export async function up(db) {
   await db.exec(`
     CREATE TABLE IF NOT EXISTS document_qr_aliases (
@@ -114,23 +109,4 @@ export async function up(db) {
        )
      WHERE reference_type = 'order_return';
   `);
-
-  const receipts = await db.all(
-    `SELECT id, reference_type, reference_id, snapshot_json, qr_token
-       FROM receipts WHERE qr_token IS NOT NULL;`
-  );
-  for (const receipt of receipts) {
-    let snapshot = null;
-    try {
-      snapshot = JSON.parse(receipt.snapshot_json || 'null');
-    } catch {
-      snapshot = null;
-    }
-    if (snapshot && receipt.qr_token) {
-      await db.run('UPDATE receipts SET snapshot_json = ? WHERE id = ?;', [
-        JSON.stringify(snapshotQr(snapshot, receipt.qr_token)),
-        receipt.id,
-      ]);
-    }
-  }
 }

@@ -625,7 +625,7 @@ export async function getInvoiceDetail(
     receipt_id: primaryReceipt?.id || null,
     receipt_number: primaryReceipt?.receipt_number || null,
     receipts,
-    qr_token: primarySnapshot.qrToken || invoice.qr_token,
+    qr_token: invoice.qr_token || primarySnapshot.qrToken,
     origin: invoice.origin || primarySnapshot.origin,
     // Status may legitimately advance to PARTIALLY_RETURNED/RETURNED; receipt
     // snapshots remain immutable and therefore are not authoritative here.
