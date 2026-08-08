@@ -87,7 +87,7 @@ export default function Customers() {
       .then((res) => setTiers(res.data || []))
       .catch(() => {});
     api
-      .get('/api/admin/products?limit=1000')
+      .get('/api/products?limit=1000')
       .then((res) => setProducts(res.data?.data || res.data || []))
       .catch(() => {});
   }, []);

@@ -14,7 +14,6 @@
 
 .customers-search__field {
   flex: 1 1 250px;
-  max-width: 400px;
 }
 
 .customers-search__tier {
