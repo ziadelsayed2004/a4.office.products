@@ -1,5 +1,6 @@
 import db from '../../db/index.js';
 import { AppError, requireInteger } from '../../utils/financial.js';
+import { normalizeCustomerPhone } from '../../utils/customerPhone.js';
 
 const RECEIPT_MATCH = `(
   (r.reference_type = 'order_sale' AND r.reference_id = o.id)
@@ -152,6 +153,7 @@ function listBaseSelect() {
              LIMIT 1
            ), u.name) AS cashier_name,
            u.name AS cashier_current_name, u.username AS cashier_username,
+           c.phone AS customer_phone_current,
            (
              SELECT r.receipt_number FROM receipts r
              WHERE ${RECEIPT_MATCH}
@@ -167,6 +169,7 @@ function listBaseSelect() {
            (SELECT COUNT(*) FROM returns ret WHERE ret.order_id = o.id) AS return_count
       FROM orders o
       JOIN users u ON u.id = o.cashier_id
+      LEFT JOIN customers c ON c.id = o.customer_id
   `;
 }
 
@@ -181,6 +184,13 @@ function buildListWhere(filters = {}, { cashierId = null } = {}) {
   if (filters.invoiceNumber) {
     clauses.push('o.invoice_number LIKE ?');
     params.push(`%${String(filters.invoiceNumber).trim()}%`);
+  }
+  if (filters.token) {
+    clauses.push(`(o.qr_token = ? OR EXISTS (
+      SELECT 1 FROM secure_tokens st
+       WHERE st.token = ? AND st.token_type = 'invoice' AND st.reference_id = o.id
+    ))`);
+    params.push(String(filters.token).trim(), String(filters.token).trim());
   }
   if (filters.receiptNumber) {
     clauses.push(
@@ -234,9 +244,16 @@ function buildListWhere(filters = {}, { cashierId = null } = {}) {
     params.push(String(filters.status));
   }
   if (filters.customer) {
-    const search = `%${String(filters.customer).trim()}%`;
-    clauses.push('(o.customer_name_snapshot LIKE ? OR o.customer_phone_snapshot LIKE ?)');
-    params.push(search, search);
+    const raw = String(filters.customer).trim();
+    const phone = normalizeCustomerPhone(raw);
+    if (/^\d+$/.test(phone) && phone.length >= 6) {
+      clauses.push('(c.phone LIKE ? OR o.customer_phone_snapshot LIKE ?)');
+      params.push(`${phone}%`, `%${phone}%`);
+    } else {
+      const search = `%${raw}%`;
+      clauses.push('(o.customer_name_snapshot LIKE ? OR o.customer_phone_snapshot LIKE ?)');
+      params.push(search, search);
+    }
   }
   if (filters.productName) {
     clauses.push(`EXISTS (
@@ -264,12 +281,25 @@ export async function listInvoices(filters = {}, { cashierId = null, connection 
   const offset = parseOffset(filters.offset);
   const { whereSql, params } = buildListWhere(filters, { cashierId });
 
+  const customerPhone = normalizeCustomerPhone(filters.customer || '');
+  const phoneLookup = /^\d+$/.test(customerPhone) && customerPhone.length >= 6;
+  const orderSql = phoneLookup
+    ? `ORDER BY CASE WHEN c.phone = ? OR o.customer_phone_snapshot = ? THEN 0
+                         WHEN c.phone LIKE ? OR o.customer_phone_snapshot LIKE ? THEN 1
+                         ELSE 2 END, o.created_at DESC, o.id DESC`
+    : 'ORDER BY o.created_at DESC, o.id DESC';
+  const orderParams = phoneLookup
+    ? [customerPhone, customerPhone, `${customerPhone}%`, `%${customerPhone}%`]
+    : [];
   const rows = await connection.all(
-    `${listBaseSelect()} WHERE ${whereSql} ORDER BY o.created_at DESC, o.id DESC LIMIT ? OFFSET ?;`,
-    [...params, limit, offset]
+    `${listBaseSelect()} WHERE ${whereSql} ${orderSql} LIMIT ? OFFSET ?;`,
+    [...params, ...orderParams, limit, offset]
   );
   const countRow = await connection.get(
-    `SELECT COUNT(*) AS total FROM orders o WHERE ${whereSql};`,
+    `SELECT COUNT(*) AS total
+       FROM orders o
+       LEFT JOIN customers c ON c.id = o.customer_id
+      WHERE ${whereSql};`,
     params
   );
   return { rows, total: countRow?.total || 0 };

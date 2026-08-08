@@ -34,11 +34,13 @@ import { LoadingState } from '../components/LoadingState.jsx';
 import { AppSnackbar } from '../components/AppSnackbar.jsx';
 import { StatusChip } from '../components/StatusChip.jsx';
 import { dateTime, money, statusLabel } from '../utils/formatters.js';
+import { normalizeCustomerPhone } from '../utils/customerPhone.js';
 import '../styles/Invoices.css';
 
 const PAGE_SIZE = 25;
 
 const initialAdminFilters = {
+  token: '',
   invoiceNumber: '',
   receiptNumber: '',
   startDate: '',
@@ -93,6 +95,14 @@ function receiptId(receipt) {
     receipt?.receipt_number,
     receipt?.receiptNumber
   );
+}
+
+function inferInvoiceLookup(value) {
+  const clean = String(value || '').trim();
+  if (/^inv_/i.test(clean)) return 'token';
+  if (/^inv-/i.test(clean)) return 'invoiceNumber';
+  if (/^rec-/i.test(clean)) return 'receiptNumber';
+  return 'customer';
 }
 
 function originLabel(value) {
@@ -190,15 +200,32 @@ export default function Invoices() {
   };
 
   const lookupExactInvoice = async (overrideLookup = null, nextPage = 1) => {
-    const criteria = overrideLookup || lookup;
+    const source = overrideLookup || lookup;
+    const criteria = {
+      ...source,
+      type: source.type === 'token' ? 'token' : inferInvoiceLookup(source.value),
+    };
     const value = criteria.value.trim();
     if (!value) {
       setToast({ severity: 'warning', message: 'أدخل رقم الفاتورة أو الإيصال أو رمز QR.' });
       return;
     }
+    if (/^pre_/i.test(value)) {
+      setToast({ severity: 'info', message: 'هذا QR حجز. ابحث عنه من صفحة الحجوزات أو الاستلام.' });
+      return;
+    }
+    if (
+      criteria.type === 'customer' &&
+      /^\d+$/.test(normalizeCustomerPhone(value)) &&
+      normalizeCustomerPhone(value).length < 6
+    ) {
+      setToast({ severity: 'warning', message: 'اكتب 6 أرقام على الأقل من رقم الهاتف.' });
+      return;
+    }
 
     setLoading(true);
     setError('');
+    if (!overrideLookup) setLookup((state) => ({ ...state, type: criteria.type }));
     setCashierMode(criteria.type === 'customer' ? 'customer' : 'exact');
     try {
       const query = new URLSearchParams({
@@ -440,6 +467,15 @@ export default function Invoices() {
 
       {isAdmin ? (
         <FilterPanel resultCount={total} onApply={() => loadAdmin(1)} onReset={resetAdminFilters}>
+          <Field label="QR الفاتورة">
+            <TextField
+              value={adminFilters.token}
+              placeholder="inv_..."
+              onChange={(event) =>
+                setAdminFilters((state) => ({ ...state, token: event.target.value }))
+              }
+            />
+          </Field>
           <Field label="رقم الفاتورة">
             <TextField
               value={adminFilters.invoiceNumber}
@@ -567,23 +603,10 @@ export default function Invoices() {
               </div>
             </div>
             <div className="invoice-lookup-panel__form">
-              <Field label="نوع البحث">
-                <TextField
-                  select
-                  value={lookup.type}
-                  onChange={(event) =>
-                    setLookup((state) => ({ ...state, type: event.target.value }))
-                  }
-                >
-                  <MenuItem value="invoiceNumber">رقم الفاتورة</MenuItem>
-                  <MenuItem value="receiptNumber">رقم الإيصال</MenuItem>
-                  <MenuItem value="token">رمز QR الآمن</MenuItem>
-                  <MenuItem value="customer">اسم العميل أو رقم الهاتف</MenuItem>
-                </TextField>
-              </Field>
-              <Field label={lookup.type === 'customer' ? 'اسم العميل أو رقم الهاتف' : 'القيمة'}>
+              <Field label="QR الفاتورة أو رقم الفاتورة أو الإيصال أو هاتف العميل">
                 <TextField
                   autoFocus
+                  placeholder="امسح QR أو اكتب INV-/REC- أو 6 أرقام من الهاتف"
                   value={lookup.value}
                   onChange={(event) =>
                     setLookup((state) => ({ ...state, value: event.target.value }))
@@ -597,7 +620,7 @@ export default function Invoices() {
                 onClick={() => lookupExactInvoice()}
                 disabled={loading}
               >
-                {lookup.type === 'customer' ? 'بحث في الفواتير' : 'فتح الفاتورة'}
+                {inferInvoiceLookup(lookup.value) === 'customer' ? 'بحث في الفواتير' : 'فتح الفاتورة'}
               </Button>
             </div>
           </section>

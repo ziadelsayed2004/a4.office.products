@@ -18,6 +18,7 @@ import * as adminNotifications from './migrations/010_admin_notifications.js';
 import * as walletLabel from './migrations/011_wallet_label.js';
 import * as optionalPickupPrinting from './migrations/012_optional_pickup_printing.js';
 import * as contactReceiptQr from './migrations/013_contact_receipt_qr.js';
+import * as lookupIndexes from './migrations/014_lookup_indexes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,6 +36,7 @@ const migrations = [
   walletLabel,
   optionalPickupPrinting,
   contactReceiptQr,
+  lookupIndexes,
 ];
 
 async function tableExists(name) {

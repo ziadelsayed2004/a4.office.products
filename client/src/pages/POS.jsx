@@ -43,6 +43,7 @@ import { EmptyState } from '../components/EmptyState.jsx';
 import { LoadingState } from '../components/LoadingState.jsx';
 import { AppSnackbar } from '../components/AppSnackbar.jsx';
 import { CashierReturnWizard } from '../components/CashierReturnWizard.jsx';
+import { PreorderDetails } from '../components/PreorderDetails.jsx';
 import { money, number, statusLabel } from '../utils/formatters.js';
 import { createIdempotencyKey, parsePiasters, piastersToInput } from '../utils/money.js';
 import { isValidCustomerPhone } from '../utils/customerPhone.js';
@@ -146,6 +147,7 @@ export default function POS() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [pickupOpen, setPickupOpen] = useState(false);
   const [pickupData, setPickupData] = useState(null);
+  const [pickupCandidates, setPickupCandidates] = useState([]);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [quickMethodCode, setQuickMethodCode] = useState('');
   const [pickupMethodCode, setPickupMethodCode] = useState('');
@@ -584,7 +586,12 @@ export default function POS() {
     if (!clean) return;
     setLoading(true);
     try {
-      const resolved = resolvePayload(await api.post('/api/pos/scan/resolve', { code: clean }));
+      const resolved = resolvePayload(
+        await api.post('/api/pos/scan/resolve', {
+          code: clean,
+          ...(mode === MODES.PICKUP ? { context: 'pickup' } : {}),
+        })
+      );
       if (resolved.type === 'invoice') {
         navigate(`/invoices?token=${encodeURIComponent(clean)}`);
       } else if (resolved.type === 'preorder') {
@@ -600,6 +607,8 @@ export default function POS() {
         setPickupMethodCode('');
         setPickupKey(createIdempotencyKey('pickup'));
         setPickupOpen(true);
+      } else if (resolved.type === 'preorder_list') {
+        setPickupCandidates(resolved.data.rows || []);
       } else if (resolved.type === 'return_approval_card') {
         setToast({ severity: 'warning', message: 'افتح وضع المرتجع قبل مسح بطاقة الاعتماد.' });
       } else if (resolved.type === 'return_authorization') {
@@ -874,6 +883,11 @@ export default function POS() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const choosePickupCandidate = (candidate) => {
+    setPickupCandidates([]);
+    resolveScan(candidate.preorder_number);
   };
 
   const printSuccessReceipt = async () => {
@@ -1483,6 +1497,35 @@ export default function POS() {
       </Dialog>
 
       <Dialog
+        open={pickupCandidates.length > 0}
+        onClose={() => setPickupCandidates([])}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>اختيار الحجز النشط</DialogTitle>
+        <DialogContent dividers>
+          <div className="pickup-candidates">
+            {pickupCandidates.map((candidate) => (
+              <Button
+                key={candidate.id}
+                variant="outlined"
+                className="pickup-candidate"
+                onClick={() => choosePickupCandidate(candidate)}
+              >
+                <span>{candidate.preorder_number}</span>
+                <span>{candidate.customer_name || '—'}</span>
+                <span className="a4-ltr">{candidate.customer_phone || '—'}</span>
+                <strong>{statusLabel(candidate.status)}</strong>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPickupCandidates([])}>إغلاق</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
         open={pickupOpen}
         onClose={loading ? undefined : () => setPickupOpen(false)}
         fullScreen={fullScreen}
@@ -1491,12 +1534,19 @@ export default function POS() {
       >
         <DialogTitle>مراجعة استلام الحجز {pickupData?.preorder?.preorder_number}</DialogTitle>
         <DialogContent dividers>
-          <NumberPreviewSummary
-            preview={pickupPreview}
-            amount={pickupData?.preorder?.remaining_amount}
-          />
+          {pickupData?.preorder?.canPickup ? (
+            <NumberPreviewSummary
+              preview={pickupPreview}
+              amount={pickupData?.preorder?.remaining_amount}
+            />
+          ) : null}
           {pickupData && (
             <div className="pickup-dialog">
+              <PreorderDetails
+                preorder={pickupData.preorder}
+                items={pickupData.items}
+                showStock
+              />
               <div className="a4-grid a4-grid--two">
                 <Paper variant="outlined" className="pickup-detail-card">
                   <Typography color="text.secondary" variant="caption">
@@ -1546,7 +1596,13 @@ export default function POS() {
                 </Alert>
               )}
               <Divider className="pickup-dialog__divider" />
-              {Number(pickupData.preorder.remaining_amount) === 0 ? (
+              {!pickupData.preorder.canPickup ? (
+                <Alert severity={pickupData.preorder.status === 'PICKED_UP' ? 'info' : 'warning'}>
+                  {pickupData.preorder.status === 'PICKED_UP'
+                    ? `تم تسليم هذا الحجز بالفعل${pickupData.preorder.invoice_number ? ` — الفاتورة ${pickupData.preorder.invoice_number}` : ''}.`
+                    : `لا يمكن استلام هذا الحجز بالحالة الحالية: ${statusLabel(pickupData.preorder.status)}.`}
+                </Alert>
+              ) : Number(pickupData.preorder.remaining_amount) === 0 ? (
                 <Alert severity="success">الحجز مسدد بالكامل ولا يوجد مبلغ مطلوب.</Alert>
               ) : (
                 <div className="quick-payment">
@@ -1598,7 +1654,9 @@ export default function POS() {
               !pickupHasEnoughStock
             }
           >
-            {!pickupHasEnoughStock
+            {!pickupData?.preorder?.canPickup
+              ? 'عرض تفاصيل الحجز'
+              : !pickupHasEnoughStock
               ? 'المخزون غير مكتمل'
               : loading
                 ? 'جاري التسليم...'

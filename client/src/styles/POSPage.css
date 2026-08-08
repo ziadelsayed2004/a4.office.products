@@ -451,6 +451,30 @@
   gap: var(--space-4);
   display: grid;
 }
+.pickup-dialog > .a4-grid,
+.pickup-dialog > .pickup-items {
+  display: none;
+}
+.pickup-candidates {
+  display: grid;
+  gap: var(--space-2);
+}
+.pickup-candidate {
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  text-align: right;
+}
+.pickup-candidate > span,
+.pickup-candidate > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pickup-candidate > span:first-child {
+  color: var(--color-primary);
+  font-weight: 800;
+}
 .pickup-dialog .a4-grid--two {
   grid-template-columns: minmax(0, 1fr);
 }

@@ -8,6 +8,7 @@ import {
   DialogTitle,
   IconButton,
   MenuItem,
+  Pagination,
   TextField,
   Tooltip,
 } from '@mui/material';
@@ -21,7 +22,9 @@ import { Field } from '../components/forms/Field.jsx';
 import { StatusChip } from '../components/StatusChip.jsx';
 import { LoadingState } from '../components/LoadingState.jsx';
 import { AppSnackbar } from '../components/AppSnackbar.jsx';
-import { dateTime, money, number, statusLabel } from '../utils/formatters.js';
+import { PreorderDetails } from '../components/PreorderDetails.jsx';
+import { dateTime, money, statusLabel } from '../utils/formatters.js';
+import { normalizeCustomerPhone } from '../utils/customerPhone.js';
 import '../styles/Preorders.css';
 
 const statuses = [
@@ -36,8 +39,11 @@ const allowedTransitions = {
   READY_FOR_PICKUP: ['CANCELLED', 'EXPIRED'],
 };
 const INITIAL_FILTERS = Object.freeze({ q: '', status: '' });
+const PAGE_SIZE = 25;
 export default function Preorders() {
   const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState(INITIAL_FILTERS);
@@ -48,15 +54,33 @@ export default function Preorders() {
   const [toast, setToast] = useState(null);
   const { isAdmin } = useAuth();
   const loadSequence = useRef(0);
-  const load = async (nextFilters = filters) => {
+  const load = async (nextFilters = filters, nextPage = 1) => {
     const requestId = ++loadSequence.current;
     setLoading(true);
+    const lookupValue = String(nextFilters.q || '').trim();
+    const normalizedPhone = normalizeCustomerPhone(lookupValue);
+    if (/^\d+$/.test(normalizedPhone) && normalizedPhone.length > 0 && normalizedPhone.length < 6) {
+      setRows([]);
+      setTotal(0);
+      setError('اكتب 6 أرقام على الأقل من رقم الهاتف.');
+      setLoading(false);
+      return;
+    }
     try {
-      const q = new URLSearchParams(Object.entries(nextFilters).filter(([, v]) => v));
+      const q = new URLSearchParams(
+        Object.entries({
+          ...nextFilters,
+          limit: PAGE_SIZE,
+          offset: (nextPage - 1) * PAGE_SIZE,
+        }).filter(([, v]) => v !== '' && v !== null && v !== undefined)
+      );
       const endpoint = isAdmin ? `/api/admin/preorders?${q}` : `/api/pos/preorders/search?${q}`;
-      const nextRows = (await api.get(endpoint)).data || [];
+      const payload = (await api.get(endpoint)).data || [];
+      const nextRows = Array.isArray(payload) ? payload : payload.rows || [];
       if (requestId !== loadSequence.current) return;
       setRows(nextRows);
+      setTotal(Array.isArray(payload) ? nextRows.length : Number(payload.total || nextRows.length));
+      setPage(nextPage);
       setError('');
     } catch (e) {
       if (requestId === loadSequence.current) setError(e.message);
@@ -65,14 +89,14 @@ export default function Preorders() {
     }
   };
   useEffect(() => {
-    load(INITIAL_FILTERS);
+    load(INITIAL_FILTERS, 1);
     return () => {
       loadSequence.current += 1;
     };
   }, []);
   const reset = () => {
     setFilters(INITIAL_FILTERS);
-    load(INITIAL_FILTERS);
+    load(INITIAL_FILTERS, 1);
   };
   const saveStatus = async () => {
     setSaving(true);
@@ -175,6 +199,15 @@ export default function Preorders() {
         ) : (
           <DataTable columns={columns} rows={rows} mobilePrimary={(r) => r.preorder_number} />
         )}
+        {!loading && total > PAGE_SIZE ? (
+          <Pagination
+            count={Math.ceil(total / PAGE_SIZE)}
+            page={page}
+            onChange={(_, nextPage) => load(filters, nextPage)}
+            color="primary"
+            sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}
+          />
+        ) : null}
       </section>
       <Dialog
         open={Boolean(selected) && !statusOpen}
@@ -186,44 +219,7 @@ export default function Preorders() {
         <DialogContent dividers>
           {selected && (
             <div className="a4-grid">
-              <div className="a4-grid a4-grid--three">
-                <div className="metric-card">
-                  <div className="metric-card__copy">
-                    <span className="metric-card__label">العميل</span>
-                    <strong>{selected.customer_name}</strong>
-                    <span className="metric-card__hint a4-ltr">{selected.customer_phone}</span>
-                  </div>
-                </div>
-                <div className="metric-card">
-                  <div className="metric-card__copy">
-                    <span className="metric-card__label">الإجمالي</span>
-                    <strong>{money(selected.total_amount)}</strong>
-                    <span className="metric-card__hint">
-                      العربون {money(selected.deposit_paid)}
-                    </span>
-                  </div>
-                </div>
-                <div className="metric-card">
-                  <div className="metric-card__copy">
-                    <span className="metric-card__label">الحالة</span>
-                    <StatusChip status={selected.status} />
-                    <span className="metric-card__hint">
-                      المتبقي {money(selected.remaining_amount)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <section className="a4-page-section">
-                <h3 className="a4-section-title">المنتجات</h3>
-                {selected.items?.map((i) => (
-                  <div className="a4-toolbar a4-list-row" key={i.id}>
-                    <span>{i.product_name}</span>
-                    <strong>
-                      {number(i.quantity)} × {money(i.unit_price)}
-                    </strong>
-                  </div>
-                ))}
-              </section>
+              <PreorderDetails preorder={selected} items={selected.items} />
             </div>
           )}
         </DialogContent>

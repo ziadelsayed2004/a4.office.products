@@ -379,6 +379,7 @@ export const scanBody = z
   .object({
     code: trimmed(500).optional(),
     token: trimmed(500).optional(),
+    context: z.enum(['pickup']).optional(),
   })
   .refine((value) => value.code || value.token, 'A scan code or token is required.');
 export const scanProductBody = z.object({ code: trimmed(500) });
@@ -524,8 +525,23 @@ export const preorderListQuery = z.object({
     .optional(),
   q: optionalTrimmed(200),
   cashierId: optionalInteger(1),
+  limit: optionalInteger(1, 100).default(25),
+  offset: optionalInteger(0).default(0),
 });
-export const preorderSearchQuery = z.object({ q: optionalTrimmed(200) });
+export const preorderSearchQuery = z.object({
+  q: optionalTrimmed(200),
+  status: z.enum([
+    'DRAFT',
+    'DEPOSIT_PAID_WAITING_STOCK',
+    'READY_FOR_PICKUP',
+    'PICKED_UP',
+    'CANCELLED',
+    'EXPIRED',
+  ]).optional(),
+  activeOnly: z.enum(['true', 'false']).optional(),
+  limit: optionalInteger(1, 100).default(25),
+  offset: optionalInteger(0).default(0),
+});
 export const preorderStatusBody = z.object({
   status: z.enum([
     'DRAFT',
@@ -550,6 +566,7 @@ export const receiptPrintBody = z
 
 export const invoiceListQuery = dateRange(
   z.object({
+    token: optionalTrimmed(500),
     invoiceNumber: optionalTrimmed(200),
     receiptNumber: optionalTrimmed(200),
     startDate: date.optional(),

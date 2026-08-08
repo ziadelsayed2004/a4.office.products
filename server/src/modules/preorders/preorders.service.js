@@ -25,6 +25,66 @@ const TRANSITIONS = {
   EXPIRED: new Set(),
 };
 
+const PREORDER_ITEM_SELECT = `
+  SELECT pi.id, pi.preorder_id, pi.product_id, pi.quantity, pi.unit_price, pi.total_price,
+         pi.product_name_snapshot AS product_name,
+         pi.sku_snapshot AS product_sku,
+         pi.price_tier_name_snapshot AS price_tier_name,
+         pi.availability_policy_snapshot AS availability_policy,
+         pi.deposit_pct_snapshot AS deposit_pct,
+         c.name AS category_name,
+         pbd.book_type, pbd.school_grade, pbd.subject,
+         pbd.teacher AS author, pbd.publisher, pbd.release_year, pbd.term,
+         COALESCE((
+           SELECT il.after_quantity FROM inventory_ledger il
+            WHERE il.product_id = pi.product_id ORDER BY il.id DESC LIMIT 1
+         ), 0) AS stock_on_hand
+    FROM preorder_items pi
+    JOIN products p ON p.id = pi.product_id
+    LEFT JOIN categories c ON c.id = p.category_id
+    LEFT JOIN product_book_details pbd ON pbd.product_id = p.id`;
+
+async function attachPreorderItems(rows, connection) {
+  if (!rows.length) return rows;
+  const ids = rows.map((row) => Number(row.id)).filter((id) => Number.isInteger(id) && id > 0);
+  if (!ids.length) return rows.map((row) => ({ ...row, items: [] }));
+  const placeholders = ids.map(() => '?').join(', ');
+  const items = await connection.all(
+    `${PREORDER_ITEM_SELECT} WHERE pi.preorder_id IN (${placeholders}) ORDER BY pi.preorder_id, pi.id;`,
+    ids
+  );
+  const grouped = new Map(ids.map((id) => [id, []]));
+  for (const item of items) grouped.get(Number(item.preorder_id))?.push(item);
+  return rows.map((row) => ({ ...row, items: grouped.get(Number(row.id)) || [] }));
+}
+
+async function resolvePreorderLookupId(value, connection) {
+  const clean = String(value || '').trim();
+  if (/^pre_/i.test(clean)) {
+    const token = await connection.get(
+      "SELECT reference_id FROM secure_tokens WHERE token = ? AND token_type = 'preorder';",
+      [clean]
+    );
+    if (!token) throw new AppError('Preorder QR token is invalid.', 404, 'PREORDER_TOKEN_NOT_FOUND');
+    return Number(token.reference_id);
+  }
+  if (/^inv_/i.test(clean)) {
+    throw new AppError('This is an invoice QR. Search for it in the invoice center.', 400, 'INVOICE_QR_IN_PREORDER_SEARCH');
+  }
+  if (/^pr-/i.test(clean)) {
+    const row = await connection.get('SELECT id FROM preorders WHERE preorder_number = ?;', [clean]);
+    if (!row) throw new AppError('Preorder not found.', 404, 'PREORDER_NOT_FOUND');
+    return Number(row.id);
+  }
+  return null;
+}
+
+function pagination(filters = {}) {
+  const limit = Math.min(Math.max(Number(filters.limit || 25), 1), 100);
+  const offset = Math.max(Number(filters.offset || 0), 0);
+  return { limit, offset };
+}
+
 async function requireOwnOpenShift(connection, userId) {
   const shift = await connection.get(
     "SELECT * FROM shifts WHERE user_id = ? AND status = 'OPEN' ORDER BY id DESC LIMIT 1;",
@@ -338,51 +398,116 @@ export async function createPreorder(preorderData, cashierId, idempotencyKey) {
   );
 }
 
-export async function listPreordersForAdmin(filters = {}, connection = db) {
+export async function listPreordersForAdmin(
+  filters = {},
+  connection = db,
+  { withMeta = false } = {}
+) {
+  const { limit, offset } = withMeta ? pagination(filters) : { limit: null, offset: 0 };
+  const lookupId = filters.q?.trim() ? await resolvePreorderLookupId(filters.q, connection) : null;
+  let phoneLookup = '';
   let sql = `SELECT pr.*, pr.customer_name_snapshot AS customer_name,
                     pr.customer_phone_snapshot AS customer_phone, u.name AS cashier_name
-               FROM preorders pr JOIN users u ON u.id = pr.cashier_id WHERE 1 = 1`;
+               FROM preorders pr JOIN users u ON u.id = pr.cashier_id
+              LEFT JOIN customers c ON c.id = pr.customer_id
+              WHERE 1 = 1`;
   const params = [];
   if (filters.status) {
     sql += ' AND pr.status = ?';
     params.push(filters.status);
   }
-  if (filters.q?.trim()) {
-    const value = `%${filters.q.trim()}%`;
-    sql +=
-      ' AND (pr.preorder_number LIKE ? OR pr.customer_name_snapshot LIKE ? OR pr.customer_phone_snapshot LIKE ?)';
-    params.push(value, value, value);
+  if (lookupId) {
+    sql += ' AND pr.id = ?';
+    params.push(lookupId);
+  } else if (filters.q?.trim()) {
+    const raw = filters.q.trim();
+    const phone = normalizeCustomerPhone(raw);
+    if (/^\d+$/.test(phone) && phone.length >= 6) {
+      phoneLookup = phone;
+      sql += ' AND (c.phone LIKE ? OR pr.customer_phone_snapshot LIKE ?)';
+      params.push(`${phone}%`, `%${phone}%`);
+    } else {
+      const value = `%${raw}%`;
+      sql +=
+        ' AND (pr.preorder_number LIKE ? OR pr.customer_name_snapshot LIKE ? OR pr.customer_phone_snapshot LIKE ?)';
+      params.push(value, value, value);
+    }
   }
   if (filters.cashierId) {
     sql += ' AND pr.cashier_id = ?';
     params.push(filters.cashierId);
   }
-  sql += ' ORDER BY pr.created_at DESC;';
-  const rows = await connection.all(sql, params);
-  for (const preorder of rows) {
-    preorder.items = await connection.all(
-      `SELECT pi.*, pi.product_name_snapshot AS product_name, pi.sku_snapshot AS product_sku,
-              p.availability_policy, p.open_preorder_quantity,
-              COALESCE((SELECT after_quantity FROM inventory_ledger il WHERE il.product_id = p.id ORDER BY il.id DESC LIMIT 1), 0) AS stock_on_hand
-         FROM preorder_items pi JOIN products p ON p.id = pi.product_id WHERE pi.preorder_id = ? ORDER BY pi.id;`,
-      [preorder.id]
-    );
-  }
-  return rows;
+  const countRow = withMeta
+    ? await connection.get(
+        sql.replace(
+          'SELECT pr.*, pr.customer_name_snapshot AS customer_name,\n                    pr.customer_phone_snapshot AS customer_phone, u.name AS cashier_name',
+          'SELECT COUNT(*) AS total'
+        ),
+        params
+      )
+    : null;
+  const orderSql = phoneLookup
+    ? ` ORDER BY CASE WHEN c.phone = ? OR pr.customer_phone_snapshot = ? THEN 0
+                           WHEN c.phone LIKE ? OR pr.customer_phone_snapshot LIKE ? THEN 1
+                           ELSE 2 END, pr.created_at DESC, pr.id DESC`
+    : ' ORDER BY pr.created_at DESC, pr.id DESC';
+  const orderParams = phoneLookup
+    ? [phoneLookup, phoneLookup, `${phoneLookup}%`, `%${phoneLookup}%`]
+    : [];
+  sql += withMeta ? `${orderSql} LIMIT ? OFFSET ?;` : `${orderSql};`;
+  const rows = await connection.all(
+    sql,
+    withMeta ? [...params, ...orderParams, limit, offset] : [...params, ...orderParams]
+  );
+  const detailed = await attachPreorderItems(rows, connection);
+  return withMeta ? { rows: detailed, total: Number(countRow?.total || 0), limit, offset } : detailed;
 }
 
-export async function searchPreordersForCashier(query, userId, connection = db) {
+export async function searchPreordersForCashier(query, userId, connection = db, options = {}) {
   const value = String(query || '').trim();
-  if (!value) return [];
-  return connection.all(
-    `SELECT pr.id, pr.preorder_number, pr.status, pr.customer_name_snapshot AS customer_name,
-            pr.customer_phone_snapshot AS customer_phone, pr.total_amount, pr.deposit_paid,
-            pr.remaining_amount, pr.created_at
-       FROM preorders pr
-      WHERE pr.preorder_number = ? OR pr.customer_phone_snapshot = ?
-      ORDER BY pr.created_at DESC LIMIT 20;`,
-    [value, value]
+  if (!value) return { rows: [], total: 0, limit: 25, offset: 0 };
+  const { limit, offset } = pagination(options);
+  const lookupId = await resolvePreorderLookupId(value, connection);
+  const activeOnly = options.activeOnly === true;
+  let phoneLookup = '';
+  let where = '1 = 1';
+  const params = [];
+  if (lookupId) {
+    where += ' AND pr.id = ?';
+    params.push(lookupId);
+  } else {
+    const phone = normalizeCustomerPhone(value);
+    if (/^\d+$/.test(phone) && phone.length >= 6) {
+      phoneLookup = phone;
+      where += ' AND (c.phone LIKE ? OR pr.customer_phone_snapshot LIKE ?)';
+      params.push(`${phone}%`, `%${phone}%`);
+    } else {
+      where += ' AND pr.preorder_number LIKE ?';
+      params.push(`%${value}%`);
+    }
+  }
+  if (activeOnly) {
+    where += " AND pr.status IN ('DEPOSIT_PAID_WAITING_STOCK', 'READY_FOR_PICKUP')";
+  }
+  const from = `FROM preorders pr LEFT JOIN customers c ON c.id = pr.customer_id WHERE ${where}`;
+  const countRow = await connection.get(`SELECT COUNT(*) AS total ${from};`, params);
+  const orderSql = phoneLookup
+    ? `ORDER BY CASE WHEN c.phone = ? OR pr.customer_phone_snapshot = ? THEN 0
+                         WHEN c.phone LIKE ? OR pr.customer_phone_snapshot LIKE ? THEN 1
+                         ELSE 2 END, pr.created_at DESC, pr.id DESC`
+    : 'ORDER BY pr.created_at DESC, pr.id DESC';
+  const orderParams = phoneLookup
+    ? [phoneLookup, phoneLookup, `${phoneLookup}%`, `%${phoneLookup}%`]
+    : [];
+  const rows = await connection.all(
+    `SELECT pr.*, pr.customer_name_snapshot AS customer_name,
+            pr.customer_phone_snapshot AS customer_phone
+       ${from}
+      ${orderSql} LIMIT ? OFFSET ?;`,
+    [...params, ...orderParams, limit, offset]
   );
+  const detailed = await attachPreorderItems(rows, connection);
+  return { rows: detailed, total: Number(countRow?.total || 0), limit, offset };
 }
 
 export async function updatePreorderStatus(preorderId, status, adminUserId) {

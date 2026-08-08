@@ -4,6 +4,7 @@ import { writeAuditLog } from '../../utils/auditLogger.js';
 
 function adminFilters(query) {
   return {
+    token: query.token,
     invoiceNumber: query.invoiceNumber,
     receiptNumber: query.receiptNumber,
     startDate: query.startDate,

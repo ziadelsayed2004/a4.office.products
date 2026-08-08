@@ -4,7 +4,12 @@ import { publishLiveEvent } from '../liveAdmin/liveEvents.js';
 
 export async function resolveScanController(req, res, next) {
   try {
-    const data = await resolveScan(req.body?.code || req.body?.token, req.user);
+    const data = await resolveScan(
+      req.body?.code || req.body?.token,
+      req.user,
+      undefined,
+      req.body?.context
+    );
     return res.status(200).json({ status: 'success', data });
   } catch (error) {
     return next(error);
